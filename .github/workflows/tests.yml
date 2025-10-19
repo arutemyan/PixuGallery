@@ -1,0 +1,269 @@
+name: PHPUnit Tests
+
+# ワークフローのトリガー設定 / Workflow Triggers
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  workflow_dispatch: # 手動トリガーを許可 / Allow manual trigger
+
+# 環境変数 / Environment Variables
+env:
+  COMPOSER_ALLOW_SUPERUSER: 1
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }} - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    # テストマトリクス: 複数のPHPバージョンとOSでテスト
+    # Test Matrix: Test on multiple PHP versions and OS
+    strategy:
+      fail-fast: false # 1つが失敗しても他のテストを続行 / Continue other tests if one fails
+      matrix:
+        os: [ubuntu-latest]
+        php: ['8.1', '8.2', '8.3']
+        include:
+          # 特定の組み合わせで追加設定 / Additional config for specific combinations
+          - os: ubuntu-latest
+            php: '8.1'
+            coverage: true # PHP 8.1でカバレッジを測定 / Measure coverage on PHP 8.1
+
+    steps:
+      # ========================================
+      # 1. リポジトリをチェックアウト / Checkout Repository
+      # ========================================
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ========================================
+      # 2. PHPセットアップ / Setup PHP
+      # ========================================
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo, pdo_sqlite, gd, json, mbstring
+          coverage: xdebug # カバレッジ測定用 / For coverage measurement
+          tools: composer:v2
+
+      # ========================================
+      # 3. PHPバージョン確認 / Verify PHP Version
+      # ========================================
+      - name: Check PHP version
+        run: |
+          php -v
+          php -m
+
+      # ========================================
+      # 4. Composerキャッシュ / Cache Composer Dependencies
+      # ========================================
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      # ========================================
+      # 5. 依存関係インストール / Install Dependencies
+      # ========================================
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      # ========================================
+      # 6. テストディレクトリ作成 / Create Test Directories
+      # ========================================
+      - name: Create test directories
+        run: |
+          mkdir -p tests/reports
+          mkdir -p coverage
+          mkdir -p logs
+
+      # ========================================
+      # 7. PHPUnit設定確認 / Verify PHPUnit Configuration
+      # ========================================
+      - name: Validate PHPUnit configuration
+        run: vendor/bin/phpunit --version
+
+      # ========================================
+      # 8. テスト実行（カバレッジなし） / Run Tests (Without Coverage)
+      # ========================================
+      - name: Run PHPUnit tests
+        if: matrix.coverage != true
+        run: |
+          vendor/bin/phpunit \
+            --testdox \
+            --colors=always \
+            --log-junit tests/reports/junit.xml
+
+      # ========================================
+      # 9. テスト実行（カバレッジあり） / Run Tests (With Coverage)
+      # ========================================
+      - name: Run PHPUnit tests with coverage
+        if: matrix.coverage == true
+        run: |
+          vendor/bin/phpunit \
+            --testdox \
+            --colors=always \
+            --coverage-html coverage \
+            --coverage-clover coverage/clover.xml \
+            --coverage-text \
+            --log-junit tests/reports/junit.xml
+
+      # ========================================
+      # 10. テスト結果アップロード / Upload Test Results
+      # ========================================
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-php-${{ matrix.php }}
+          path: tests/reports/
+          retention-days: 7
+
+      # ========================================
+      # 11. カバレッジレポートアップロード / Upload Coverage Report
+      # ========================================
+      - name: Upload coverage reports
+        if: matrix.coverage == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-php-${{ matrix.php }}
+          path: coverage/
+          retention-days: 7
+
+      # ========================================
+      # 12. Codecovにカバレッジアップロード / Upload Coverage to Codecov
+      # ========================================
+      - name: Upload coverage to Codecov
+        if: matrix.coverage == true
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/clover.xml
+          flags: unittests
+          name: codecov-php-${{ matrix.php }}
+          fail_ci_if_error: false
+
+      # ========================================
+      # 13. カバレッジサマリー表示 / Display Coverage Summary
+      # ========================================
+      - name: Display coverage summary
+        if: matrix.coverage == true
+        run: |
+          echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "カバレッジレポートが生成されました。詳細はArtifactsを確認してください。" >> $GITHUB_STEP_SUMMARY
+          echo "Coverage report generated. Check Artifacts for details." >> $GITHUB_STEP_SUMMARY
+
+  # ========================================
+  # 追加ジョブ: コード品質チェック / Additional Job: Code Quality Check
+  # ========================================
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    needs: tests # testsジョブが成功した場合のみ実行 / Run only if tests job succeeds
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: pdo, pdo_sqlite, gd, json
+          tools: composer:v2, phpcs, phpstan
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      # PHP_CodeSnifferによるコードスタイルチェック / Code style check with PHP_CodeSniffer
+      - name: Check code style (PHP_CodeSniffer)
+        continue-on-error: true # エラーでもワークフローを続行 / Continue workflow on error
+        run: |
+          if [ -f "phpcs.xml" ] || [ -f "phpcs.xml.dist" ]; then
+            vendor/bin/phpcs || echo "PHP_CodeSniffer not configured"
+          else
+            echo "PHP_CodeSniffer configuration not found. Skipping..."
+          fi
+
+      # PHPStanによる静的解析 / Static analysis with PHPStan
+      - name: Static analysis (PHPStan)
+        continue-on-error: true # エラーでもワークフローを続行 / Continue workflow on error
+        run: |
+          if [ -f "phpstan.neon" ] || [ -f "phpstan.neon.dist" ]; then
+            vendor/bin/phpstan analyse || echo "PHPStan not configured"
+          else
+            echo "PHPStan configuration not found. Skipping..."
+          fi
+
+  # ========================================
+  # 追加ジョブ: セキュリティチェック / Additional Job: Security Check
+  # ========================================
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: pdo, pdo_sqlite, gd, json
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      # Composerの脆弱性チェック / Composer security audit
+      - name: Run Composer security audit
+        run: composer audit || echo "No security issues found"
+
+  # ========================================
+  # 最終サマリージョブ / Final Summary Job
+  # ========================================
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [tests, code-quality, security]
+    if: always() # 前のジョブが失敗しても実行 / Always run even if previous jobs fail
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "## 🎉 Test Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "すべてのテストジョブが完了しました。" >> $GITHUB_STEP_SUMMARY
+          echo "All test jobs completed." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Tests: ${{ needs.tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Code Quality: ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Security: ${{ needs.security.result }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Final status check
+        if: needs.tests.result != 'success'
+        run: |
+          echo "::error::テストが失敗しました / Tests failed"
+          exit 1

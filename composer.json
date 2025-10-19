@@ -1,0 +1,41 @@
+{
+    "name": "photo-site/illustration-portfolio",
+    "description": "イラストポートフォリオサイト（REST API版）",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.1",
+        "ext-pdo": "*",
+        "ext-sqlite3": "*",
+        "ext-gd": "*",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/",
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit --testdox --colors=always",
+        "test:all": "phpunit --testdox --colors=always",
+        "test:api": "phpunit --testsuite=Api --testdox --colors=always",
+        "test:cache": "phpunit --testsuite=Cache --testdox --colors=always",
+        "test:security": "phpunit --testsuite=Security --testdox --colors=always",
+        "test:coverage": "phpunit --coverage-html coverage --coverage-text",
+        "test:coverage-text": "phpunit --coverage-text",
+        "test:ci": "phpunit --testdox --colors=always --log-junit tests/reports/junit.xml"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

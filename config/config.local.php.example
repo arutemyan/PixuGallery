@@ -1,0 +1,57 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * 統合ローカル設定 (Example)
+ *
+ * このファイルをコピーして config.local.php として保存してください
+ * ローカル環境固有の設定をここで上書きできます
+ *
+ * 使い方:
+ * 1. このファイルを config.local.php にコピー
+ * 2. 必要な設定のみを記述（他の設定はデフォルト値が使用されます）
+ */
+
+return [
+    /**
+     * キャッシュ設定の上書き例
+     */
+    // 'cache' => [
+    //     // カスタムキャッシュディレクトリ
+    //     'cache_dir' => '/var/cache/photo-site',
+    //     // キャッシュを無効化（デバッグ時）
+    //     'enabled' => false,
+    // ],
+
+    /**
+     * NSFW設定の上書き例
+     */
+    // 'nsfw' => [
+    //     // デバッグ時は年齢確認を1分に設定
+    //     'age_verification_minutes' => 1,
+    //     // config_versionを変更（既存の年齢確認をクリア）
+    //     'config_version' => 7,
+    //     // フィルタータイプを変更
+    //     'filter_type' => 'blur',
+    // ],
+
+    /**
+     * セキュリティ設定の上書き例
+     */
+    // 'security' => [
+    //     // 本番環境ではHTTPSを強制
+    //     'https' => [
+    //         'force' => true,
+    //         'hsts_enabled' => true,
+    //     ],
+    //     // CSPを有効化
+    //     'csp' => [
+    //         'enabled' => true,
+    //     ],
+    //     // 開発環境でHTTPを使用する場合
+    //     'session' => [
+    //         'cookie_secure' => false,
+    //     ],
+    // ],
+];

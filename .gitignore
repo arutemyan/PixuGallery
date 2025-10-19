@@ -1,0 +1,59 @@
+# Composer
+/vendor/
+composer.lock
+
+# データベース（/data ディレクトリに一元化）
+/data/*.db
+/data/*.sqlite
+/data/*.sqlite3
+/data/*.db-journal
+/data/rate-limits/
+
+# 旧データベース場所（非推奨）
+/public/data/*.db
+/public/data/*.db-journal
+/work/*.db
+
+# アップロードファイル
+/public/uploads/images/*
+/public/uploads/thumbs/*
+!public/uploads/images/.gitkeep
+!public/uploads/thumbs/.gitkeep
+
+# キャッシュ
+/cache/*.json
+/cache/*.html
+!cache/.gitkeep
+
+# ログ
+/logs/*.log
+!logs/.gitkeep
+
+# PHPUnit
+/.phpunit.cache/
+/coverage/
+/tests/reports/
+
+# IDE
+/.idea/
+/.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 環境設定
+.env
+.env.local
+# ローカル設定ファイル（デフォルト設定を上書き）
+config/*.local.php
+
+# テスト用データベース
+/test-cache/
+
+# Temporary files
+/tmp/
+*.tmp

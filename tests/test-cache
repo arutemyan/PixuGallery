@@ -1,0 +1,3 @@
+#!/bin/bash
+# キャッシュテスト実行エイリアス
+exec ./scripts/run_tests.sh "$@"

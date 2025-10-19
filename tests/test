@@ -1,0 +1,3 @@
+#!/bin/bash
+# テスト実行エイリアス
+exec ./scripts/run_all_tests.sh "$@"
