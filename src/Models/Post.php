@@ -55,12 +55,24 @@ class Post
             $sql .= " AND is_sensitive = 1";
         }
 
+        // 以下の文字は解析しないで結果なしにする
+        function checkNGTag($t) {
+            return false
+                || strpos($t, ";") !== false
+                || strpos($t, '"') !== false
+                || strpos($t, "'") !== false;
+        }
+        if (checkNGTag($tagFilter) || checkNGTag($nsfwFilter)) {
+            return [];
+        }
+
         // タグフィルタ
         if (!empty($tagFilter)) {
-            $sql .= " AND (tags LIKE ? OR tags LIKE ? OR tags LIKE ? OR tags = ?)";
-            $params[] = $tagFilter . ',%';  // 先頭
-            $params[] = '%,' . $tagFilter . ',%';  // 中間
-            $params[] = '%,' . $tagFilter;  // 末尾
+            //$sql .= " AND (tags LIKE ? OR tags LIKE ? OR tags LIKE ? OR tags = ?)";
+            //$params[] = $tagFilter . ',%';  // 先頭
+            //$params[] = '%,' . $tagFilter . ',%';  // 中間
+            //$params[] = '%,' . $tagFilter;  // 末尾
+            $sql .= " AND (tags = ?)";
             $params[] = $tagFilter;  // 単独
         }
 
