@@ -7,6 +7,11 @@ tests/ export-ignore
 .phpunit.cache/ export-ignore
 phpunit.xml export-ignore
 phpunit.xml.dist export-ignore
+*.md export-ignore
+public/uploads/images/.gitkeep export-ignore
+public/uploads/thumbs/.gitkeep export-ignore
+docs/ export-ignore
+init.php export-ignore
 
 # ビルド/リリーススクリプト
 create-release.sh export-ignore
