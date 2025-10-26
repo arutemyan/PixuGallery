@@ -1,5 +1,4 @@
 # Apache設定ファイル
-# さくらインターネット対応
 
 # PHPのエラー表示設定
 php_flag display_errors Off
