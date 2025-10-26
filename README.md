@@ -1,3 +1,5 @@
+![test workflow](https://github.com/arutemyan/photo-site/actions/workflows/tests.yml/badge.svg)
+
 # Photo Site - イラストポートフォリオサイト
 
 PHPベースのイラストレーター向けポートフォリオサイト
@@ -110,11 +112,7 @@ return [
 
 センシティブなコンテンツには：
 - 年齢確認モーダル表示
-- 自動ぼかし処理（2種類）
-  - `blur`: ぼかし効果
-  - `frosted`: すりガラス効果
-
-設定で切り替え可能（`config/config.default.php` の `nsfw.filter_type`）
+- 自動ぼかし処理
 
 ### テーマカスタマイズ
 
@@ -127,7 +125,7 @@ return [
 
 ## デプロイ
 
-### 共有ホスティング（さくらインターネット等）
+### 共有ホスティング
 
 ```bash
 # 1. FTPで全ファイルをアップロード
@@ -183,7 +181,3 @@ php scripts/migration_*.php
 ## ライセンス
 
 MIT License
-
----
-
-**最終更新:** 2025-10-25
