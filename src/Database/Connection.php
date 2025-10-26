@@ -95,6 +95,16 @@ class Connection
     {
         $db = self::$instance;
 
+        // usersテーブル（管理者認証用）
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
+
         // postsテーブル
         $db->exec("
             CREATE TABLE IF NOT EXISTS posts (
@@ -103,19 +113,51 @@ class Connection
                 tags TEXT,
                 detail TEXT,
                 image_path TEXT,
-		thumb_path TEXT,
-                is_sensitive TINYINT,
+                thumb_path TEXT,
+                is_sensitive INTEGER DEFAULT 0,
+                is_visible INTEGER NOT NULL DEFAULT 1,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ");
 
-        // usersテーブル（管理者認証用）
+        // postsテーブルのインデックス
+        $db->exec("CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC)");
+        $db->exec("CREATE INDEX IF NOT EXISTS idx_posts_visible ON posts(is_visible, created_at DESC)");
+
+        // tagsテーブル
         $db->exec("
-            CREATE TABLE IF NOT EXISTS users (
+            CREATE TABLE IF NOT EXISTS tags (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                name TEXT NOT NULL UNIQUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
+
+        // tagsテーブルのインデックス
+        $db->exec("CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)");
+
+        // post_tagsテーブル（投稿とタグの中間テーブル）
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS post_tags (
+                post_id INTEGER NOT NULL,
+                tag_id INTEGER NOT NULL,
+                PRIMARY KEY (post_id, tag_id),
+                FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+            )
+        ");
+
+        // post_tagsテーブルのインデックス
+        $db->exec("CREATE INDEX IF NOT EXISTS idx_post_tags_post_id ON post_tags(post_id)");
+        $db->exec("CREATE INDEX IF NOT EXISTS idx_post_tags_tag_id ON post_tags(tag_id)");
+
+        // settingsテーブル
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT NOT NULL UNIQUE,
+                value TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ");
 
