@@ -299,6 +299,9 @@ try {
                     <button class="filter-btn filter-btn-compact active" data-filter="all" onclick="setNSFWFilter('all')">すべて</button>
                     <button class="filter-btn filter-btn-compact" data-filter="safe" onclick="setNSFWFilter('safe')">一般</button>
                     <button class="filter-btn filter-btn-compact" data-filter="nsfw" onclick="setNSFWFilter('nsfw')">NSFW</button>
+                    <span class="filter-separator">|</span>
+                    <button class="toggle-btn active" id="toggleTags" onclick="toggleTagsVisibility()" title="タグの表示/非表示を切り替え">タグ</button>
+                    <button class="toggle-btn active" id="toggleTitles" onclick="toggleTitlesVisibility()" title="タイトルの表示/非表示を切り替え">表題</button>
                 </div>
                 <div class="filter-group">
                     <span class="filter-label">タグ:</span>
@@ -332,7 +335,9 @@ try {
                     }
                     ?>
                     <div class="card <?= $isSensitive ? 'nsfw-card' : '' ?>" data-post-id="<?= $post['id'] ?>">
-                        <div class="card-img-wrapper <?= $isSensitive ? 'nsfw-wrapper' : '' ?>">
+                        <div class="card-img-wrapper <?= $isSensitive ? 'nsfw-wrapper' : '' ?>"
+                             onclick="openImageOverlay(<?= $post['id'] ?>, <?= $isSensitive ? 'true' : 'false' ?>)"
+                             style="cursor: pointer;">
                             <img
                                 src="<?= $imagePath ?>"
                                 alt="<?= escapeHtml($post['title']) ?>"
@@ -341,8 +346,6 @@ try {
                                 onerror="if(!this.dataset.errorHandled){this.dataset.errorHandled='1';this.src='/uploads/thumbs/placeholder.webp';}"
                                 data-full-image="<?= '/' . escapeHtml($post['image_path'] ?? $post['thumb_path'] ?? '') ?>"
                                 data-is-sensitive="<?= $isSensitive ? '1' : '0' ?>"
-                                onclick="openImageOverlay(<?= $post['id'] ?>, <?= $isSensitive ? 'true' : 'false' ?>)"
-                                style="cursor: pointer;"
                             >
                             <?php if ($isSensitive): ?>
                                 <div class="nsfw-overlay">

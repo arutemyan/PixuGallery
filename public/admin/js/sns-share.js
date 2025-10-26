@@ -26,7 +26,7 @@ function shareToSNS(postId, title, isSensitive) {
     const shareUrls = {
         twitter: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}&hashtags=${fullHashtags}`,
         misskey: `https://misskey.io/share?text=${encodedTitle}%0A${encodedUrl}`,
-        mixi2: `https://mixi.jp/share.pl?u=${encodedUrl}`
+        mixi2: `https://mixi.social/share?text=${encodedTitle}%0A${encodedUrl}`
     };
 
     // モーダルHTML

@@ -209,6 +209,7 @@ header p {
     gap: 4px;
     max-height: 40%;
     overflow: hidden;
+    pointer-events: none; /* クリックイベントを親要素に透過 */
 }
 
 .tag {
@@ -220,6 +221,7 @@ header p {
     font-size: 0.75em;
     font-weight: 500;
     white-space: nowrap;
+    pointer-events: none; /* クリックイベントを親要素に透過 */
 }
 
 .card-date {
@@ -629,10 +631,10 @@ footer p {
 
 .filter-label {
     color: rgba(var(--text-color), 1);
-    font-size: 0.9em;
+    font-size: 0.78em;
     font-weight: 600;
-    margin-right: 8px;
-    min-width: 50px;
+    margin-right: 2px;
+    min-width: 35px;
 }
 
 .filter-btn {
@@ -662,6 +664,55 @@ footer p {
     background-color: var(--filter-active-bg-color);
     color: var(--filter-active-text-color);
     border-color: var(--filter-active-bg-color);
+}
+
+/* Filter separator */
+.filter-separator {
+    color: var(--text-color);
+    opacity: 0.5;
+    margin: 0 2px;
+    font-size: 1em;
+}
+
+/* Toggle buttons for display settings */
+.toggle-btn {
+    padding: 6px 16px;
+    background-color: var(--tag-bg-color);
+    color: var(--tag-text-color);
+    border: 2px solid transparent;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    font-family: 'Noto Serif JP', serif;
+}
+
+.toggle-btn:hover {
+    opacity: 0.8;
+    border-color: var(--primary-color);
+}
+
+.toggle-btn.active {
+    background-color: var(--filter-active-bg-color);
+    color: var(--filter-active-text-color);
+    border-color: var(--filter-active-bg-color);
+}
+
+/* Hide tags when toggle is off */
+body.hide-tags .card-tags {
+    display: none !important;
+}
+
+/* Hide titles when toggle is off */
+body.hide-titles .card-title {
+    display: none !important;
+}
+
+/* Collapse card-content when title is hidden */
+body.hide-titles .card-content {
+    padding: 0 !important;
+    min-height: 0 !important;
 }
 
 /* Legacy support for old filter layout */

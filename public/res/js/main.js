@@ -300,6 +300,67 @@ function clearTagFilter() {
 }
 
 /**
+ * タグの表示/非表示を切り替え
+ */
+function toggleTagsVisibility() {
+    const toggleBtn = document.getElementById('toggleTags');
+    const isActive = toggleBtn.classList.contains('active');
+
+    if (isActive) {
+        // 非表示にする
+        toggleBtn.classList.remove('active');
+        document.body.classList.add('hide-tags');
+        localStorage.setItem('hideTags', 'true');
+    } else {
+        // 表示する
+        toggleBtn.classList.add('active');
+        document.body.classList.remove('hide-tags');
+        localStorage.setItem('hideTags', 'false');
+    }
+}
+
+/**
+ * 表題の表示/非表示を切り替え
+ */
+function toggleTitlesVisibility() {
+    const toggleBtn = document.getElementById('toggleTitles');
+    const isActive = toggleBtn.classList.contains('active');
+
+    if (isActive) {
+        // 非表示にする
+        toggleBtn.classList.remove('active');
+        document.body.classList.add('hide-titles');
+        localStorage.setItem('hideTitles', 'true');
+    } else {
+        // 表示する
+        toggleBtn.classList.add('active');
+        document.body.classList.remove('hide-titles');
+        localStorage.setItem('hideTitles', 'false');
+    }
+}
+
+/**
+ * ページ読み込み時にトグル状態を復元
+ */
+function restoreToggleStates() {
+    // タグの状態を復元
+    const hideTags = localStorage.getItem('hideTags') === 'true';
+    const toggleTagsBtn = document.getElementById('toggleTags');
+    if (hideTags && toggleTagsBtn) {
+        toggleTagsBtn.classList.remove('active');
+        document.body.classList.add('hide-tags');
+    }
+
+    // 表題の状態を復元
+    const hideTitles = localStorage.getItem('hideTitles') === 'true';
+    const toggleTitlesBtn = document.getElementById('toggleTitles');
+    if (hideTitles && toggleTitlesBtn) {
+        toggleTitlesBtn.classList.remove('active');
+        document.body.classList.add('hide-titles');
+    }
+}
+
+/**
  * 投稿一覧を描画（リセット）
  */
 function renderPosts(posts) {
@@ -787,6 +848,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // タグ一覧を読み込み
     loadTags();
+
+    // トグル状態を復元
+    restoreToggleStates();
 
     // 無限スクロールのイベントリスナー
     window.addEventListener('scroll', handleScroll);
