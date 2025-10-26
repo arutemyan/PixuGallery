@@ -6,6 +6,8 @@ namespace App\Cache;
 
 use Exception;
 
+require_once __DIR__ . '/../Security/SecurityUtil.php';
+
 /**
  * 静的キャッシュ管理クラス
  *
@@ -38,11 +40,9 @@ class CacheManager
             $this->cacheDir = rtrim($this->config['cache_dir'] ?? __DIR__ . '/../../cache', '/');
         }
 
-        // キャッシュディレクトリが存在しない場合は作成
-        if (!is_dir($this->cacheDir)) {
-            $permissions = $this->config['dir_permissions'] ?? 0755;
-            mkdir($this->cacheDir, $permissions, true);
-        }
+        // キャッシュディレクトリを作成して保護
+        $permissions = $this->config['dir_permissions'] ?? 0755;
+        ensureSecureDirectory($this->cacheDir, $permissions);
     }
 
     /**

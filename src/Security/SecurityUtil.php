@@ -321,6 +321,57 @@ function sanitizeLogContext(array $context): array
 }
 
 /**
+ * セキュアなディレクトリを作成
+ *
+ * ディレクトリを作成し、自動的に.htaccessで外部アクセスを拒否する
+ *
+ * @param string $dirPath ディレクトリパス
+ * @param int $permissions パーミッション（デフォルト: 0755）
+ * @param bool $recursive 再帰的に作成するか（デフォルト: true）
+ * @return bool 成功時true
+ */
+function ensureSecureDirectory(string $dirPath, int $permissions = 0755, bool $recursive = true): bool
+{
+    // ディレクトリが存在しない場合は作成
+    if (!is_dir($dirPath)) {
+        if (!mkdir($dirPath, $permissions, $recursive)) {
+            error_log("Failed to create directory: {$dirPath}");
+            return false;
+        }
+    }
+
+    // .htaccessのパス
+    $htaccessPath = rtrim($dirPath, '/') . '/.htaccess';
+
+    // .htaccessが存在しない場合は作成
+    if (!file_exists($htaccessPath)) {
+        $htaccessContent = <<<'HTACCESS'
+# Deny all access to this directory
+# Generated automatically by ensureSecureDirectory()
+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+</IfModule>
+HTACCESS;
+
+        if (file_put_contents($htaccessPath, $htaccessContent) === false) {
+            error_log("Failed to create .htaccess in: {$dirPath}");
+            return false;
+        }
+
+        // .htaccessのパーミッションを設定
+        chmod($htaccessPath, 0644);
+    }
+
+    return true;
+}
+
+/**
  * セキュリティログ記録
  *
  * @param string $message ログメッセージ
@@ -340,11 +391,9 @@ function logSecurityEvent(string $message, array $context = []): void
         return;
     }
 
-    // ログディレクトリを取得
+    // ログディレクトリを取得して保護
     $logDir = dirname($config['security']['logging']['log_file'] ?? __DIR__ . '/../../logs/security.log');
-    if (!is_dir($logDir)) {
-        mkdir($logDir, 0755, true);
-    }
+    ensureSecureDirectory($logDir);
 
     // ログファイルパスを取得
     $logFile = $config['security']['logging']['log_file'] ?? __DIR__ . '/../../logs/security.log';

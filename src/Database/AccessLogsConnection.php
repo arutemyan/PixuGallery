@@ -7,6 +7,8 @@ namespace App\Database;
 use PDO;
 use PDOException;
 
+require_once __DIR__ . '/../Security/SecurityUtil.php';
+
 /**
  * アクセスログデータベース接続クラス
  *
@@ -69,12 +71,10 @@ class AccessLogsConnection
                 self::loadConfig();
                 $dbPath = self::$config['database']['access_logs']['path'];
 
-                // データベースディレクトリが存在しない場合は作成
+                // データベースディレクトリを作成して保護
                 $dbDir = dirname($dbPath);
-                if (!is_dir($dbDir)) {
-                    $permission = self::$config['database']['directory_permission'] ?? 0755;
-                    mkdir($dbDir, $permission, true);
-                }
+                $permission = self::$config['database']['directory_permission'] ?? 0755;
+                ensureSecureDirectory($dbDir, $permission);
 
                 self::$instance = new PDO(
                     'sqlite:' . $dbPath,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Security;
 
+require_once __DIR__ . '/SecurityUtil.php';
+
 /**
  * レート制限クラス
  *
@@ -26,10 +28,8 @@ class RateLimiter
         $this->maxAttempts = $maxAttempts;
         $this->windowSeconds = $windowSeconds;
 
-        // ディレクトリが存在しない場合は作成
-        if (!is_dir($this->storageDir)) {
-            mkdir($this->storageDir, 0755, true);
-        }
+        // ディレクトリを作成して保護
+        ensureSecureDirectory($this->storageDir);
     }
 
     /**
