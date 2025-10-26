@@ -168,8 +168,24 @@ $username = $_SESSION['admin_username'] ?? 'Admin';
                     <!-- 投稿一覧 -->
                     <div class="col-lg-7">
                         <div class="card">
-                            <div class="card-header">
-                                <i class="bi bi-images me-2"></i>投稿一覧
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-images me-2"></i>投稿一覧
+                                </div>
+                                <div class="d-flex align-items-center gap-2" id="bulkActionButtons" style="display: none;">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllBtn">
+                                        <i class="bi bi-check-square me-1"></i>全選択
+                                    </button>
+                                    <span class="badge bg-secondary" id="selectionCount" style="display: none;">0件選択中</span>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-success" id="bulkPublishBtn" disabled>
+                                            <i class="bi bi-eye me-1"></i>一括公開
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-warning" id="bulkUnpublishBtn" disabled>
+                                            <i class="bi bi-eye-slash me-1"></i>一括非公開
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="card-body p-0">
                                 <div id="postsList">

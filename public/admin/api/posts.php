@@ -88,6 +88,59 @@ try {
         }
     }
 
+    // PATCH: 一括更新（公開/非公開）
+    if ($method === 'PATCH') {
+        $postIds = $_POST['post_ids'] ?? [];
+        $isVisible = isset($_POST['is_visible']) ? (int)$_POST['is_visible'] : null;
+
+        // バリデーション
+        if (!is_array($postIds) || empty($postIds)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => '投稿IDが指定されていません'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if ($isVisible === null || !in_array($isVisible, [0, 1])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => '公開/非公開の指定が不正です'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 各投稿IDを整数化してバリデーション
+        $postIds = array_map('intval', $postIds);
+        $postIds = array_filter($postIds, function($id) {
+            return $id > 0;
+        });
+
+        if (empty($postIds)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => '有効な投稿IDがありません'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 一括更新処理
+        $updatedCount = 0;
+        foreach ($postIds as $postId) {
+            $existingPost = $postModel->getByIdForAdmin($postId);
+            if ($existingPost !== null) {
+                $postModel->setVisibility($postId, $isVisible);
+                $updatedCount++;
+            }
+        }
+
+        // キャッシュを無効化
+        $cache = new CacheManager();
+        $cache->invalidateAllPosts();
+
+        $action = $isVisible === 1 ? '公開' : '非公開';
+        echo json_encode([
+            'success' => true,
+            'message' => "{$updatedCount}件の投稿を{$action}にしました",
+            'updated_count' => $updatedCount
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     // PUT: 投稿更新
     if ($method === 'PUT') {
         $id = isset($_POST['id']) ? (int)$_POST['id'] : (isset($_GET['id']) ? (int)$_GET['id'] : 0);

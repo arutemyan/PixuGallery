@@ -338,6 +338,32 @@ $(document).ready(function() {
         e.preventDefault();
         saveSettings();
     });
+
+    // 全選択ボタン
+    $('#selectAllBtn').on('click', function() {
+        const $checkboxes = $('.post-select-checkbox');
+        const allChecked = $checkboxes.length > 0 && $checkboxes.filter(':checked').length === $checkboxes.length;
+
+        $checkboxes.prop('checked', !allChecked);
+        updateBulkActionButtons();
+
+        // ボタンのテキストを切り替え
+        if (!allChecked) {
+            $(this).html('<i class="bi bi-square me-1"></i>全解除');
+        } else {
+            $(this).html('<i class="bi bi-check-square me-1"></i>全選択');
+        }
+    });
+
+    // 一括公開ボタン
+    $('#bulkPublishBtn').on('click', function() {
+        bulkUpdateVisibility(1);
+    });
+
+    // 一括非公開ボタン
+    $('#bulkUnpublishBtn').on('click', function() {
+        bulkUpdateVisibility(0);
+    });
 });
 
 // グローバル変数（ページネーション用）
@@ -402,8 +428,12 @@ function loadMorePosts() {
 function renderPosts(posts, hasMore = false) {
     if (posts.length === 0) {
         $('#postsList').html('<div class="text-center p-4 text-muted">投稿がありません</div>');
+        $('#bulkActionButtons').hide();
         return;
     }
+
+    // 一括操作ボタンを表示
+    $('#bulkActionButtons').show();
 
     let html = '<div class="posts-grid">';
     posts.forEach(function(post) {
@@ -416,6 +446,9 @@ function renderPosts(posts, hasMore = false) {
 
         html += `
             <div class="post-card ${!isVisible ? 'post-card-hidden' : ''}" data-id="${post.id}">
+                <div class="post-card-checkbox">
+                    <input type="checkbox" class="form-check-input post-select-checkbox" data-post-id="${post.id}" onchange="updateBulkActionButtons()">
+                </div>
                 <div class="post-card-image">
                     <img src="/${thumbPath}" alt="${escapeHtml(post.title)}" onerror="this.src='/uploads/thumbs/placeholder.webp'">
                     <div class="post-card-overlay">
@@ -921,6 +954,116 @@ function saveSettings() {
                 .addClass('alert-danger')
                 .text(errorMsg)
                 .removeClass('d-none');
+        }
+    });
+}
+
+/**
+ * 一括操作ボタンの有効/無効を更新
+ */
+function updateBulkActionButtons() {
+    const $checked = $('.post-select-checkbox:checked');
+    const count = $checked.length;
+
+    // 選択数に応じてボタンを有効/無効化
+    $('#bulkPublishBtn').prop('disabled', count === 0);
+    $('#bulkUnpublishBtn').prop('disabled', count === 0);
+
+    // 全選択ボタンのテキストを更新
+    const $allCheckboxes = $('.post-select-checkbox');
+    const allChecked = $allCheckboxes.length > 0 && count === $allCheckboxes.length;
+
+    if (allChecked) {
+        $('#selectAllBtn').html('<i class="bi bi-square me-1"></i>全解除');
+    } else {
+        $('#selectAllBtn').html('<i class="bi bi-check-square me-1"></i>全選択');
+    }
+
+    // 選択件数バッジを更新
+    const $selectionCount = $('#selectionCount');
+    if (count > 0) {
+        $selectionCount.text(`${count}件選択中`).show();
+    } else {
+        $selectionCount.hide();
+    }
+}
+
+/**
+ * 一括で公開/非公開を更新
+ */
+function bulkUpdateVisibility(visibility) {
+    const $checked = $('.post-select-checkbox:checked');
+    const postIds = [];
+
+    $checked.each(function() {
+        postIds.push($(this).data('post-id'));
+    });
+
+    if (postIds.length === 0) {
+        alert('投稿を選択してください');
+        return;
+    }
+
+    const action = visibility === 1 ? '公開' : '非公開';
+    if (!confirm(`選択した${postIds.length}件の投稿を${action}にしますか？`)) {
+        return;
+    }
+
+    const csrfToken = $('input[name="csrf_token"]').val();
+
+    // ボタンを無効化
+    const $publishBtn = $('#bulkPublishBtn');
+    const $unpublishBtn = $('#bulkUnpublishBtn');
+    const originalPublishText = $publishBtn.html();
+    const originalUnpublishText = $unpublishBtn.html();
+
+    $publishBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>処理中...');
+    $unpublishBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>処理中...');
+
+    $.ajax({
+        url: '/admin/api/posts.php',
+        type: 'POST',
+        data: {
+            _method: 'PATCH',
+            post_ids: postIds,
+            is_visible: visibility,
+            csrf_token: csrfToken
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                // 成功メッセージ
+                $('#uploadAlert').text(response.message || `${postIds.length}件の投稿を${action}にしました`).removeClass('d-none');
+
+                // 投稿一覧を再読み込み
+                loadPosts();
+
+                // 3秒後にメッセージを消す
+                setTimeout(function() {
+                    $('#uploadAlert').addClass('d-none');
+                }, 3000);
+            } else {
+                $('#uploadError').text(response.error || '一括更新に失敗しました').removeClass('d-none');
+                setTimeout(function() {
+                    $('#uploadError').addClass('d-none');
+                }, 3000);
+            }
+        },
+        error: function(xhr) {
+            let errorMsg = 'サーバーエラーが発生しました';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+            }
+            $('#uploadError').text(errorMsg).removeClass('d-none');
+            setTimeout(function() {
+                $('#uploadError').addClass('d-none');
+            }, 3000);
+        },
+        complete: function() {
+            // ボタンを有効化
+            $publishBtn.prop('disabled', false).html(originalPublishText);
+            $unpublishBtn.prop('disabled', false).html(originalUnpublishText);
+            updateBulkActionButtons();
         }
     });
 }

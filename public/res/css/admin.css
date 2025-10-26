@@ -76,6 +76,7 @@ body {
 }
 
 .post-card {
+    position: relative;
     background: white;
     border-radius: 10px;
     overflow: hidden;
@@ -96,6 +97,29 @@ body {
 
 .post-card-hidden .post-card-image img {
     filter: grayscale(50%);
+}
+
+/* チェックボックス */
+.post-card-checkbox {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 4px 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.post-card-checkbox input[type="checkbox"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.post-card-checkbox input[type="checkbox"]:checked {
+    accent-color: var(--primary-color);
 }
 
 .post-card-image {
