@@ -546,38 +546,44 @@ function navigateOverlay(event, direction) {
         event.stopPropagation();
     }
 
-    // 新しいインデックスを計算
-    const newIndex = currentOverlayIndex + direction;
+    let newIndex = currentOverlayIndex + direction;
 
-    // 範囲チェック
+    // 範囲外チェック
     if (newIndex < 0 || newIndex >= allPostElements.length) {
         return;
     }
 
-    // 次の投稿を取得
-    const nextCard = allPostElements[newIndex];
-    const nextPostId = parseInt(nextCard.dataset.postId);
-    const nextImg = nextCard.querySelector('.card-image');
-    const nextIsSensitive = nextImg.dataset.isSensitive === '1';
+    // 年齢確認状態を取得
+    const isAgeVerified = checkAgeVerification();
 
-    // インデックスを更新
-    currentOverlayIndex = newIndex;
+    // 年齢確認が必要な場合、NSFW画像をスキップして次の非NSFW画像を探す
+    while (newIndex >= 0 && newIndex < allPostElements.length) {
+        const nextCard = allPostElements[newIndex];
+        const nextPostId = parseInt(nextCard.dataset.postId);
+        const nextImg = nextCard.querySelector('.card-image');
+        const nextIsSensitive = nextImg.dataset.isSensitive === '1';
 
-    // NSFW画像で年齢確認が必要な場合
-    if (nextIsSensitive && !checkAgeVerification()) {
-        currentSensitivePostId = nextPostId;
-        showAgeVerificationModal();
+        // 年齢確認が必要でNSFW画像の場合はスキップして次へ
+        if (nextIsSensitive && !isAgeVerified) {
+            newIndex += direction;
+            continue;
+        }
+
+        // 表示可能な画像を見つけた
+        currentOverlayIndex = newIndex;
+
+        if (nextIsSensitive) {
+            // NSFW画像で年齢確認済みの場合、警告モーダルを表示
+            pendingNsfwPostId = nextPostId;
+            showNsfwWarningModal(nextPostId);
+        } else {
+            // 通常画像の場合、そのまま表示
+            displayOverlayImage(nextPostId);
+        }
         return;
     }
 
-    // NSFW画像で年齢確認済みの場合、警告モーダルを表示
-    if (nextIsSensitive) {
-        pendingNsfwPostId = nextPostId;
-        showNsfwWarningModal(nextPostId);
-    } else {
-        // 通常画像の場合、そのまま表示
-        displayOverlayImage(nextPostId);
-    }
+    // 表示可能な画像が見つからなかった場合は何もしない（端に到達）
 }
 
 /**
