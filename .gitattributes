@@ -1,0 +1,21 @@
+# Git Archive設定
+# git archive実行時に特定のファイル/ディレクトリを除外
+
+# 開発/テスト用ファイル
+tests/ export-ignore
+.github/ export-ignore
+.phpunit.cache/ export-ignore
+phpunit.xml export-ignore
+phpunit.xml.dist export-ignore
+
+# ビルド/リリーススクリプト
+create-release.sh export-ignore
+secure_directories.php export-ignore
+init.phpe export-ignore
+
+# Git設定ファイル
+.gitignore export-ignore
+.gitattributes export-ignore
+
+# ドキュメント（プロジェクトによって調整）
+# CLAUDE.md export-ignore

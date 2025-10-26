@@ -57,3 +57,11 @@ config/*.local.php
 # Temporary files
 /tmp/
 *.tmp
+
+# リリースパッケージ
+/releases/
+*.tar.gz
+*.zip
+
+# ビルド時の一時ファイル
+.git-archive-exclude
