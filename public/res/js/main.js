@@ -16,6 +16,11 @@ let isLoading = false;
 let hasMorePosts = true;
 const POSTS_PER_PAGE = 18;
 
+// オーバーレイナビゲーション用
+let allPostElements = [];  // 全投稿要素の配列
+let currentOverlayIndex = -1;  // 現在表示中の投稿のインデックス
+let pendingNsfwPostId = null;  // NSFW警告待ちの投稿ID
+
 /**
  * 年齢確認済みかチェック
  * @returns {boolean} 確認済みならtrue
@@ -442,40 +447,24 @@ function openImageOverlay(postId, isSensitive) {
         return;
     }
 
-    // 画像要素を取得
-    const card = document.querySelector(`.card[data-post-id="${postId}"]`);
-    if (!card) {
-        console.error('[NSFW] Card not found:', postId);
+    // 全投稿要素を取得（初回のみまたは投稿数が変わった場合）
+    const currentCards = document.querySelectorAll('.card[data-post-id]');
+    if (allPostElements.length !== currentCards.length) {
+        allPostElements = Array.from(currentCards);
+    }
+
+    // 現在の投稿のインデックスを取得
+    currentOverlayIndex = allPostElements.findIndex(card =>
+        parseInt(card.dataset.postId) === parseInt(postId)
+    );
+
+    if (currentOverlayIndex === -1) {
+        console.error('[Overlay] Post not found in list:', postId);
         return;
     }
 
-    const img = card.querySelector('.card-image');
-    if (!img) {
-        console.error('[NSFW] Image not found in card:', postId);
-        return;
-    }
-
-    const fullImagePath = img.dataset.fullImage;
-    if (!fullImagePath) {
-        console.error('[NSFW] Full image path not found:', postId);
-        return;
-    }
-
-    // オーバーレイに画像を設定
-    const overlayImg = document.getElementById('overlayImage');
-    const overlay = document.getElementById('imageOverlay');
-    const detailButton = document.getElementById('overlayDetailButton');
-
-    if (overlayImg && overlay) {
-        overlayImg.src = fullImagePath;
-        overlay.classList.add('show');
-        document.body.style.overflow = 'hidden'; // スクロール防止
-
-        // 詳細ボタンのリンクを設定
-        if (detailButton) {
-            detailButton.href = '/detail.php?id=' + postId;
-        }
-    }
+    // 画像を表示
+    displayOverlayImage(postId);
 }
 
 /**
@@ -494,6 +483,187 @@ function closeImageOverlay(event) {
     if (overlay) {
         overlay.classList.remove('show');
         document.body.style.overflow = ''; // スクロール復元
+    }
+}
+
+/**
+ * オーバーレイに画像を表示
+ * @param {number} postId 投稿ID
+ */
+function displayOverlayImage(postId) {
+    const card = document.querySelector(`.card[data-post-id="${postId}"]`);
+    if (!card) {
+        console.error('[Overlay] Card not found:', postId);
+        return;
+    }
+
+    const img = card.querySelector('.card-image');
+    if (!img) {
+        console.error('[Overlay] Image not found in card:', postId);
+        return;
+    }
+
+    const fullImagePath = img.dataset.fullImage;
+    const isSensitive = img.dataset.isSensitive === '1';
+
+    if (!fullImagePath) {
+        console.error('[Overlay] Full image path not found:', postId);
+        return;
+    }
+
+    // オーバーレイに画像を設定
+    const overlayImg = document.getElementById('overlayImage');
+    const overlay = document.getElementById('imageOverlay');
+    const detailButton = document.getElementById('overlayDetailButton');
+
+    if (overlayImg && overlay) {
+        // 画像パスを設定
+        overlayImg.src = fullImagePath;
+        overlayImg.dataset.postId = postId;
+        overlayImg.dataset.isSensitive = isSensitive ? '1' : '0';
+
+        overlay.classList.add('show');
+        document.body.style.overflow = 'hidden'; // スクロール防止
+
+        // 詳細ボタンのリンクを設定
+        if (detailButton) {
+            detailButton.href = '/detail.php?id=' + postId;
+        }
+
+        // ナビゲーションボタンの表示/非表示
+        updateNavigationButtons();
+    }
+}
+
+/**
+ * オーバーレイナビゲーション（前/次の画像に移動）
+ * @param {Event} event クリックイベント
+ * @param {number} direction -1: 前, 1: 次
+ */
+function navigateOverlay(event, direction) {
+    // イベント伝播を停止
+    if (event) {
+        event.stopPropagation();
+    }
+
+    // 新しいインデックスを計算
+    const newIndex = currentOverlayIndex + direction;
+
+    // 範囲チェック
+    if (newIndex < 0 || newIndex >= allPostElements.length) {
+        return;
+    }
+
+    // 次の投稿を取得
+    const nextCard = allPostElements[newIndex];
+    const nextPostId = parseInt(nextCard.dataset.postId);
+    const nextImg = nextCard.querySelector('.card-image');
+    const nextIsSensitive = nextImg.dataset.isSensitive === '1';
+
+    // インデックスを更新
+    currentOverlayIndex = newIndex;
+
+    // NSFW画像で年齢確認が必要な場合
+    if (nextIsSensitive && !checkAgeVerification()) {
+        currentSensitivePostId = nextPostId;
+        showAgeVerificationModal();
+        return;
+    }
+
+    // NSFW画像で年齢確認済みの場合、警告モーダルを表示
+    if (nextIsSensitive) {
+        pendingNsfwPostId = nextPostId;
+        showNsfwWarningModal(nextPostId);
+    } else {
+        // 通常画像の場合、そのまま表示
+        displayOverlayImage(nextPostId);
+    }
+}
+
+/**
+ * NSFW警告モーダルを表示（オーバーレイナビゲーション用）
+ * @param {number} postId 投稿ID
+ */
+function showNsfwWarningModal(postId) {
+    // まずNSFWフィルター画像を表示
+    const card = document.querySelector(`.card[data-post-id="${postId}"]`);
+    if (!card) return;
+
+    const img = card.querySelector('.card-image');
+    if (!img) return;
+
+    // NSFWフィルター画像のパスを構築
+    const thumbPath = img.src;
+    const nsfwPath = thumbPath.replace(/\.([^.]+)$/, '_nsfw.$1');
+
+    const overlayImg = document.getElementById('overlayImage');
+    if (overlayImg) {
+        overlayImg.src = nsfwPath;
+        overlayImg.dataset.postId = postId;
+        overlayImg.dataset.isSensitive = '1';
+        overlayImg.dataset.originalPath = img.dataset.fullImage;
+    }
+
+    // 警告モーダルを表示
+    const modal = document.getElementById('nsfwWarningModal');
+    if (modal) {
+        modal.classList.add('show');
+    }
+
+    // 詳細ボタンのリンクを更新
+    const detailButton = document.getElementById('overlayDetailButton');
+    if (detailButton) {
+        detailButton.href = '/detail.php?id=' + postId;
+    }
+
+    // ナビゲーションボタンの表示/非表示
+    updateNavigationButtons();
+}
+
+/**
+ * NSFW警告を承認（実画像を表示）
+ */
+function acceptNsfwWarning() {
+    const modal = document.getElementById('nsfwWarningModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+
+    if (pendingNsfwPostId) {
+        const overlayImg = document.getElementById('overlayImage');
+        if (overlayImg && overlayImg.dataset.originalPath) {
+            // 実画像に切り替え
+            overlayImg.src = overlayImg.dataset.originalPath;
+        }
+        pendingNsfwPostId = null;
+    }
+}
+
+/**
+ * NSFW警告をキャンセル（フィルター画像のまま）
+ */
+function cancelNsfwWarning() {
+    const modal = document.getElementById('nsfwWarningModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+    // フィルター画像のままにする（何もしない）
+    pendingNsfwPostId = null;
+}
+
+/**
+ * ナビゲーションボタンの表示/非表示を更新
+ */
+function updateNavigationButtons() {
+    const prevBtn = document.querySelector('.image-overlay-prev');
+    const nextBtn = document.querySelector('.image-overlay-next');
+
+    if (prevBtn) {
+        prevBtn.style.display = currentOverlayIndex > 0 ? 'block' : 'none';
+    }
+
+    if (nextBtn) {
+        nextBtn.style.display = currentOverlayIndex < allPostElements.length - 1 ? 'block' : 'none';
     }
 }
 
@@ -586,10 +756,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Escキーでオーバーレイを閉じる
+    // キーボード操作
     document.addEventListener('keydown', function(e) {
+        const overlay = document.getElementById('imageOverlay');
+        const isOverlayOpen = overlay && overlay.classList.contains('show');
+
+        if (!isOverlayOpen) return;
+
+        // Escキーでオーバーレイを閉じる
         if (e.key === 'Escape') {
             closeImageOverlay(e);
+        }
+        // 左矢印キーで前の画像
+        else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            navigateOverlay(null, -1);
+        }
+        // 右矢印キーで次の画像
+        else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            navigateOverlay(null, 1);
         }
     });
 

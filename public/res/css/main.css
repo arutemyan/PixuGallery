@@ -787,6 +787,121 @@ footer p {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
+/* オーバーレイナビゲーションボタン */
+.image-overlay-nav {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 20px 15px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    z-index: 10001;
+    display: block;
+}
+
+.image-overlay-nav:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.image-overlay-prev {
+    left: 20px;
+}
+
+.image-overlay-next {
+    right: 20px;
+}
+
+.image-overlay-nav svg {
+    display: block;
+    width: 24px;
+    height: 24px;
+}
+
+/* NSFW警告モーダル */
+#nsfwWarningModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 10003;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#nsfwWarningModal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+#nsfwWarningModal .modal-content {
+    background: #2a2a2a;
+    padding: 40px;
+    border-radius: 12px;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+#nsfwWarningModal h2 {
+    color: #ffaa00;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+}
+
+#nsfwWarningModal p {
+    color: #fff;
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+#nsfwWarningModal .modal-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+#nsfwWarningModal .btn {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1em;
+    transition: all 0.2s ease;
+}
+
+#nsfwWarningModal .btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#nsfwWarningModal .btn-primary:hover {
+    background-color: var(--secondary-color);
+    transform: translateY(-2px);
+}
+
+#nsfwWarningModal .btn-secondary {
+    background-color: #555;
+    color: white;
+}
+
+#nsfwWarningModal .btn-secondary:hover {
+    background-color: #666;
+    transform: translateY(-2px);
+}
+
 /* ローディングインジケーター */
 .loading-indicator {
     display: none;
@@ -857,6 +972,25 @@ footer p {
         top: 10px;
         right: 10px;
         font-size: 35px;
+        width: 50px;
+        height: 50px;
+    }
+
+    .image-overlay-nav {
+        padding: 15px 10px;
+    }
+
+    .image-overlay-prev {
+        left: 10px;
+    }
+
+    .image-overlay-next {
+        right: 10px;
+    }
+
+    #nsfwWarningModal .modal-content {
+        max-width: 90%;
+        padding: 30px 20px;
     }
 
     .image-overlay-content {

@@ -385,10 +385,33 @@ try {
     <div id="imageOverlay" class="image-overlay" onclick="closeImageOverlay(event)">
         <div class="image-overlay-content">
             <button class="image-overlay-close" onclick="closeImageOverlay(event)">&times;</button>
+            <button class="image-overlay-nav image-overlay-prev" onclick="navigateOverlay(event, -1)" aria-label="前の画像">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <button class="image-overlay-nav image-overlay-next" onclick="navigateOverlay(event, 1)" aria-label="次の画像">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
             <img id="overlayImage" src="" alt="画像プレビュー">
             <a id="overlayDetailButton" href="#" class="btn btn-detail overlay-detail-btn">
                 詳細を表示
             </a>
+        </div>
+    </div>
+
+    <!-- NSFW警告モーダル（オーバーレイナビゲーション用） -->
+    <div id="nsfwWarningModal" class="modal">
+        <div class="modal-content">
+            <h2>⚠️ センシティブなコンテンツ</h2>
+            <p>この画像にはセンシティブな内容が含まれています。</p>
+            <p>表示しますか？</p>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="acceptNsfwWarning()">表示する</button>
+                <button class="btn btn-secondary" onclick="cancelNsfwWarning()">キャンセル</button>
+            </div>
         </div>
     </div>
 
