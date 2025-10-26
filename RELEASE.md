@@ -2,27 +2,19 @@
 
 Photo Siteのリリースパッケージを作成する方法
 
-## 方法1: シンプルなリリース作成（推奨）
+## リリース作成
 
 `.gitattributes`の設定に基づいて自動的にテストファイルなどを除外します。
 
 ```bash
-# 最新コミットからリリース作成
-./create-release-simple.sh
+# 最新コミットからリリース作成（日付ベースのバージョン）
+./create-release.sh
 
 # バージョン番号を指定
-./create-release-simple.sh v1.0.0
+./create-release.sh v1.0.0
 
 # 日付指定
-./create-release-simple.sh 2024-10-26
-```
-
-## 方法2: 詳細なリリース作成
-
-除外ファイルを明示的に指定してリリースを作成します。
-
-```bash
-./create-release.sh v1.0.0
+./create-release.sh 2024-10-26
 ```
 
 ## リリース前のチェックリスト
@@ -45,7 +37,7 @@ Photo Siteのリリースパッケージを作成する方法
 
 4. **リリースパッケージ作成**
    ```bash
-   ./create-release-simple.sh v1.0.0
+   ./create-release.sh v1.0.0
    ```
 
 5. **パッケージの確認**
@@ -73,7 +65,7 @@ git archive --format=tar.gz \
 - `.github/` - GitHub Actions
 - `.phpunit.cache/` - PHPUnitキャッシュ
 - `phpunit.xml` - PHPUnit設定
-- `create-release*.sh` - リリーススクリプト
+- `create-release.sh` - リリーススクリプト
 - `secure_directories.php` - セットアップスクリプト
 - `.gitignore`, `.gitattributes` - Git設定
 

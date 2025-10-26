@@ -9,7 +9,7 @@ phpunit.xml export-ignore
 phpunit.xml.dist export-ignore
 
 # ビルド/リリーススクリプト
-create-release*.sh export-ignore
+create-release.sh export-ignore
 secure_directories.php export-ignore
 init.phpe export-ignore
 RELEASE.md export-ignore
