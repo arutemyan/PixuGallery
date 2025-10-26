@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../src/Utils/path_helpers.php';
 
 use App\Security\CsrfProtection;
 
@@ -13,7 +14,7 @@ initSecureSession();
 
 // 認証チェック
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-    header('Location: /admin/login.php');
+    header('Location: ' . admin_url('login.php'));
     exit;
 }
 
@@ -35,7 +36,7 @@ $username = $_SESSION['admin_username'] ?? 'Admin';
     <!-- ナビゲーションバー -->
     <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/admin/index.php">
+            <a class="navbar-brand" href="<?= admin_url('index.php') ?>">
                 <i class="bi bi-palette-fill me-2"></i>管理ダッシュボード
             </a>
             <div class="navbar-nav ms-auto">
@@ -45,7 +46,7 @@ $username = $_SESSION['admin_username'] ?? 'Admin';
                 <span class="nav-link">
                     <i class="bi bi-person-circle me-1"></i><?= escapeHtml($username) ?>
                 </span>
-                <form method="POST" action="/admin/logout.php" class="d-inline">
+                <form method="POST" action="<?= admin_url('logout.php') ?>" class="d-inline">
                     <input type="hidden" name="csrf_token" value="<?= escapeHtml($csrfToken) ?>">
                     <button type="submit" class="btn btn-link nav-link text-light" style="text-decoration: none;">
                         <i class="bi bi-box-arrow-right me-1"></i>ログアウト
@@ -581,7 +582,11 @@ $username = $_SESSION['admin_username'] ?? 'Admin';
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="/admin/js/admin.js"></script>
-    <script src="/admin/js/sns-share.js"></script>
+    <script>
+        // 管理画面パスをJavaScriptで使用可能にする
+        const ADMIN_PATH = '<?= admin_path() ?>';
+    </script>
+    <script src="<?= admin_url('js/admin.js') ?>"></script>
+    <script src="<?= admin_url('js/sns-share.js') ?>"></script>
 </body>
 </html>

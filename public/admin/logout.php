@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../src/Utils/path_helpers.php';
 
 use App\Security\CsrfProtection;
 
@@ -14,7 +15,7 @@ initSecureSession();
 // POSTリクエストのみ許可（CSRF対策）
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
-    header('Location: /admin/index.php');
+    header('Location: ' . admin_url('index.php'));
     exit;
 }
 
@@ -22,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 if (!CsrfProtection::validatePost() && !CsrfProtection::validateHeader()) {
     http_response_code(403);
     logSecurityEvent('CSRF token validation failed on logout', ['ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
-    header('Location: /admin/index.php');
+    header('Location: ' . admin_url('index.php'));
     exit;
 }
 
@@ -49,5 +50,5 @@ session_regenerate_id(true);
 logSecurityEvent('Admin logout', ['ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
 
 // ログインページへリダイレクト
-header('Location: /admin/login.php');
+header('Location: ' . admin_url('login.php'));
 exit;

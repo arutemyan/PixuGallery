@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 /**
  * セットアップスクリプト
+require_once __DIR__ . '/../src/Utils/path_helpers.php';
  *
  * 初回セットアップ用のブラウザベース設定画面
  * セキュリティのため、このファイルはランダムな名前にリネームできます
@@ -58,7 +59,7 @@ try {
                 $setupFile = __FILE__;
                 if (@unlink($setupFile)) {
                     // 削除成功、リダイレクト
-                    header('Location: /admin/login.php?setup_deleted=1');
+                    header('Location: ' . admin_url('login.php?setup_deleted=1'));
                     exit;
                 } else {
                     throw new Exception('ファイルの削除に失敗しました。権限を確認してください。');
@@ -175,7 +176,7 @@ try {
 
                 <div class="button-group">
                     <a href="/" class="btn">トップページへ</a>
-                    <a href="/admin/login.php" class="btn" style="background: #8B5AFA;">ログイン</a>
+                    <a href="<?= admin_url('login.php') ?>" class="btn" style="background: #8B5AFA;">ログイン</a>
                 </div>
 
                 <div class="delete-section">
@@ -475,7 +476,7 @@ if (!isset($_SESSION['setup_csrf_token'])) {
                     管理者アカウントの作成が完了しました。<br>
                     これでログインできます。
                 </p>
-                <a href="/admin/login.php" class="btn">ログインページへ</a>
+                <a href="<?= admin_url('login.php') ?>" class="btn">ログインページへ</a>
 
                 <?php if (!@unlink(__FILE__)): ?>
                 <div class="security-note">

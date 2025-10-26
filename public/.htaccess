@@ -21,6 +21,8 @@ php_flag log_errors On
     # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
     # 管理画面へのアクセス
+    # Note: admin ディレクトリ名を変更した場合は、以下も変更してください
+    # 例: RewriteRule ^fehihfnFG__$ fehihfnFG__/index.php [L]
     RewriteRule ^admin$ admin/index.php [L]
     RewriteRule ^admin/login$ admin/login.php [L]
 

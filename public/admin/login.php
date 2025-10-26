@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../src/Utils/path_helpers.php';
 
 use App\Models\User;
 use App\Security\CsrfProtection;
@@ -19,7 +20,7 @@ $clientIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
 // すでにログイン済みの場合はダッシュボードへリダイレクト
 if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
-    header('Location: /admin/index.php');
+    header('Location: ' . admin_url('index.php'));
     exit;
 }
 
@@ -68,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     logSecurityEvent('Admin login successful', ['username' => $username]);
 
-                    header('Location: /admin/index.php');
+                    header('Location: ' . admin_url('index.php'));
                     exit;
                 } else {
                     // 認証失敗 - 試行を記録

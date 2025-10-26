@@ -51,7 +51,7 @@ $(document).ready(function() {
         $('#uploadError').addClass('d-none');
 
         $.ajax({
-            url: '/admin/api/upload.php',
+            url: '/' + ADMIN_PATH + '/api/upload.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -125,7 +125,7 @@ $(document).ready(function() {
         $('#bulkUploadError').addClass('d-none');
 
         $.ajax({
-            url: '/admin/api/bulk_upload.php',
+            url: '/' + ADMIN_PATH + '/api/bulk_upload.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -191,7 +191,7 @@ $(document).ready(function() {
         $('#themeError').addClass('d-none');
 
         $.ajax({
-            url: '/admin/api/theme.php',
+            url: '/' + ADMIN_PATH + '/api/theme.php',
             type: 'POST',
             data: formData + '&_method=PUT',
             dataType: 'json',
@@ -384,7 +384,7 @@ function loadPosts(append = false) {
     }
 
     $.ajax({
-        url: '/admin/api/posts.php',
+        url: '/' + ADMIN_PATH + '/api/posts.php',
         type: 'GET',
         data: {
             limit: postsLimit,
@@ -502,7 +502,7 @@ function deletePost(postId) {
     const csrfToken = $('input[name="csrf_token"]').val();
 
     $.ajax({
-        url: '/admin/api/posts.php?id=' + postId,
+        url: '/' + ADMIN_PATH + '/api/posts.php?id=' + postId,
         type: 'POST',
         data: {
             _method: 'DELETE',
@@ -552,7 +552,7 @@ function escapeHtml(text) {
  */
 function loadThemeSettings() {
     $.ajax({
-        url: '/admin/api/theme.php',
+        url: '/' + ADMIN_PATH + '/api/theme.php',
         type: 'GET',
         dataType: 'json',
         success: function(response) {
@@ -701,7 +701,7 @@ function editPost(postId) {
 
     // 投稿データを取得（管理画面用API）
     $.ajax({
-        url: '/admin/api/posts.php?id=' + postId,
+        url: '/' + ADMIN_PATH + '/api/posts.php?id=' + postId,
         type: 'GET',
         dataType: 'json',
         success: function(response) {
@@ -781,7 +781,7 @@ function savePost() {
     const postId = $('#editPostId').val();
 
     $.ajax({
-        url: '/admin/api/posts.php?id=' + postId,
+        url: '/' + ADMIN_PATH + '/api/posts.php?id=' + postId,
         type: 'POST',
         data: formData + '&_method=PUT',
         dataType: 'json',
@@ -829,7 +829,7 @@ function savePost() {
  */
 function loadSettings() {
     $.ajax({
-        url: '/admin/api/settings.php',
+        url: '/' + ADMIN_PATH + '/api/settings.php',
         type: 'GET',
         dataType: 'json',
         success: function(response) {
@@ -871,7 +871,7 @@ function uploadThemeImage(imageType) {
     $uploadBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>アップロード中...');
 
     $.ajax({
-        url: '/admin/api/theme-image.php',
+        url: '/' + ADMIN_PATH + '/api/theme-image.php',
         type: 'POST',
         data: formData,
         processData: false,
@@ -920,7 +920,7 @@ function saveSettings() {
     $('#settingsAlert').addClass('d-none').removeClass('alert-success alert-danger');
 
     $.ajax({
-        url: '/admin/api/settings.php',
+        url: '/' + ADMIN_PATH + '/api/settings.php',
         type: 'POST',
         data: {
             show_view_count: showViewCount,
@@ -1021,7 +1021,7 @@ function bulkUpdateVisibility(visibility) {
     $unpublishBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>処理中...');
 
     $.ajax({
-        url: '/admin/api/posts.php',
+        url: '/' + ADMIN_PATH + '/api/posts.php',
         type: 'POST',
         data: {
             _method: 'PATCH',
