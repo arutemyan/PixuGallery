@@ -59,7 +59,7 @@ try {
     // すべての投稿を取得する場合
     // フィルタパラメータを取得
     $nsfwFilter = $_GET['nsfw_filter'] ?? 'all'; // all, safe, nsfw
-    $tagFilter = $_GET['tag'] ?? null;
+    $tagId = isset($_GET['tagId']) && is_numeric($_GET['tagId']) ? (int)$_GET['tagId'] : null;
 
     // ページネーションパラメータを取得（セキュリティ対策で上限を設定）
     $limit = isset($_GET['limit']) ? min((int)$_GET['limit'], 30) : 18;
@@ -69,7 +69,7 @@ try {
     $cache = new CacheManager();
 
     // フィルタやページネーションがある場合はキャッシュを使用しない
-    $useCache = ($nsfwFilter === 'all' && empty($tagFilter) && $offset === 0 && $limit === 18);
+    $useCache = ($nsfwFilter === 'all' && $tagId === null && $offset === 0 && $limit === 18);
 
     // キャッシュが存在する場合は即返却（超高速）
     if ($useCache && $cache->has('posts_list')) {
@@ -81,7 +81,7 @@ try {
     }
 
     // キャッシュが無い場合またはフィルタがある場合はDBから取得
-    $posts = $postModel->getAll($limit, $nsfwFilter, $tagFilter, $offset);
+    $posts = $postModel->getAll($limit, $nsfwFilter, $tagId, $offset);
 
     // JSONレスポンスを生成
     $response = [

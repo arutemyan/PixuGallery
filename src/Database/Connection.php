@@ -124,7 +124,7 @@ class Connection
         $db->exec("CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC)");
         $db->exec("CREATE INDEX IF NOT EXISTS idx_posts_visible ON posts(is_visible, created_at DESC)");
 
-        // tagsテーブル
+        // tagsテーブル（タグマスタ）
         $db->exec("
             CREATE TABLE IF NOT EXISTS tags (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,20 +136,14 @@ class Connection
         // tagsテーブルのインデックス
         $db->exec("CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)");
 
-        // post_tagsテーブル（投稿とタグの中間テーブル）
+        // migrationsテーブル（マイグレーションバージョン管理）
         $db->exec("
-            CREATE TABLE IF NOT EXISTS post_tags (
-                post_id INTEGER NOT NULL,
-                tag_id INTEGER NOT NULL,
-                PRIMARY KEY (post_id, tag_id),
-                FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-                FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+            CREATE TABLE IF NOT EXISTS migrations (
+                version INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ");
-
-        // post_tagsテーブルのインデックス
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_post_tags_post_id ON post_tags(post_id)");
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_post_tags_tag_id ON post_tags(tag_id)");
 
         // settingsテーブル
         $db->exec("
@@ -203,6 +197,143 @@ class Connection
         if ($result['count'] == 0) {
             $db->exec("INSERT INTO themes (header_html, footer_html) VALUES ('', '')");
         }
+
+        // マイグレーションを実行
+        self::runMigrations($db);
+    }
+
+    /**
+     * マイグレーション実行
+     */
+    private static function runMigrations(PDO $db): void
+    {
+        // マイグレーション一覧（バージョン番号 => [名前, 関数]）
+        $migrations = [
+            1 => ['add_tag_columns', function($db) { self::migration_001_addTagColumns($db); }],
+        ];
+
+        // 実行済みマイグレーションを取得
+        $stmt = $db->query("SELECT version FROM migrations");
+        $executed = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        // 未実行のマイグレーションを実行
+        foreach ($migrations as $version => $migration) {
+            if (!in_array($version, $executed)) {
+                [$name, $func] = $migration;
+
+                try {
+                    // マイグレーション実行
+                    $func($db);
+
+                    // 実行済みとして記録
+                    $stmt = $db->prepare("INSERT INTO migrations (version, name) VALUES (?, ?)");
+                    $stmt->execute([$version, $name]);
+
+                    error_log("Migration {$version} ({$name}) executed successfully");
+                } catch (\Exception $e) {
+                    error_log("Migration {$version} ({$name}) failed: " . $e->getMessage());
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    /**
+     * マイグレーション 001: タグを分割カラム（tag1～tag10）に移行
+     */
+    private static function migration_001_addTagColumns(PDO $db): void
+    {
+
+        // tag1～tag10カラムを追加（INTEGER型でタグIDを保存）
+        for ($i = 1; $i <= 10; $i++) {
+            $db->exec("ALTER TABLE posts ADD COLUMN tag{$i} INTEGER");
+        }
+
+        // tag1～tag10にインデックスを追加（整数なので高速）
+        for ($i = 1; $i <= 10; $i++) {
+            $db->exec("CREATE INDEX IF NOT EXISTS idx_posts_tag{$i} ON posts(tag{$i})");
+        }
+
+        // 既存のtagsカラムからtag1～tag10にデータを移行
+        $stmt = $db->query("SELECT id, tags FROM posts WHERE tags IS NOT NULL AND tags != ''");
+        $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($posts as $post) {
+            $tags = $post['tags'];
+            if (empty($tags)) {
+                continue;
+            }
+
+            // カンマで分割し、前後のスペース/タブを除去
+            $tagArray = array_map('trim', explode(',', $tags));
+            $tagArray = array_filter($tagArray, function($tag) {
+                return !empty($tag);
+            });
+
+            // 最大10個まで
+            $tagArray = array_slice($tagArray, 0, 10);
+
+            // タグ名をタグIDに変換
+            $tagIds = [];
+            foreach ($tagArray as $tagName) {
+                // タグを取得または作成
+                $stmt = $db->prepare("INSERT OR IGNORE INTO tags (name) VALUES (?)");
+                $stmt->execute([$tagName]);
+
+                $stmt = $db->prepare("SELECT id FROM tags WHERE name = ?");
+                $stmt->execute([$tagName]);
+                $tag = $stmt->fetch();
+
+                if ($tag) {
+                    $tagIds[] = (int)$tag['id'];
+                }
+            }
+
+            // tag1～tag10にタグIDを保存
+            if (!empty($tagIds)) {
+                $updates = [];
+                $params = [];
+                for ($i = 0; $i < count($tagIds); $i++) {
+                    $colNum = $i + 1;
+                    $updates[] = "tag{$colNum} = ?";
+                    $params[] = $tagIds[$i];
+                }
+
+                $params[] = $post['id'];
+                $sql = "UPDATE posts SET " . implode(', ', $updates) . " WHERE id = ?";
+                $updateStmt = $db->prepare($sql);
+                $updateStmt->execute($params);
+            }
+        }
+
+        // 注意: tagsカラムは後方互換性のため残す（将来的に削除可能）
+        // $db->exec("ALTER TABLE posts DROP COLUMN tags"); // SQLiteではDROPがサポートされていない
+    }
+
+    /**
+     * 指定したマイグレーションが実行済みかチェック
+     *
+     * @param int $version マイグレーションバージョン
+     * @return bool 実行済みの場合true
+     */
+    public static function isMigrationExecuted(int $version): bool
+    {
+        $db = self::getInstance();
+        $stmt = $db->prepare("SELECT COUNT(*) FROM migrations WHERE version = ?");
+        $stmt->execute([$version]);
+        return $stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * 実行済みマイグレーション一覧を取得
+     *
+     * @return array マイグレーション情報の配列
+     */
+    public static function getExecutedMigrations(): array
+    {
+        $db = self::getInstance();
+        $stmt = $db->query("SELECT version, name, executed_at FROM migrations ORDER BY version ASC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**

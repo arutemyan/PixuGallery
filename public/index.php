@@ -8,6 +8,7 @@ require_once __DIR__ . '/../src/Security/SecurityUtil.php';
 use App\Models\Post;
 use App\Models\Theme;
 use App\Models\Setting;
+use App\Models\Tag;
 use App\Database\Connection;
 
 // セットアップチェック
@@ -182,9 +183,14 @@ try {
     $postModel = new Post();
     $posts = $postModel->getAll(18);
 
+    // タグ一覧を取得（ID, name, post_count）
+    $tagModel = new Tag();
+    $tags = $tagModel->getPopular(50); // 上位50件のタグ
+
 } catch (Exception $e) {
     error_log('Index Error: ' . $e->getMessage());
     $posts = [];
+    $tags = [];
     $theme = ['header_html' => '', 'footer_html' => ''];
     $showViewCount = true;
     $ageVerificationMinutes = 10080;
@@ -260,6 +266,8 @@ try {
         // 設定値をdata属性から読み込み（const定義で改ざん防止）
         const AGE_VERIFICATION_MINUTES = parseInt(document.body.dataset.ageVerificationMinutes) || 10080;
         const NSFW_CONFIG_VERSION = parseInt(document.body.dataset.nsfwConfigVersion) || 1;
+        // タグ一覧（ID, name, post_count）
+        const TAGS_DATA = <?= json_encode($tags, JSON_UNESCAPED_UNICODE) ?>;
     </script>
 
     <!-- 年齢確認モーダル -->

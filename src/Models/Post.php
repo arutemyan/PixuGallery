@@ -32,17 +32,18 @@ class Post
      *
      * @param int $limit 取得件数（デフォルト: 50）
      * @param string $nsfwFilter NSFWフィルタ（all: すべて, safe: 一般のみ, nsfw: NSFWのみ）
-     * @param string|null $tagFilter タグフィルタ（タグ名）
+     * @param int|null $tagId タグフィルタ（タグID）
      * @return array 投稿データの配列
      */
-    public function getAll(int $limit = 18, string $nsfwFilter = 'all', ?string $tagFilter = null, int $offset = 0): array
+    public function getAll(int $limit = 18, string $nsfwFilter = 'all', ?int $tagId = null, int $offset = 0): array
     {
         // セキュリティ: 上限値を強制（DoS攻撃対策）
         $limit = min($limit, 50); // 絶対に50件以上は返さない
         $offset = max($offset, 0); // 負のオフセットは無効
 
         $sql = "
-            SELECT id, title, tags, detail, image_path, thumb_path, is_sensitive, is_visible, created_at
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+                   tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
             WHERE is_visible = 1
         ";
@@ -57,23 +58,21 @@ class Post
 
         // 以下の文字は解析しないで結果なしにする
         function checkNGTag($t) {
+            if (empty($t)) return false;
             return false
                 || strpos($t, ";") !== false
                 || strpos($t, '"') !== false
                 || strpos($t, "'") !== false;
         }
-        if (checkNGTag($tagFilter) || checkNGTag($nsfwFilter)) {
+        if ((!empty($tagId) && !is_numeric($tagId)) || checkNGTag($nsfwFilter)) {
             return [];
         }
-
-        // タグフィルタ
-        if (!empty($tagFilter)) {
-            //$sql .= " AND (tags LIKE ? OR tags LIKE ? OR tags LIKE ? OR tags = ?)";
-            //$params[] = $tagFilter . ',%';  // 先頭
-            //$params[] = '%,' . $tagFilter . ',%';  // 中間
-            //$params[] = '%,' . $tagFilter;  // 末尾
-            $sql .= " AND (tags = ?)";
-            $params[] = $tagFilter;  // 単独
+        // タグフィルタ（tag1～tag10のいずれかに一致）
+        if ($tagId !== null && $tagId > 0) {
+            $sql .= " AND (tag1 = ? OR tag2 = ? OR tag3 = ? OR tag4 = ? OR tag5 = ? OR tag6 = ? OR tag7 = ? OR tag8 = ? OR tag9 = ? OR tag10 = ?)";
+            for ($i = 0; $i < 10; $i++) {
+                $params[] = $tagId;
+            }
         }
 
         $sql .= " ORDER BY created_at DESC LIMIT ? OFFSET ?";
@@ -84,13 +83,14 @@ class Post
         $stmt->execute($params);
         $posts = $stmt->fetchAll();
 
-        // 閲覧数を一括取得して追加
+        // 閲覧数を一括取得して追加 & tag1～tag10をtagsフィールドに変換
         if (!empty($posts)) {
             $postIds = array_column($posts, 'id');
             $viewCounts = $this->viewCounter->getBatch($postIds);
 
             foreach ($posts as &$post) {
                 $post['view_count'] = $viewCounts[$post['id']] ?? 0;
+                $post['tags'] = $this->getTagsFromRow($post);
             }
         }
 
@@ -106,7 +106,8 @@ class Post
     public function getById(int $id): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT id, title, tags, detail, image_path, thumb_path, is_sensitive, is_visible, created_at
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+                   tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
             WHERE id = ? AND is_visible = 1
         ");
@@ -116,6 +117,8 @@ class Post
         if ($result !== false) {
             // 閲覧数を追加
             $result['view_count'] = $this->viewCounter->get((int)$result['id']);
+            // tag1～tag10をtagsフィールドに変換
+            $result['tags'] = $this->getTagsFromRow($result);
             return $result;
         }
 
@@ -141,19 +144,21 @@ class Post
         ?string $thumbPath = null,
         int $isSensitive = 0
     ): int {
-        $stmt = $this->db->prepare("
-            INSERT INTO posts (title, tags, detail, image_path, thumb_path, is_sensitive)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->execute([$title, $tags, $detail, $imagePath, $thumbPath, $isSensitive]);
+        // タグをカンマ区切りから配列に変換し、前後のスペース/タブを除去
+        $tagArray = $this->tagsToArray($tags);
+        $tagIds = $this->getOrCreateTagIds($tagArray);
+
+        // tag1～tag10を含むINSERT文を構築
+        $sql = "INSERT INTO posts (title, detail, image_path, thumb_path, is_sensitive, tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            $title, $detail, $imagePath, $thumbPath, $isSensitive,
+            $tagIds[0], $tagIds[1], $tagIds[2], $tagIds[3], $tagIds[4],
+            $tagIds[5], $tagIds[6], $tagIds[7], $tagIds[8], $tagIds[9]
+        ]);
 
         $postId = (int)$this->db->lastInsertId();
-
-        // タグを関連付け
-        if (!empty($tags)) {
-            $tagArray = array_map('trim', explode(',', $tags));
-            $this->attachTags($postId, $tagArray);
-        }
 
         return $postId;
     }
@@ -177,12 +182,23 @@ class Post
         ?string $imagePath = null,
         ?string $thumbPath = null
     ): bool {
+        // タグをカンマ区切りから配列に変換
+        $tagArray = $this->tagsToArray($tags);
+        $tagIds = $this->getOrCreateTagIds($tagArray);
+
         $stmt = $this->db->prepare("
             UPDATE posts
-            SET title = ?, tags = ?, detail = ?, image_path = ?, thumb_path = ?
+            SET title = ?, detail = ?, image_path = ?, thumb_path = ?,
+                tag1 = ?, tag2 = ?, tag3 = ?, tag4 = ?, tag5 = ?,
+                tag6 = ?, tag7 = ?, tag8 = ?, tag9 = ?, tag10 = ?
             WHERE id = ?
         ");
-        return $stmt->execute([$title, $tags, $detail, $imagePath, $thumbPath, $id]);
+        return $stmt->execute([
+            $title, $detail, $imagePath, $thumbPath,
+            $tagIds[0], $tagIds[1], $tagIds[2], $tagIds[3], $tagIds[4],
+            $tagIds[5], $tagIds[6], $tagIds[7], $tagIds[8], $tagIds[9],
+            $id
+        ]);
     }
 
     /**
@@ -202,20 +218,23 @@ class Post
         ?string $detail = null,
         int $isSensitive = 0
     ): bool {
+        // タグをカンマ区切りから配列に変換
+        $tagArray = $this->tagsToArray($tags);
+        $tagIds = $this->getOrCreateTagIds($tagArray);
+
         $stmt = $this->db->prepare("
             UPDATE posts
-            SET title = ?, tags = ?, detail = ?, is_sensitive = ?
+            SET title = ?, detail = ?, is_sensitive = ?,
+                tag1 = ?, tag2 = ?, tag3 = ?, tag4 = ?, tag5 = ?,
+                tag6 = ?, tag7 = ?, tag8 = ?, tag9 = ?, tag10 = ?
             WHERE id = ?
         ");
-        $result = $stmt->execute([$title, $tags, $detail, $isSensitive, $id]);
-
-        // タグを更新
-        if ($tags !== null) {
-            $tagArray = array_map('trim', explode(',', $tags));
-            $this->attachTags($id, $tagArray);
-        }
-
-        return $result;
+        return $stmt->execute([
+            $title, $detail, $isSensitive,
+            $tagIds[0], $tagIds[1], $tagIds[2], $tagIds[3], $tagIds[4],
+            $tagIds[5], $tagIds[6], $tagIds[7], $tagIds[8], $tagIds[9],
+            $id
+        ]);
     }
 
     /**
@@ -274,7 +293,8 @@ class Post
         $offset = max($offset, 0);
 
         $stmt = $this->db->prepare("
-            SELECT id, title, tags, detail, image_path, thumb_path, is_sensitive, is_visible, created_at
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+                   tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
@@ -282,13 +302,14 @@ class Post
         $stmt->execute([$limit, $offset]);
         $posts = $stmt->fetchAll();
 
-        // 閲覧数を一括取得して追加
+        // 閲覧数を一括取得して追加 & tag1～tag10をtagsフィールドに変換
         if (!empty($posts)) {
             $postIds = array_column($posts, 'id');
             $viewCounts = $this->viewCounter->getBatch($postIds);
 
             foreach ($posts as &$post) {
                 $post['view_count'] = $viewCounts[$post['id']] ?? 0;
+                $post['tags'] = $this->getTagsFromRow($post);
             }
         }
 
@@ -316,7 +337,8 @@ class Post
     public function getByIdForAdmin(int $id): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT id, title, tags, detail, image_path, thumb_path, is_sensitive, is_visible, created_at
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+                   tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
             WHERE id = ?
         ");
@@ -325,6 +347,7 @@ class Post
 
         if ($result !== false) {
             $result['view_count'] = $this->viewCounter->get((int)$result['id']);
+            $result['tags'] = $this->getTagsFromRow($result);
             return $result;
         }
 
@@ -390,40 +413,45 @@ class Post
      */
     public function getByTag(string $tagName, int $limit = 50): array
     {
-        $stmt = $this->db->prepare("
-            SELECT p.id, p.title, p.tags, p.detail, p.image_path, p.thumb_path, p.is_sensitive, p.created_at,
-                   GROUP_CONCAT(t.name, ',') as all_tags
-            FROM posts p
-            INNER JOIN post_tags pt ON p.id = pt.post_id
-            INNER JOIN tags t ON pt.tag_id = t.id
-            WHERE p.id IN (
-                SELECT pt2.post_id
-                FROM post_tags pt2
-                INNER JOIN tags t2 ON pt2.tag_id = t2.id
-                WHERE t2.name = ?
-            )
-            GROUP BY p.id
-            ORDER BY p.created_at DESC
-            LIMIT ?
-        ");
-        $stmt->execute([$tagName, $limit]);
-        $results = $stmt->fetchAll();
+        $limit = min($limit, 50);
 
-        // all_tagsをtagsフィールドにマップ（後方互換性のため）
-        foreach ($results as &$result) {
-            if (isset($result['all_tags'])) {
-                $result['tags'] = $result['all_tags'];
-                unset($result['all_tags']);
-            }
+        // タグ名からタグIDを取得
+        $stmt = $this->db->prepare("SELECT id FROM tags WHERE name = ?");
+        $stmt->execute([$tagName]);
+        $tag = $stmt->fetch();
+
+        if (!$tag) {
+            return [];
         }
 
-        // 閲覧数を一括取得して追加
+        $tagId = (int)$tag['id'];
+
+        // tag1～tag10のいずれかがタグIDと一致する投稿を検索
+        $stmt = $this->db->prepare("
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+                   tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
+            FROM posts
+            WHERE is_visible = 1
+              AND (tag1 = ? OR tag2 = ? OR tag3 = ? OR tag4 = ? OR tag5 = ?
+                   OR tag6 = ? OR tag7 = ? OR tag8 = ? OR tag9 = ? OR tag10 = ?)
+            ORDER BY created_at DESC
+            LIMIT ?
+        ");
+        $stmt->execute([
+            $tagId, $tagId, $tagId, $tagId, $tagId,
+            $tagId, $tagId, $tagId, $tagId, $tagId,
+            $limit
+        ]);
+        $results = $stmt->fetchAll();
+
+        // 閲覧数を一括取得して追加 & tag1～tag10をtagsフィールドに変換
         if (!empty($results)) {
             $postIds = array_column($results, 'id');
             $viewCounts = $this->viewCounter->getBatch($postIds);
 
             foreach ($results as &$result) {
                 $result['view_count'] = $viewCounts[$result['id']] ?? 0;
+                $result['tags'] = $this->getTagsFromRow($result);
             }
         }
 
@@ -443,46 +471,58 @@ class Post
             return [];
         }
 
-        $placeholders = implode(',', array_fill(0, count($tagNames), '?'));
+        $limit = min($limit, 50);
+        $tagNames = array_slice($tagNames, 0, 10); // 最大10個まで
 
-        $stmt = $this->db->prepare("
-            SELECT p.id, p.title, p.tags, p.detail, p.image_path, p.thumb_path, p.is_sensitive, p.created_at,
-                   GROUP_CONCAT(t.name, ',') as all_tags
-            FROM posts p
-            INNER JOIN post_tags pt ON p.id = pt.post_id
-            INNER JOIN tags t ON pt.tag_id = t.id
-            WHERE p.id IN (
-                SELECT pt2.post_id
-                FROM post_tags pt2
-                INNER JOIN tags t2 ON pt2.tag_id = t2.id
-                WHERE t2.name IN ({$placeholders})
-                GROUP BY pt2.post_id
-                HAVING COUNT(DISTINCT t2.id) = ?
-            )
-            GROUP BY p.id
-            ORDER BY p.created_at DESC
-            LIMIT ?
-        ");
-
-        $params = array_merge($tagNames, [count($tagNames), $limit]);
-        $stmt->execute($params);
-        $results = $stmt->fetchAll();
-
-        // all_tagsをtagsフィールドにマップ
-        foreach ($results as &$result) {
-            if (isset($result['all_tags'])) {
-                $result['tags'] = $result['all_tags'];
-                unset($result['all_tags']);
+        // タグ名からタグIDを取得
+        $tagIds = [];
+        foreach ($tagNames as $tagName) {
+            $stmt = $this->db->prepare("SELECT id FROM tags WHERE name = ?");
+            $stmt->execute([$tagName]);
+            $tag = $stmt->fetch();
+            if ($tag) {
+                $tagIds[] = (int)$tag['id'];
             }
         }
 
-        // 閲覧数を一括取得して追加
+        if (empty($tagIds)) {
+            return [];
+        }
+
+        // tag1～tag10のいずれかに各タグIDが含まれているかをチェック
+        $conditions = [];
+        $params = [];
+
+        foreach ($tagIds as $tagId) {
+            $conditions[] = "(tag1 = ? OR tag2 = ? OR tag3 = ? OR tag4 = ? OR tag5 = ? OR tag6 = ? OR tag7 = ? OR tag8 = ? OR tag9 = ? OR tag10 = ?)";
+            for ($i = 0; $i < 10; $i++) {
+                $params[] = $tagId;
+            }
+        }
+
+        $whereClause = implode(' AND ', $conditions);
+
+        $stmt = $this->db->prepare("
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+                   tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
+            FROM posts
+            WHERE is_visible = 1 AND ({$whereClause})
+            ORDER BY created_at DESC
+            LIMIT ?
+        ");
+
+        $params[] = $limit;
+        $stmt->execute($params);
+        $results = $stmt->fetchAll();
+
+        // 閲覧数を一括取得して追加 & tag1～tag10をtagsフィールドに変換
         if (!empty($results)) {
             $postIds = array_column($results, 'id');
             $viewCounts = $this->viewCounter->getBatch($postIds);
 
             foreach ($results as &$result) {
                 $result['view_count'] = $viewCounts[$result['id']] ?? 0;
+                $result['tags'] = $this->getTagsFromRow($result);
             }
         }
 
@@ -490,26 +530,43 @@ class Post
     }
 
     /**
-     * 投稿にタグを関連付け
+     * タグ文字列（カンマ区切り）を配列に変換
+     * 前後のスペース/タブを除去し、空要素を削除、最大10個に制限
      *
-     * @param int $postId 投稿ID
-     * @param array $tagNames タグ名の配列
-     * @return void
+     * @param string|null $tags タグ文字列（カンマ区切り）
+     * @return array タグ配列（最大10個）
      */
-    public function attachTags(int $postId, array $tagNames): void
+    private function tagsToArray(?string $tags): array
     {
-        // 既存のタグを削除
-        $stmt = $this->db->prepare("DELETE FROM post_tags WHERE post_id = ?");
-        $stmt->execute([$postId]);
+        if (empty($tags)) {
+            return [];
+        }
 
-        // posts.tagsカラムも更新（後方互換性のため）
-        $tagsString = implode(',', array_map('trim', $tagNames));
-        $stmt = $this->db->prepare("UPDATE posts SET tags = ? WHERE id = ?");
-        $stmt->execute([$tagsString, $postId]);
+        // カンマで分割し、前後のスペース/タブを除去
+        $tagArray = array_map('trim', explode(',', $tags));
 
-        // 新しいタグを追加
-        foreach ($tagNames as $tagName) {
-            $tagName = trim($tagName);
+        // 空要素を削除
+        $tagArray = array_filter($tagArray, function($tag) {
+            return !empty($tag);
+        });
+
+        // 最大10個に制限
+        return array_slice($tagArray, 0, 10);
+    }
+
+    /**
+     * タグ名配列からタグIDを取得または作成
+     * 10個未満の場合はnullで埋める
+     *
+     * @param array $tagNames タグ名配列
+     * @return array 10要素の配列（tag1～tag10のタグID、または null）
+     */
+    private function getOrCreateTagIds(array $tagNames): array
+    {
+        $tagIds = array_fill(0, 10, null);
+
+        for ($i = 0; $i < min(count($tagNames), 10); $i++) {
+            $tagName = $tagNames[$i];
             if (empty($tagName)) {
                 continue;
             }
@@ -523,31 +580,41 @@ class Post
             $tag = $stmt->fetch();
 
             if ($tag) {
-                // 関連付け
-                $stmt = $this->db->prepare("INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)");
-                $stmt->execute([$postId, $tag['id']]);
+                $tagIds[$i] = (int)$tag['id'];
             }
         }
+
+        return $tagIds;
     }
 
     /**
-     * 投稿のタグを取得
+     * 投稿行データからtag1～tag10（タグID）を読み取り、タグ名のカンマ区切り文字列に変換
      *
-     * @param int $postId 投稿ID
-     * @return array タグ名の配列
+     * @param array $row 投稿行データ
+     * @return string カンマ区切りのタグ名文字列
      */
-    public function getTags(int $postId): array
+    private function getTagsFromRow(array $row): string
     {
-        $stmt = $this->db->prepare("
-            SELECT t.name
-            FROM tags t
-            INNER JOIN post_tags pt ON t.id = pt.tag_id
-            WHERE pt.post_id = ?
-            ORDER BY t.name ASC
-        ");
-        $stmt->execute([$postId]);
-        $results = $stmt->fetchAll();
+        $tagIds = [];
 
-        return array_column($results, 'name');
+        // tag1～tag10からタグIDを取得
+        for ($i = 1; $i <= 10; $i++) {
+            $tagKey = "tag{$i}";
+            if (isset($row[$tagKey]) && !empty($row[$tagKey])) {
+                $tagIds[] = (int)$row[$tagKey];
+            }
+        }
+
+        if (empty($tagIds)) {
+            return '';
+        }
+
+        // タグIDからタグ名を一括取得
+        $placeholders = implode(',', array_fill(0, count($tagIds), '?'));
+        $stmt = $this->db->prepare("SELECT name FROM tags WHERE id IN ({$placeholders}) ORDER BY id");
+        $stmt->execute($tagIds);
+        $tags = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        return implode(',', $tags);
     }
 }

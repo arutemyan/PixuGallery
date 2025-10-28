@@ -30,12 +30,12 @@ $router->get('/api/posts', function () {
 
         // フィルタパラメータ
         $nsfwFilter = $_GET['nsfw_filter'] ?? 'all';
-        $tagFilter = $_GET['tag'] ?? null;
+        $tagId = isset($_GET['tagId']) && is_numeric($_GET['tagId']) ? (int)$_GET['tagId'] : null;
         $limit = isset($_GET['limit']) ? min((int)$_GET['limit'], 30) : 18;
         $offset = isset($_GET['offset']) ? max((int)$_GET['offset'], 0) : 0;
 
         // 投稿を取得（is_visible=1のみ）
-        $posts = $postModel->getAll($limit, $nsfwFilter, $tagFilter, $offset);
+        $posts = $postModel->getAll($limit, $nsfwFilter, $tagId, $offset);
 
         Router::json([
             'success' => true,

@@ -34,6 +34,20 @@ try {
     if ($result['count'] > 0) {
         // 既にセットアップ済み
 
+        // マイグレーション実行リクエストの処理
+        if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_GET['action']) === false && $_GET['action'] === 'migration') {
+            try {
+                // マイグレーションを強制実行（Connection::getInstance()で自動実行される）
+                $db = Connection::getInstance();
+
+                $success = 'マイグレーションが完了しました。';
+                unset($_SESSION['migrate_csrf_token']);
+
+            } catch (Exception $e) {
+                $error = $e->getMessage();
+            }
+        }
+
         // 削除リクエストの処理
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
             try {
@@ -74,6 +88,12 @@ try {
         if (!isset($_SESSION['delete_csrf_token'])) {
             $_SESSION['delete_csrf_token'] = bin2hex(random_bytes(32));
         }
+        if (!isset($_SESSION['migrate_csrf_token'])) {
+            $_SESSION['migrate_csrf_token'] = bin2hex(random_bytes(32));
+        }
+
+        // マイグレーション状態を取得
+        $executedMigrations = Connection::getExecutedMigrations();
 
         http_response_code(403);
         ?>
@@ -157,6 +177,47 @@ try {
                     color: #dc3545;
                     margin-bottom: 10px;
                 }
+                .migration-section {
+                    border-top: 1px solid #ddd;
+                    margin-top: 30px;
+                    padding-top: 20px;
+                }
+                .migration-section h2 {
+                    font-size: 1.2em;
+                    color: #667eea;
+                    margin-bottom: 10px;
+                }
+                .migration-list {
+                    background: #f8f9fa;
+                    border-radius: 5px;
+                    padding: 15px;
+                    margin: 15px 0;
+                    max-height: 200px;
+                    overflow-y: auto;
+                }
+                .migration-item {
+                    padding: 8px 0;
+                    border-bottom: 1px solid #dee2e6;
+                }
+                .migration-item:last-child {
+                    border-bottom: none;
+                }
+                .migration-version {
+                    font-weight: bold;
+                    color: #667eea;
+                }
+                .migration-date {
+                    font-size: 0.85em;
+                    color: #666;
+                }
+                .alert-success {
+                    background: #d4edda;
+                    border: 1px solid #c3e6cb;
+                    color: #155724;
+                    border-radius: 5px;
+                    padding: 15px;
+                    margin: 20px 0;
+                }
             </style>
         </head>
         <body>
@@ -169,6 +230,12 @@ try {
                     </div>
                 <?php endif; ?>
 
+                <?php if (isset($success)): ?>
+                    <div class="alert-success">
+                        ✅ <?= htmlspecialchars($success) ?>
+                    </div>
+                <?php endif; ?>
+
                 <div class="alert">
                     このサイトは既にセットアップが完了しています。<br>
                     セキュリティのため、このファイルを削除することを推奨します。
@@ -177,6 +244,49 @@ try {
                 <div class="button-group">
                     <a href="/" class="btn">トップページへ</a>
                     <a href="<?= admin_url('login.php') ?>" class="btn" style="background: #8B5AFA;">ログイン</a>
+                </div>
+
+                <div class="migration-section">
+                    <h2>🔄 データベースマイグレーション</h2>
+                    <p style="color: #666; margin-bottom: 15px;">
+                        データベース構造の更新を管理します。
+                    </p>
+
+                    <?php if (empty($executedMigrations)): ?>
+                        <div style="color: #856404; background: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; padding: 15px; margin-bottom: 15px;">
+                            ⚠️ マイグレーションが実行されていません。
+                        </div>
+                        <form method="POST">
+                            <input type="hidden" name="action" value="migrate">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['migrate_csrf_token']) ?>">
+                            <button type="submit" class="btn" style="background: #667eea;">マイグレーションを実行</button>
+                        </form>
+                    <?php else: ?>
+                        <div style="color: #155724; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; padding: 15px; margin-bottom: 15px;">
+                            ✅ マイグレーション: <?= count($executedMigrations) ?>件実行済み
+                        </div>
+
+                        <details>
+                            <summary style="cursor: pointer; color: #667eea; font-weight: 500; margin-bottom: 10px;">
+                                実行済みマイグレーション一覧を表示
+                            </summary>
+                            <div class="migration-list">
+                                <?php foreach ($executedMigrations as $migration): ?>
+                                    <div class="migration-item">
+                                        <span class="migration-version">バージョン <?= $migration['version'] ?>:</span>
+                                        <?= htmlspecialchars($migration['name']) ?>
+                                        <div class="migration-date">実行日時: <?= htmlspecialchars($migration['executed_at']) ?></div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </details>
+
+                        <form method="POST" style="margin-top: 15px;" onsubmit="return confirm('マイグレーションを再実行しますか？既に実行済みのマイグレーションはスキップされます。');">
+                            <input type="hidden" name="action" value="migrate">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['migrate_csrf_token']) ?>">
+                            <button type="submit" class="btn" style="background: #667eea;">マイグレーションを確認・実行</button>
+                        </form>
+                    <?php endif; ?>
                 </div>
 
                 <div class="delete-section">

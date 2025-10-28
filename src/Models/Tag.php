@@ -30,11 +30,17 @@ class Tag
     public function getAll(): array
     {
         $stmt = $this->db->query("
-            SELECT t.id, t.name, COUNT(DISTINCT CASE WHEN p.is_visible = 1 THEN pt.post_id END) as post_count
+            SELECT
+                t.id,
+                t.name,
+                (
+                    SELECT COUNT(DISTINCT p.id)
+                    FROM posts p
+                    WHERE p.is_visible = 1
+                      AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
+                           OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
+                ) as post_count
             FROM tags t
-            LEFT JOIN post_tags pt ON t.id = pt.tag_id
-            LEFT JOIN posts p ON pt.post_id = p.id
-            GROUP BY t.id
             ORDER BY post_count DESC, t.name ASC
         ");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -50,12 +56,24 @@ class Tag
     public function getPopular(int $limit = 10): array
     {
         $stmt = $this->db->prepare("
-            SELECT t.id, t.name, COUNT(DISTINCT CASE WHEN p.is_visible = 1 THEN pt.post_id END) as post_count
+            SELECT
+                t.id,
+                t.name,
+                (
+                    SELECT COUNT(DISTINCT p.id)
+                    FROM posts p
+                    WHERE p.is_visible = 1
+                      AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
+                           OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
+                ) as post_count
             FROM tags t
-            LEFT JOIN post_tags pt ON t.id = pt.tag_id
-            LEFT JOIN posts p ON pt.post_id = p.id
-            GROUP BY t.id
-            HAVING post_count > 0
+            WHERE (
+                SELECT COUNT(DISTINCT p.id)
+                FROM posts p
+                WHERE p.is_visible = 1
+                  AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
+                       OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
+            ) > 0
             ORDER BY post_count DESC, t.name ASC
             LIMIT ?
         ");
@@ -73,12 +91,18 @@ class Tag
     public function searchByName(string $name): array
     {
         $stmt = $this->db->prepare("
-            SELECT t.id, t.name, COUNT(DISTINCT CASE WHEN p.is_visible = 1 THEN pt.post_id END) as post_count
+            SELECT
+                t.id,
+                t.name,
+                (
+                    SELECT COUNT(DISTINCT p.id)
+                    FROM posts p
+                    WHERE p.is_visible = 1
+                      AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
+                           OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
+                ) as post_count
             FROM tags t
-            LEFT JOIN post_tags pt ON t.id = pt.tag_id
-            LEFT JOIN posts p ON pt.post_id = p.id
             WHERE t.name LIKE ?
-            GROUP BY t.id
             ORDER BY post_count DESC, t.name ASC
         ");
         $stmt->execute(['%' . $name . '%']);
@@ -95,12 +119,18 @@ class Tag
     public function getById(int $id): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT t.id, t.name, COUNT(DISTINCT CASE WHEN p.is_visible = 1 THEN pt.post_id END) as post_count
+            SELECT
+                t.id,
+                t.name,
+                (
+                    SELECT COUNT(DISTINCT p.id)
+                    FROM posts p
+                    WHERE p.is_visible = 1
+                      AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
+                           OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
+                ) as post_count
             FROM tags t
-            LEFT JOIN post_tags pt ON t.id = pt.tag_id
-            LEFT JOIN posts p ON pt.post_id = p.id
             WHERE t.id = ?
-            GROUP BY t.id
         ");
         $stmt->execute([$id]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -118,12 +148,18 @@ class Tag
     public function getByName(string $name): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT t.id, t.name, COUNT(DISTINCT CASE WHEN p.is_visible = 1 THEN pt.post_id END) as post_count
+            SELECT
+                t.id,
+                t.name,
+                (
+                    SELECT COUNT(DISTINCT p.id)
+                    FROM posts p
+                    WHERE p.is_visible = 1
+                      AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
+                           OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
+                ) as post_count
             FROM tags t
-            LEFT JOIN post_tags pt ON t.id = pt.tag_id
-            LEFT JOIN posts p ON pt.post_id = p.id
             WHERE t.name = ?
-            GROUP BY t.id
         ");
         $stmt->execute([$name]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -196,7 +232,20 @@ class Tag
     {
         $stmt = $this->db->exec("
             DELETE FROM tags
-            WHERE id NOT IN (SELECT DISTINCT tag_id FROM post_tags)
+            WHERE id NOT IN (
+                SELECT DISTINCT tag_value FROM (
+                    SELECT tag1 as tag_value FROM posts WHERE tag1 IS NOT NULL
+                    UNION SELECT tag2 FROM posts WHERE tag2 IS NOT NULL
+                    UNION SELECT tag3 FROM posts WHERE tag3 IS NOT NULL
+                    UNION SELECT tag4 FROM posts WHERE tag4 IS NOT NULL
+                    UNION SELECT tag5 FROM posts WHERE tag5 IS NOT NULL
+                    UNION SELECT tag6 FROM posts WHERE tag6 IS NOT NULL
+                    UNION SELECT tag7 FROM posts WHERE tag7 IS NOT NULL
+                    UNION SELECT tag8 FROM posts WHERE tag8 IS NOT NULL
+                    UNION SELECT tag9 FROM posts WHERE tag9 IS NOT NULL
+                    UNION SELECT tag10 FROM posts WHERE tag10 IS NOT NULL
+                )
+            )
         ");
         return $stmt;
     }

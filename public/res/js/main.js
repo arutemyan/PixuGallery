@@ -134,44 +134,36 @@ function denyAge() {
  * タグ一覧を読み込み
  */
 function loadTags() {
-    fetch('/api/tags?popular=20')
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                console.error('Failed to load tags:', data.error);
-                return;
-            }
+    const tagList = document.getElementById('tagList');
+    if (!tagList) {
+        console.warn('[loadTags] tagList element not found');
+        return;
+    }
 
-            const tagList = document.getElementById('tagList');
-            if (!tagList) {
-                console.warn('tagList element not found');
-                return;
-            }
+    // TAGS_DATAグローバル変数からタグ一覧を取得（index.phpで設定）
+    const tags = TAGS_DATA || [];
 
-            // 既存のタグボタンをすべて削除（動的に作成されたもの）
-            const dynamicTags = tagList.querySelectorAll('.tag-btn-dynamic');
-            dynamicTags.forEach(btn => btn.remove());
+    // 既存のタグボタンをすべて削除（動的に作成されたもの）
+    const dynamicTags = tagList.querySelectorAll('.tag-btn-dynamic');
+    dynamicTags.forEach(btn => btn.remove());
 
-            // タグボタンを作成
-            data.tags.forEach(tag => {
-                if (tag.post_count === 0) {
-                    return; // 投稿数0のタグはスキップ
-                }
+    // タグボタンを作成
+    tags.forEach(tag => {
+        if (tag.post_count === 0) {
+            return; // 投稿数0のタグはスキップ
+        }
 
-                const btn = document.createElement('button');
-                btn.className = 'tag-btn tag-btn-compact tag-btn-dynamic';
-                btn.dataset.tag = tag.name;
-                btn.textContent = `${tag.name} (${tag.post_count})`;
-                btn.onclick = () => {
-                    filterByTag(tag.name);
-                    setActiveTagButton(btn);
-                };
-                tagList.appendChild(btn);
-            });
-        })
-        .catch(error => {
-            console.error('Error loading tags:', error);
-        });
+        const btn = document.createElement('button');
+        btn.className = 'tag-btn tag-btn-compact tag-btn-dynamic';
+        btn.dataset.tagId = tag.id;           // タグIDを保存
+        btn.dataset.tagName = tag.name;       // タグ名も保存（表示用）
+        btn.textContent = `${tag.name} (${tag.post_count})`;
+        btn.onclick = () => {
+            filterByTag(tag.id);             // タグIDで検索
+            setActiveTagButton(btn);
+        };
+        tagList.appendChild(btn);
+    });
 }
 
 /**
@@ -206,16 +198,16 @@ function setNSFWFilter(filter) {
 
 /**
  * タグで絞り込み（NSFWフィルタと組み合わせ）
- * @param {string} tagName タグ名（空文字列ですべて表示）
+ * @param {number|null} tagId タグID
  */
-function filterByTag(tagName) {
-    currentTagFilter = tagName || null;
+function filterByTag(tagId) {
+    currentTagFilter = tagId || null;
 
     // タグボタンのアクティブ状態を更新
     const allTagButtons = document.querySelectorAll('.tag-btn');
     allTagButtons.forEach(btn => {
-        const btnTag = btn.dataset.tag || '';
-        if (btnTag === tagName || (!tagName && btn.classList.contains('tag-btn-all'))) {
+        const btnTagId = btn.dataset.tagId ? parseInt(btn.dataset.tagId) : null;
+        if (btnTagId === tagId || (!tagId && btn.classList.contains('tag-btn-all'))) {
             btn.classList.add('active');
         } else {
             btn.classList.remove('active');
@@ -242,7 +234,7 @@ function applyFilters(reset = true) {
 
     // タグフィルタをクエリに追加
     if (currentTagFilter) {
-        url += `&tag=${encodeURIComponent(currentTagFilter)}`;
+        url += `&tagId=${encodeURIComponent(currentTagFilter)}`;
     }
 
     // ページネーションパラメータを追加
