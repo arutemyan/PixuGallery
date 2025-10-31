@@ -1423,3 +1423,186 @@ function convertImageFormat(file, targetFormat) {
         reader.readAsDataURL(file);
     });
 }
+
+// ===== グループ投稿機能 =====
+
+/**
+ * グループ投稿一覧を読み込み
+ */
+function loadGroupPosts() {
+    $.ajax({
+        url: '/' + ADMIN_PATH + '/api/group_posts.php',
+        type: 'GET',
+        success: function(response) {
+            if (response.success) {
+                renderGroupPosts(response.posts);
+            } else {
+                $('#groupPostsList').html('<div class="alert alert-danger">グループ投稿の読み込みに失敗しました</div>');
+            }
+        },
+        error: function() {
+            $('#groupPostsList').html('<div class="alert alert-danger">サーバーエラーが発生しました</div>');
+        }
+    });
+}
+
+/**
+ * グループ投稿一覧を描画
+ */
+function renderGroupPosts(posts) {
+    const $list = $('#groupPostsList');
+    $list.empty();
+
+    if (posts.length === 0) {
+        $list.html('<div class="text-center py-5 text-muted">グループ投稿がありません</div>');
+        return;
+    }
+
+    posts.forEach(function(post) {
+        const visibilityBadge = post.is_visible == 1
+            ? '<span class="badge bg-success">公開</span>'
+            : '<span class="badge bg-secondary">非公開</span>';
+        const nsfwBadge = post.is_sensitive == 1
+            ? '<span class="badge bg-danger ms-1">NSFW</span>'
+            : '';
+
+        const thumbUrl = post.thumb_path ? '/' + post.thumb_path : '/res/images/no-image.svg';
+
+        $list.append(`
+            <div class="border-bottom pb-3 mb-3">
+                <div class="row align-items-center">
+                    <div class="col-md-2">
+                        <img src="${thumbUrl}" class="img-thumbnail" style="width: 100%; aspect-ratio: 1; object-fit: cover;">
+                    </div>
+                    <div class="col-md-7">
+                        <h5 class="mb-1">${escapeHtml(post.title)} ${visibilityBadge}${nsfwBadge}</h5>
+                        <p class="text-muted mb-1 small">
+                            <i class="bi bi-images me-1"></i>${post.image_count}枚
+                            <span class="ms-2"><i class="bi bi-calendar me-1"></i>${post.created_at}</span>
+                        </p>
+                        ${post.tags ? '<p class="mb-0 small"><i class="bi bi-tags me-1"></i>' + escapeHtml(post.tags) + '</p>' : ''}
+                    </div>
+                    <div class="col-md-3 text-end">
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteGroupPost(${post.id}, '${escapeHtml(post.title).replace(/'/g, "\\'")}')">
+                            <i class="bi bi-trash"></i> 削除
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `);
+    });
+}
+
+/**
+ * グループ投稿を削除
+ */
+function deleteGroupPost(id, title) {
+    if (!confirm(`グループ投稿「${title}」を削除しますか？\n※内の画像も全て削除されます`)) {
+        return;
+    }
+
+    $.ajax({
+        url: '/' + ADMIN_PATH + '/api/group_posts.php',
+        type: 'DELETE',
+        data: {
+            csrf_token: $('input[name="csrf_token"]').val(),
+            id: id
+        },
+        success: function(response) {
+            if (response.success) {
+                alert('グループ投稿を削除しました');
+                loadGroupPosts();
+            } else {
+                alert('削除に失敗しました: ' + response.error);
+            }
+        },
+        error: function() {
+            alert('サーバーエラーが発生しました');
+        }
+    });
+}
+
+// グループ画像プレビュー
+$('#groupImages').on('change', function(e) {
+    const files = e.target.files;
+    const $previewList = $('#groupPreviewList');
+    $previewList.empty();
+
+    if (files.length > 0) {
+        Array.from(files).forEach(function(file, index) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $previewList.append(`
+                    <div class="col-4 col-md-3">
+                        <div class="position-relative">
+                            <img src="${e.target.result}" class="img-thumbnail" style="width: 100%; height: 100px; object-fit: cover;">
+                            <span class="badge bg-primary position-absolute" style="top: 5px; right: 5px;">${index + 1}</span>
+                        </div>
+                    </div>
+                `);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+});
+
+// グループ投稿フォーム送信
+$('#groupUploadForm').on('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+
+    // チェックボックスの値を明示的に設定
+    formData.set('is_sensitive', $('#groupPostIsSensitive').is(':checked') ? '1' : '0');
+    formData.set('is_visible', $('#groupPostIsVisible').is(':checked') ? '1' : '0');
+
+    const $submitBtn = $(this).find('button[type="submit"]');
+    const originalText = $submitBtn.html();
+
+    // ボタンを無効化
+    $submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>アップロード中...');
+    $('#groupUploadAlert').addClass('d-none');
+    $('#groupUploadError').addClass('d-none');
+
+    $.ajax({
+        url: '/' + ADMIN_PATH + '/api/group_upload.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            if (response.success) {
+                $('#groupUploadAlert').text(response.message || 'グループ投稿を作成しました').removeClass('d-none');
+
+                // フォームをリセット
+                $('#groupUploadForm')[0].reset();
+                $('#groupPreviewList').empty();
+
+                // 一覧を再読み込み
+                loadGroupPosts();
+
+                // 5秒後にメッセージを消す
+                setTimeout(function() {
+                    $('#groupUploadAlert').addClass('d-none');
+                }, 5000);
+            } else {
+                $('#groupUploadError').text(response.error || 'アップロードに失敗しました').removeClass('d-none');
+            }
+        },
+        error: function(xhr) {
+            let errorMsg = 'サーバーエラーが発生しました';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+            }
+            $('#groupUploadError').text(errorMsg).removeClass('d-none');
+        },
+        complete: function() {
+            $submitBtn.prop('disabled', false).html(originalText);
+        }
+    });
+});
+
+// タブが切り替わったときにグループ投稿を読み込み
+$('#group-posts-tab').on('shown.bs.tab', function() {
+    loadGroupPosts();
+});

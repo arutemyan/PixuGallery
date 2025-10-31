@@ -6,6 +6,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../src/Security/SecurityUtil.php';
 
 use App\Models\Post;
+use App\Models\GroupPost;
 use App\Models\Theme;
 use App\Models\Setting;
 use App\Models\Tag;
@@ -179,9 +180,32 @@ try {
     $ageVerificationMinutes = $nsfwConfig['age_verification_minutes'];
     $nsfwConfigVersion = $nsfwConfig['config_version'];
 
-    // 投稿を取得（無限スクロール対応のため最初は18件のみ）
+    // シングル投稿を取得
     $postModel = new Post();
-    $posts = $postModel->getAll(18);
+    $singlePosts = $postModel->getAll(18);
+
+    // グループ投稿を取得
+    $groupPostModel = new GroupPost();
+    $groupPosts = $groupPostModel->getAll(18);
+
+    // 両方をマージして作成日時でソート
+    $allPosts = array_merge($singlePosts, $groupPosts);
+    usort($allPosts, function($a, $b) {
+        return strtotime($b['created_at']) - strtotime($a['created_at']);
+    });
+
+    // 最大18件に制限
+    $posts = array_slice($allPosts, 0, 18);
+
+    // 各投稿にタイプを追加
+    foreach ($posts as &$post) {
+        // image_countがあればグループ投稿
+        if (isset($post['image_count'])) {
+            $post['post_type'] = 'group';
+        } else {
+            $post['post_type'] = 'single';
+        }
+    }
 
     // タグ一覧を取得（ID, name, post_count）
     $tagModel = new Tag();
@@ -356,10 +380,12 @@ try {
                     } else {
                         $imagePath = $thumbPath;
                     }
+                    $isGroup = isset($post['post_type']) && $post['post_type'] === 'group';
+                    $detailUrl = $isGroup ? '/group_detail.php?id=' . $post['id'] : '/detail.php?id=' . $post['id'];
                     ?>
-                    <div class="card <?= $isSensitive ? 'nsfw-card' : '' ?>" data-post-id="<?= $post['id'] ?>">
+                    <div class="card <?= $isSensitive ? 'nsfw-card' : '' ?><?= $isGroup ? ' group-card' : '' ?>" data-post-id="<?= $post['id'] ?>" data-post-type="<?= $isGroup ? 'group' : 'single' ?>">
                         <div class="card-img-wrapper <?= $isSensitive ? 'nsfw-wrapper' : '' ?>"
-                             onclick="openImageOverlay(<?= $post['id'] ?>, <?= $isSensitive ? 'true' : 'false' ?>)"
+                             <?= $isGroup ? 'onclick="window.location.href=\'' . $detailUrl . '\'"' : 'onclick="openImageOverlay(' . $post['id'] . ', ' . ($isSensitive ? 'true' : 'false') . ')"' ?>
                              style="cursor: pointer;">
                             <img
                                 src="<?= $imagePath ?>"
@@ -367,9 +393,14 @@ try {
                                 class="card-image"
                                 loading="lazy"
                                 onerror="if(!this.dataset.errorHandled){this.dataset.errorHandled='1';this.src='/uploads/thumbs/placeholder.webp';}"
-                                data-full-image="<?= '/' . escapeHtml($post['image_path'] ?? $post['thumb_path'] ?? '') ?>"
+                                <?= !$isGroup ? 'data-full-image="/' . escapeHtml($post['image_path'] ?? $post['thumb_path'] ?? '') . '"' : '' ?>
                                 data-is-sensitive="<?= $isSensitive ? '1' : '0' ?>"
                             >
+                            <?php if ($isGroup && isset($post['image_count'])): ?>
+                                <div class="group-badge">
+                                    <i class="bi bi-images"></i> <?= $post['image_count'] ?>枚
+                                </div>
+                            <?php endif; ?>
                             <?php if ($isSensitive): ?>
                                 <div class="nsfw-overlay">
                                     <div class="nsfw-text">センシティブな内容を含む</div>

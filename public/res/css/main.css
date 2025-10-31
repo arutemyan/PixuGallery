@@ -1055,3 +1055,25 @@ body.hide-titles .card-content {
         padding: 20px;
     }
 }
+
+/* グループ投稿バッジ */
+.group-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(139, 90, 250, 0.9);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.group-card .card-img-wrapper {
+    position: relative;
+}
