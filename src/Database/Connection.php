@@ -71,11 +71,18 @@ class Connection
                 $permission = self::$config['directory_permission'] ?? 0755;
                 ensureSecureDirectory($dbDir, $permission);
 
+                // PDOオプションを設定
+                $pdoOptions = [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                ];
+
                 self::$instance = new PDO(
                     'sqlite:' . $dbPath,
                     null,
                     null,
-                    self::$config['database']['pdo_options']
+                    $pdoOptions
                 );
 
                 // データベーススキーマを初期化
