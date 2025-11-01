@@ -143,7 +143,7 @@ try {
         </div>
     </div>
 
-    <?php define("ENABLE_BACK_BUTTON") ?>
+    <?php define("ENABLE_BACK_BUTTON", 1) ?>
     <?php require_once(__DIR__."/block/header.php") ?>
 
     <!-- メインコンテンツ -->

@@ -469,9 +469,14 @@ $username = $_SESSION['admin_username'] ?? 'Admin';
                                                 <img src="" alt="ロゴプレビュー" style="max-width: 150px; display: none;" id="logoPreviewImg">
                                             </div>
                                             <input type="file" class="form-control form-control-sm" id="logoImage" accept="image/*">
-                                            <button type="button" class="btn btn-sm btn-primary mt-2" id="uploadLogo">
-                                                <i class="bi bi-upload me-1"></i>アップロード
-                                            </button>
+                                            <div class="mt-2">
+                                                <button type="button" class="btn btn-sm btn-primary" id="uploadLogo">
+                                                    <i class="bi bi-upload me-1"></i>アップロード
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-danger" id="deleteLogo" style="display: none;">
+                                                    <i class="bi bi-trash me-1"></i>削除
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div class="col-md-6">
@@ -480,9 +485,14 @@ $username = $_SESSION['admin_username'] ?? 'Admin';
                                                 <img src="" alt="ヘッダー背景プレビュー" style="max-width: 150px; display: none;" id="headerPreviewImg">
                                             </div>
                                             <input type="file" class="form-control form-control-sm" id="headerImage" accept="image/*">
-                                            <button type="button" class="btn btn-sm btn-primary mt-2" id="uploadHeader">
-                                                <i class="bi bi-upload me-1"></i>アップロード
-                                            </button>
+                                            <div class="mt-2">
+                                                <button type="button" class="btn btn-sm btn-primary" id="uploadHeader">
+                                                    <i class="bi bi-upload me-1"></i>アップロード
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-danger" id="deleteHeader" style="display: none;">
+                                                    <i class="bi bi-trash me-1"></i>削除
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
