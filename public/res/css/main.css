@@ -55,6 +55,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Header */
 header {
+    position: relative;
     background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
     padding: 30px 20px;
     text-align: center;
@@ -74,33 +75,100 @@ header p {
     font-size: 1.1em;
 }
 
-.header-back-button {
-    border-width: 1px;
-    border-style: solid;
-    padding: 6px;
-    max-width: 100px;
-    text-align: center;
-}
-.header-back-button a {
+/* 一覧に戻るボタン - ヘッダーに重ねる */
+.back-link {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    text-decoration: none;
+    z-index: 10;
 }
 
-.header-back-button a {
-    color: white;
-    text-decoration: none;
-    font-size: 1.1em;
+.header-back-button {
+    position: relative;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95em;
+    cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+
+    /* 半透明の背景 */
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+
+    /* スムーズなトランジション */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* 控えめな影 */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+    /* アイコンとテキストの配置 */
     display: flex;
     align-items: center;
-    transition: opacity 0.3s;
+    gap: 6px;
 }
 
-.header-back-button q {
-    opacity: 0.8;
-}
-
-.header-back-button a {
+.header-back-button::before {
     content: '←';
-    margin-right: 8px;
-    font-size: 1.3em;
+    font-size: 1.2em;
+    transition: transform 0.3s ease;
+}
+
+/* ホバー時のエフェクト - 控えめに */
+.header-back-button:hover {
+    background: rgba(0, 0, 0, 0.35);
+    transform: translateX(-2px);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.header-back-button:hover::before {
+    transform: translateX(-3px);
+}
+
+/* フォーカス時のエフェクト（アクセシビリティ重要） */
+.back-link:focus {
+    outline: none;
+}
+
+.back-link:focus .header-back-button {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 2px;
+    background: rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+                0 0 0 3px rgba(139, 90, 250, 0.4);
+}
+
+/* アクティブ時の押し込みエフェクト */
+.header-back-button:active {
+    transform: translateX(0) scale(0.96);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 光沢エフェクト - 控えめに */
+.header-back-button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(255, 255, 255, 0.15),
+        transparent
+    );
+    transition: left 0.6s ease;
+}
+
+.header-back-button:hover::after {
+    left: 100%;
 }
 
 
@@ -563,6 +631,21 @@ footer p {
         padding: 5px 12px;
         font-size: 0.8em;
     }
+
+    /* 一覧に戻るボタン（モバイル最適化） */
+    .back-link {
+        top: 15px;
+        left: 15px;
+    }
+
+    .header-back-button {
+        padding: 8px 14px;
+        font-size: 0.85em;
+    }
+
+    .header-back-button::before {
+        font-size: 1.1em;
+    }
 }
 
 /* Tag Cloud Styles - Compact */
@@ -667,10 +750,6 @@ footer p {
     font-weight: 500;
     transition: all 0.3s ease;
     font-family: 'Noto Serif JP', serif;
-}
-
-.filter-btn-compact {
-    
 }
 
 .filter-btn:hover {

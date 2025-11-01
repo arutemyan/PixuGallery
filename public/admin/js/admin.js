@@ -20,11 +20,23 @@ $(document).ready(function() {
     // 投稿一覧を読み込み
     loadPosts();
 
-    // テーマ設定を読み込み
-    loadThemeSettings();
+    // テーマ設定を読み込み（テーマタブがアクティブな場合のみ）
+    if ($('#theme-tab').hasClass('active')) {
+        loadThemeSettings();
+    }
 
     // サイト設定を読み込み
     loadSettings();
+
+    // テーマタブがフォーカスされたときにテーマ設定を読み込み
+    $('#theme-tab').on('shown.bs.tab', function() {
+        loadThemeSettings();
+        // プレビューを再読み込み
+        const iframe = document.getElementById('sitePreview');
+        if (iframe) {
+            iframe.src = iframe.src; // iframeを再読み込み
+        }
+    });
 
     // クリップボードアップロードのトグル
     $('#toggleClipboardUpload').on('click', function() {
@@ -363,6 +375,20 @@ $(document).ready(function() {
         uploadThemeImage('header');
     });
 
+    // ロゴ画像削除
+    $('#deleteLogo').on('click', function() {
+        if (confirm('ロゴ画像を削除しますか？')) {
+            deleteThemeImage('logo');
+        }
+    });
+
+    // ヘッダー画像削除
+    $('#deleteHeader').on('click', function() {
+        if (confirm('背景画像を削除しますか？')) {
+            deleteThemeImage('header');
+        }
+    });
+
     // ロゴ画像プレビュー
     $('#logoImage').on('change', function(e) {
         const file = e.target.files[0];
@@ -693,9 +719,17 @@ function loadThemeSettings() {
                 // 画像プレビュー
                 if (theme.logo_image) {
                     $('#logoPreviewImg').attr('src', '/' + theme.logo_image).show();
+                    $('#deleteLogo').show();
+                } else {
+                    $('#logoPreviewImg').hide();
+                    $('#deleteLogo').hide();
                 }
                 if (theme.header_image) {
                     $('#headerPreviewImg').attr('src', '/' + theme.header_image).show();
+                    $('#deleteHeader').show();
+                } else {
+                    $('#headerPreviewImg').hide();
+                    $('#deleteHeader').hide();
                 }
 
                 // プレビューを更新
@@ -1127,6 +1161,60 @@ function uploadThemeImage(imageType) {
         complete: function() {
             // ボタンを有効化
             $uploadBtn.prop('disabled', false).html(originalText);
+        }
+    });
+}
+
+/**
+ * テーマ画像を削除
+ */
+function deleteThemeImage(imageType) {
+    const $deleteBtn = imageType === 'logo' ? $('#deleteLogo') : $('#deleteHeader');
+    const originalText = $deleteBtn.html();
+
+    // ボタンを無効化
+    $deleteBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>削除中...');
+
+    $.ajax({
+        url: '/' + ADMIN_PATH + '/api/theme-image.php',
+        type: 'POST',
+        data: {
+            _method: 'DELETE',
+            image_type: imageType,
+            csrf_token: $('input[name="csrf_token"]').val()
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                // 成功メッセージ
+                $('#themeAlert').text(response.message || '画像が削除されました').removeClass('d-none');
+
+                // プレビュー画像を非表示
+                const previewImgId = imageType === 'logo' ? '#logoPreviewImg' : '#headerPreviewImg';
+                $(previewImgId).hide();
+                $deleteBtn.hide();
+
+                // テーマ設定を再読み込み
+                loadThemeSettings();
+
+                // 3秒後にメッセージを消す
+                setTimeout(function() {
+                    $('#themeAlert').addClass('d-none');
+                }, 3000);
+            } else {
+                $('#themeError').text(response.error || '削除に失敗しました').removeClass('d-none');
+            }
+        },
+        error: function(xhr) {
+            let errorMsg = 'サーバーエラーが発生しました';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+            }
+            $('#themeError').text(errorMsg).removeClass('d-none');
+        },
+        complete: function() {
+            // ボタンを有効化
+            $deleteBtn.prop('disabled', false).html(originalText);
         }
     });
 }
