@@ -213,8 +213,22 @@ try {
                         <i class="bi bi-images me-1"></i><?= $groupPost['image_count'] ?>枚
                     </span>
                     <span class="meta-item">
-                        📅 <?= date('Y年m月d日', strtotime($groupPost['created_at'])) ?>
+                        📅 投稿: <?= date('Y年m月d日', strtotime($groupPost['created_at'])) ?>
                     </span>
+                    <?php
+                    // 最終更新日の表示（2000年以下の場合は作成日と同じとして扱う）
+                    $updatedAt = $groupPost['updated_at'] ?? $groupPost['created_at'];
+                    $updatedYear = (int)date('Y', strtotime($updatedAt));
+                    if ($updatedYear <= 2000) {
+                        $updatedAt = $groupPost['created_at'];
+                    }
+                    // 作成日と更新日が異なる場合のみ表示
+                    if ($updatedAt !== $groupPost['created_at']):
+                    ?>
+                        <span class="meta-item">
+                            🔄 更新: <?= date('Y年m月d日', strtotime($updatedAt)) ?>
+                        </span>
+                    <?php endif; ?>
                     <?php if ($showViewCount && isset($groupPost['view_count'])): ?>
                         <span class="meta-item view-count">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -2px;">
@@ -245,6 +259,29 @@ try {
                 <?php if (!empty($groupPost['detail'])): ?>
                     <div class="detail-description"><?= nl2br(escapeHtml($groupPost['detail'])) ?></div>
                 <?php endif; ?>
+
+                <!-- SNS共有ボタン -->
+                <div class="detail-actions" style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="shareToSNS('twitter')" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M5.026 15c6.038 0 9.341-5.003 9.341-9.334 0-.14 0-.282-.006-.422A6.685 6.685 0 0 0 16 3.542a6.658 6.658 0 0 1-1.889.518 3.301 3.301 0 0 0 1.447-1.817 6.533 6.533 0 0 1-2.087.793A3.286 3.286 0 0 0 7.875 6.03a9.325 9.325 0 0 1-6.767-3.429 3.289 3.289 0 0 0 1.018 4.382A3.323 3.323 0 0 1 .64 6.575v.045a3.288 3.288 0 0 0 2.632 3.218 3.203 3.203 0 0 1-.865.115 3.23 3.23 0 0 1-.614-.057 3.283 3.283 0 0 0 3.067 2.277A6.588 6.588 0 0 1 .78 13.58a6.32 6.32 0 0 1-.78-.045A9.344 9.344 0 0 0 5.026 15z"/>
+                        </svg>
+                        X (Twitter) で共有
+                    </button>
+                    <button class="btn btn-primary" onclick="shareToSNS('misskey')" style="display: inline-flex; align-items: center; gap: 8px; background-color: #86b300; border-color: #86b300;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M11.19 12.195c2.016-.24 3.77-1.475 3.99-2.603.348-1.778.32-4.339.32-4.339 0-3.47-2.286-4.488-2.286-4.488C12.062.238 10.083.017 8.027 0h-.05C5.92.017 3.942.238 2.79.765c0 0-2.285 1.017-2.285 4.488l-.002.662c-.004.64-.007 1.35.011 2.091.083 3.394.626 6.74 3.78 7.57 1.454.383 2.703.463 3.709.408 1.823-.1 2.847-.647 2.847-.647l-.06-1.317s-1.303.41-2.767.36c-1.45-.05-2.98-.156-3.215-1.928a3.614 3.614 0 0 1-.033-.496s1.424.346 3.228.428c1.103.05 2.137-.064 3.188-.189zm1.613-2.47H11.13v-4.08c0-.859-.364-1.295-1.091-1.295-.804 0-1.207.517-1.207 1.541v2.233H7.168V5.89c0-1.024-.403-1.541-1.207-1.541-.727 0-1.091.436-1.091 1.296v4.079H3.197V5.522c0-.859.22-1.541.66-2.046.456-.505 1.052-.764 1.793-.764.856 0 1.504.328 1.933.983L8 4.39l.417-.695c.429-.655 1.077-.983 1.934-.983.74 0 1.336.259 1.791.764.442.505.661 1.187.661 2.046v4.203z"/>
+                        </svg>
+                        Misskey で共有
+                    </button>
+                    <button class="btn btn-secondary" onclick="copyPageUrl()" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                            <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                        </svg>
+                        URLをコピー
+                    </button>
+                </div>
             </div>
 
             <!-- グループ内の全画像を表示 -->
@@ -294,6 +331,69 @@ try {
                 }
                 index++;
             }
+        }
+
+        // SNS共有機能
+        function shareToSNS(platform) {
+            const title = <?= json_encode($groupPost['title']) ?>;
+            const url = encodeURIComponent(window.location.href);
+            const encodedTitle = encodeURIComponent(title);
+            const hashtags = 'イラスト,artwork';
+            const isSensitive = <?= $isSensitive ? 'true' : 'false' ?>;
+            const nsfwHashtag = isSensitive ? ',NSFW' : '';
+            const fullHashtags = encodeURIComponent(hashtags + nsfwHashtag);
+
+            let shareUrl;
+            if (platform === 'twitter') {
+                shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${encodedTitle}&hashtags=${fullHashtags}`;
+            } else if (platform === 'misskey') {
+                shareUrl = `https://misskey.io/share?text=${encodedTitle}%0A${url}`;
+            }
+
+            if (shareUrl) {
+                window.open(shareUrl, '_blank', 'width=600,height=400');
+            }
+        }
+
+        // URLコピー機能
+        function copyPageUrl() {
+            const url = window.location.href;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('URLをクリップボードにコピーしました');
+                }).catch(() => {
+                    fallbackCopyTextToClipboard(url);
+                });
+            } else {
+                fallbackCopyTextToClipboard(url);
+            }
+        }
+
+        // フォールバック用のコピー機能
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.top = '0';
+            textArea.style.left = '0';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    alert('URLをクリップボードにコピーしました');
+                } else {
+                    alert('URLのコピーに失敗しました');
+                }
+            } catch (err) {
+                alert('URLのコピーに失敗しました');
+            }
+
+            document.body.removeChild(textArea);
         }
 
         // 初期化

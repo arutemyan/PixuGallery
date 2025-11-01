@@ -769,10 +769,29 @@ $username = $_SESSION['admin_username'] ?? 'Admin';
                         <!-- 右側：画像プレビュー -->
                         <div class="col-md-6">
                             <div class="sticky-top" style="top: 20px;">
-                                <label class="form-label">画像プレビュー</label>
-                                <div class="text-muted small mb-2">※画像は編集できません</div>
-                                <div class="edit-image-preview-container">
+                                <label class="form-label">画像</label>
+                                <div class="edit-image-preview-container mb-3">
                                     <img id="editImagePreview" alt="画像プレビュー" class="img-fluid rounded">
+                                </div>
+
+                                <!-- 画像差し替え -->
+                                <div class="mb-3">
+                                    <label for="editImageFile" class="form-label">
+                                        <i class="bi bi-image me-1"></i>画像を差し替え（任意）
+                                    </label>
+                                    <input type="file" class="form-control" id="editImageFile" accept="image/*">
+                                    <div class="form-text">
+                                        画像を選択すると、現在の画像が置き換えられます。<br>
+                                        選択しない場合は画像は変更されません。
+                                    </div>
+                                </div>
+
+                                <!-- 差し替え画像のプレビュー -->
+                                <div id="editImageReplacePreview" style="display: none;">
+                                    <label class="form-label text-primary">新しい画像プレビュー</label>
+                                    <div class="edit-image-preview-container mb-2">
+                                        <img id="editImageReplacePreviewImg" alt="新しい画像プレビュー" class="img-fluid rounded border border-primary">
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -42,7 +42,7 @@ class Post
         $offset = max($offset, 0); // 負のオフセットは無効
 
         $sql = "
-            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
             WHERE is_visible = 1
@@ -106,7 +106,7 @@ class Post
     public function getById(int $id): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
             WHERE id = ? AND is_visible = 1
@@ -192,7 +192,8 @@ class Post
             UPDATE posts
             SET title = ?, detail = ?, image_path = ?, thumb_path = ?,
                 tag1 = ?, tag2 = ?, tag3 = ?, tag4 = ?, tag5 = ?,
-                tag6 = ?, tag7 = ?, tag8 = ?, tag9 = ?, tag10 = ?
+                tag6 = ?, tag7 = ?, tag8 = ?, tag9 = ?, tag10 = ?,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ");
         return $stmt->execute([
@@ -228,7 +229,8 @@ class Post
             UPDATE posts
             SET title = ?, detail = ?, is_sensitive = ?,
                 tag1 = ?, tag2 = ?, tag3 = ?, tag4 = ?, tag5 = ?,
-                tag6 = ?, tag7 = ?, tag8 = ?, tag9 = ?, tag10 = ?
+                tag6 = ?, tag7 = ?, tag8 = ?, tag9 = ?, tag10 = ?,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ");
         return $stmt->execute([
@@ -295,7 +297,7 @@ class Post
         $offset = max($offset, 0);
 
         $stmt = $this->db->prepare("
-            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
             ORDER BY created_at DESC
@@ -339,7 +341,7 @@ class Post
     public function getByIdForAdmin(int $id): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
             WHERE id = ?
@@ -430,7 +432,7 @@ class Post
 
         // tag1～tag10のいずれかがタグIDと一致する投稿を検索
         $stmt = $this->db->prepare("
-            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
             WHERE is_visible = 1
@@ -505,7 +507,7 @@ class Post
         $whereClause = implode(' AND ', $conditions);
 
         $stmt = $this->db->prepare("
-            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at,
+            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
             WHERE is_visible = 1 AND ({$whereClause})

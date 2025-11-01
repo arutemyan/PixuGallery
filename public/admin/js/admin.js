@@ -87,6 +87,21 @@ $(document).ready(function() {
         }
     });
 
+    // 編集モーダル：差し替え画像プレビュー
+    $('#editImageFile').on('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#editImageReplacePreviewImg').attr('src', e.target.result);
+                $('#editImageReplacePreview').show();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            $('#editImageReplacePreview').hide();
+        }
+    });
+
     // アップロードフォーム送信
     $('#uploadForm').on('submit', function(e) {
         e.preventDefault();
@@ -787,6 +802,10 @@ function editPost(postId) {
                 $('#editAlert').addClass('d-none');
                 $('#editError').addClass('d-none');
 
+                // 画像差し替えフィールドをリセット
+                $('#editImageFile').val('');
+                $('#editImageReplacePreview').hide();
+
                 // ナビゲーションボタンの有効/無効を設定
                 updateNavigationButtons();
 
@@ -911,7 +930,6 @@ function updatePostCard(post) {
  * 投稿を保存
  */
 function savePost() {
-    const formData = $('#editForm').serialize();
     const $saveBtn = $('#saveEditBtn');
     const originalText = $saveBtn.html();
 
@@ -923,10 +941,26 @@ function savePost() {
     // 投稿IDを取得
     const postId = $('#editPostId').val();
 
+    // FormDataを作成（画像ファイルを含める）
+    const formData = new FormData($('#editForm')[0]);
+    formData.append('_method', 'PUT');
+
+    // 画像ファイルが選択されている場合は追加
+    const imageFile = $('#editImageFile')[0].files[0];
+    if (imageFile) {
+        formData.append('image', imageFile);
+    }
+
+    // チェックボックスの値を明示的に設定
+    formData.set('is_sensitive', $('#editIsSensitive').is(':checked') ? '1' : '0');
+    formData.set('is_visible', $('#editIsVisible').is(':checked') ? '1' : '0');
+
     $.ajax({
         url: '/' + ADMIN_PATH + '/api/posts.php?id=' + postId,
         type: 'POST',
-        data: formData + '&_method=PUT',
+        data: formData,
+        processData: false,
+        contentType: false,
         dataType: 'json',
         success: function(response) {
             if (response.success) {
@@ -935,6 +969,10 @@ function savePost() {
 
                 // 投稿一覧を再読み込みせず、該当の投稿だけを更新
                 updateSinglePost(postId);
+
+                // 画像ファイル入力とプレビューをクリア
+                $('#editImageFile').val('');
+                $('#editImageReplacePreview').hide();
 
                 // 2秒後にモーダルを閉じる
                 //setTimeout(function() {
@@ -1474,7 +1512,7 @@ function renderGroupPosts(posts) {
                     <div class="col-md-2">
                         <img src="${thumbUrl}" class="img-thumbnail" style="width: 100%; aspect-ratio: 1; object-fit: cover;">
                     </div>
-                    <div class="col-md-7">
+                    <div class="col-md-6">
                         <h5 class="mb-1">${escapeHtml(post.title)} ${visibilityBadge}${nsfwBadge}</h5>
                         <p class="text-muted mb-1 small">
                             <i class="bi bi-images me-1"></i>${post.image_count}枚
@@ -1482,10 +1520,21 @@ function renderGroupPosts(posts) {
                         </p>
                         ${post.tags ? '<p class="mb-0 small"><i class="bi bi-tags me-1"></i>' + escapeHtml(post.tags) + '</p>' : ''}
                     </div>
-                    <div class="col-md-3 text-end">
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteGroupPost(${post.id}, '${escapeHtml(post.title).replace(/'/g, "\\'")}')">
-                            <i class="bi bi-trash"></i> 削除
-                        </button>
+                    <div class="col-md-4 text-end">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="editGroupPost(${post.id})" title="編集">
+                                <i class="bi bi-pencil"></i> 編集
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" onclick="addImagesToGroup(${post.id})" title="画像追加">
+                                <i class="bi bi-plus-circle"></i> 画像追加
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="shareGroupPostToSNS(${post.id}, '${escapeHtml(post.title).replace(/'/g, "\\'")}', ${post.is_sensitive})" title="SNS共有">
+                                <i class="bi bi-share"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteGroupPost(${post.id}, '${escapeHtml(post.title).replace(/'/g, "\\'")}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1606,3 +1655,410 @@ $('#groupUploadForm').on('submit', function(e) {
 $('#group-posts-tab').on('shown.bs.tab', function() {
     loadGroupPosts();
 });
+
+/**
+ * グループ投稿を編集
+ */
+function editGroupPost(groupPostId) {
+    $.ajax({
+        url: '/' + ADMIN_PATH + '/api/group_posts.php?id=' + groupPostId,
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.success && response.data) {
+                const post = response.data;
+
+                // 編集モーダルHTMLを生成
+                const modalHtml = `
+                    <div class="modal fade" id="editGroupModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">
+                                        <i class="bi bi-pencil me-2"></i>グループ投稿を編集
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-success d-none" id="editGroupAlert"></div>
+                                    <div class="alert alert-danger d-none" id="editGroupError"></div>
+
+                                    <form id="editGroupForm">
+                                        <input type="hidden" id="editGroupPostId" name="id" value="${post.id}">
+                                        <input type="hidden" name="csrf_token" value="${$('input[name="csrf_token"]').val()}">
+
+                                        <div class="mb-3">
+                                            <label for="editGroupTitle" class="form-label">タイトル <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="editGroupTitle" name="title" value="${escapeHtml(post.title)}" required>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="editGroupTags" class="form-label">タグ（カンマ区切り）</label>
+                                            <input type="text" class="form-control" id="editGroupTags" name="tags" value="${escapeHtml(post.tags || '')}" placeholder="例: イラスト,風景,オリジナル">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="editGroupDetail" class="form-label">詳細説明</label>
+                                            <textarea class="form-control" id="editGroupDetail" name="detail" rows="3">${escapeHtml(post.detail || '')}</textarea>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="editGroupIsSensitive" name="is_sensitive" value="1" ${post.is_sensitive == 1 ? 'checked' : ''}>
+                                                <label class="form-check-label" for="editGroupIsSensitive">
+                                                    NSFW（センシティブなコンテンツ）
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="editGroupIsVisible" name="is_visible" value="1" ${post.is_visible == 1 ? 'checked' : ''}>
+                                                <label class="form-check-label" for="editGroupIsVisible">
+                                                    公開する
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label">グループ内の画像（${post.image_count}枚）</label>
+                                            <div class="row g-2" id="editGroupImagesList">
+                                                ${post.images.map(img => `
+                                                    <div class="col-3">
+                                                        <img src="/${img.thumb_path}" class="img-thumbnail" style="width: 100%; aspect-ratio: 1; object-fit: cover;">
+                                                        <div class="text-center small text-muted">順序: ${img.display_order}</div>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                    <button type="button" class="btn btn-primary" id="saveGroupPostBtn">
+                                        <i class="bi bi-save me-1"></i>保存
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // 既存のモーダルを削除
+                $('#editGroupModal').remove();
+
+                // 新しいモーダルを追加
+                $('body').append(modalHtml);
+                const editGroupModal = new bootstrap.Modal(document.getElementById('editGroupModal'));
+                editGroupModal.show();
+
+                // モーダルが閉じられたらDOMから削除
+                $('#editGroupModal').on('hidden.bs.modal', function() {
+                    $(this).remove();
+                });
+
+                // 保存ボタンのイベント
+                $('#saveGroupPostBtn').on('click', function() {
+                    saveGroupPost();
+                });
+            } else {
+                alert('グループ投稿の取得に失敗しました');
+            }
+        },
+        error: function() {
+            alert('サーバーエラーが発生しました');
+        }
+    });
+}
+
+/**
+ * グループ投稿を保存
+ */
+function saveGroupPost() {
+    const formData = $('#editGroupForm').serialize();
+    const $saveBtn = $('#saveGroupPostBtn');
+    const originalText = $saveBtn.html();
+
+    $saveBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>保存中...');
+    $('#editGroupAlert').addClass('d-none');
+    $('#editGroupError').addClass('d-none');
+
+    $.ajax({
+        url: '/' + ADMIN_PATH + '/api/group_posts.php',
+        type: 'POST',
+        data: formData + '&_method=PUT',
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                $('#editGroupAlert').text(response.message || 'グループ投稿が更新されました').removeClass('d-none');
+
+                // 一覧を再読み込み
+                loadGroupPosts();
+
+                // 2秒後にモーダルを閉じる
+                setTimeout(function() {
+                    $('#editGroupModal').modal('hide');
+                }, 1500);
+            } else {
+                $('#editGroupError').text(response.error || '保存に失敗しました').removeClass('d-none');
+            }
+        },
+        error: function(xhr) {
+            let errorMsg = 'サーバーエラーが発生しました';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+            }
+            $('#editGroupError').text(errorMsg).removeClass('d-none');
+        },
+        complete: function() {
+            $saveBtn.prop('disabled', false).html(originalText);
+        }
+    });
+}
+
+/**
+ * グループに画像を追加
+ */
+function addImagesToGroup(groupPostId) {
+    // 画像追加モーダルHTMLを生成
+    const modalHtml = `
+        <div class="modal fade" id="addGroupImagesModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-plus-circle me-2"></i>グループに画像を追加
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-success d-none" id="addGroupImagesAlert"></div>
+                        <div class="alert alert-danger d-none" id="addGroupImagesError"></div>
+
+                        <form id="addGroupImagesForm">
+                            <input type="hidden" name="group_post_id" value="${groupPostId}">
+                            <input type="hidden" name="csrf_token" value="${$('input[name="csrf_token"]').val()}">
+
+                            <div class="mb-3">
+                                <label for="addGroupImageFiles" class="form-label">
+                                    画像ファイルを選択 <span class="text-danger">*</span>
+                                </label>
+                                <input type="file" class="form-control" id="addGroupImageFiles" name="images[]" accept="image/*" multiple required>
+                                <div class="form-text">複数の画像を一度に選択できます（最大20MB/ファイル）</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">プレビュー</label>
+                                <div class="row g-2" id="addGroupImagesPreviewList"></div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                        <button type="button" class="btn btn-primary" id="uploadGroupImagesBtn" disabled>
+                            <i class="bi bi-upload me-1"></i>アップロード
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 既存のモーダルを削除
+    $('#addGroupImagesModal').remove();
+
+    // 新しいモーダルを追加
+    $('body').append(modalHtml);
+    const addGroupImagesModal = new bootstrap.Modal(document.getElementById('addGroupImagesModal'));
+    addGroupImagesModal.show();
+
+    // モーダルが閉じられたらDOMから削除
+    $('#addGroupImagesModal').on('hidden.bs.modal', function() {
+        $(this).remove();
+    });
+
+    // ファイル選択時のプレビュー
+    $('#addGroupImageFiles').on('change', function(e) {
+        const files = e.target.files;
+        const $previewList = $('#addGroupImagesPreviewList');
+        $previewList.empty();
+
+        if (files.length > 0) {
+            $('#uploadGroupImagesBtn').prop('disabled', false);
+
+            Array.from(files).forEach(function(file, index) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $previewList.append(`
+                        <div class="col-4 col-md-3">
+                            <div class="position-relative">
+                                <img src="${e.target.result}" class="img-thumbnail" style="width: 100%; height: 100px; object-fit: cover;">
+                                <span class="badge bg-primary position-absolute" style="top: 5px; right: 5px;">${index + 1}</span>
+                            </div>
+                        </div>
+                    `);
+                };
+                reader.readAsDataURL(file);
+            });
+        } else {
+            $('#uploadGroupImagesBtn').prop('disabled', true);
+        }
+    });
+
+    // アップロードボタンのイベント
+    $('#uploadGroupImagesBtn').on('click', function() {
+        uploadGroupImages();
+    });
+}
+
+/**
+ * グループに画像をアップロード
+ */
+function uploadGroupImages() {
+    const formData = new FormData($('#addGroupImagesForm')[0]);
+    const $uploadBtn = $('#uploadGroupImagesBtn');
+    const originalText = $uploadBtn.html();
+
+    $uploadBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>アップロード中...');
+    $('#addGroupImagesAlert').addClass('d-none');
+    $('#addGroupImagesError').addClass('d-none');
+
+    $.ajax({
+        url: '/' + ADMIN_PATH + '/api/group_upload.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            if (response.success) {
+                $('#addGroupImagesAlert').text(response.message || '画像を追加しました').removeClass('d-none');
+
+                // 一覧を再読み込み
+                loadGroupPosts();
+
+                // 2秒後にモーダルを閉じる
+                setTimeout(function() {
+                    $('#addGroupImagesModal').modal('hide');
+                }, 1500);
+            } else {
+                $('#addGroupImagesError').text(response.error || 'アップロードに失敗しました').removeClass('d-none');
+            }
+        },
+        error: function(xhr) {
+            let errorMsg = 'サーバーエラーが発生しました';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+            }
+            $('#addGroupImagesError').text(errorMsg).removeClass('d-none');
+        },
+        complete: function() {
+            $uploadBtn.prop('disabled', false).html(originalText);
+        }
+    });
+}
+
+/**
+ * グループ投稿をSNSで共有
+ */
+function shareGroupPostToSNS(groupPostId, title, isSensitive) {
+    // 詳細ページのURLを構築
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+    const detailUrl = `${protocol}//${host}/group_detail.php?id=${groupPostId}`;
+
+    // エンコードされたURL
+    const encodedUrl = encodeURIComponent(detailUrl);
+    const encodedTitle = encodeURIComponent(title);
+    const hashtags = 'イラスト,artwork';
+    const encodedHashtags = encodeURIComponent(hashtags);
+
+    // センシティブな場合はハッシュタグに追加
+    const nsfwHashtag = isSensitive ? ',NSFW' : '';
+    const fullHashtags = encodeURIComponent(hashtags + nsfwHashtag);
+
+    // 各SNSの共有URL
+    const shareUrls = {
+        twitter: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}&hashtags=${fullHashtags}`,
+        misskey: `https://misskey.io/share?text=${encodedTitle}%0A${encodedUrl}`
+    };
+
+    // モーダルHTML
+    const modalHtml = `
+        <div class="modal fade" id="shareGroupModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-share me-2"></i>SNSで共有（グループ投稿）
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3"><strong>${escapeHtml(title)}</strong></p>
+                        <p class="text-muted small mb-3">
+                            共有URL: <a href="${detailUrl}" target="_blank">${detailUrl}</a>
+                        </p>
+                        ${isSensitive ? '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>この投稿はNSFWです。</div>' : ''}
+
+                        <div class="d-grid gap-2">
+                            <a href="${shareUrls.twitter}" target="_blank" class="btn btn-primary" style="background-color: #1DA1F2; border-color: #1DA1F2;">
+                                <i class="bi bi-twitter me-2"></i>X (Twitter) で共有
+                            </a>
+                            <a href="${shareUrls.misskey}" target="_blank" class="btn btn-primary" style="background-color: #86b300; border-color: #86b300;">
+                                <i class="bi bi-mastodon me-2"></i>Misskey で共有
+                            </a>
+                        </div>
+
+                        <div class="mt-3">
+                            <label class="form-label">共有URL（コピー用）</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="shareGroupUrlInput" value="${detailUrl}" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyShareGroupUrl()">
+                                    <i class="bi bi-clipboard"></i> コピー
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 既存のモーダルを削除
+    $('#shareGroupModal').remove();
+
+    // 新しいモーダルを追加して表示
+    $('body').append(modalHtml);
+    const shareGroupModal = new bootstrap.Modal(document.getElementById('shareGroupModal'));
+    shareGroupModal.show();
+
+    // モーダルが閉じられたらDOMから削除
+    $('#shareGroupModal').on('hidden.bs.modal', function() {
+        $(this).remove();
+    });
+}
+
+/**
+ * グループ投稿の共有URLをクリップボードにコピー
+ */
+function copyShareGroupUrl() {
+    const input = document.getElementById('shareGroupUrlInput');
+    input.select();
+    document.execCommand('copy');
+
+    // コピー成功のフィードバック
+    const btn = event.target.closest('button');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check"></i> コピーしました';
+    btn.classList.add('btn-success');
+    btn.classList.remove('btn-outline-secondary');
+
+    setTimeout(function() {
+        btn.innerHTML = originalHtml;
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-secondary');
+    }, 2000);
+}

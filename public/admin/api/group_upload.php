@@ -52,19 +52,54 @@ try {
         exit;
     }
 
-    // タイトルの確認
-    $title = isset($_POST['title']) ? trim($_POST['title']) : '';
-    if (empty($title)) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'error' => 'タイトルは必須です'
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
+    $groupPostModel = new GroupPost();
+    $groupPostId = isset($_POST['group_post_id']) ? (int)$_POST['group_post_id'] : 0;
+    $isAddingToExisting = $groupPostId > 0;
+
+    // 新規作成の場合はタイトルが必須
+    if (!$isAddingToExisting) {
+        $title = isset($_POST['title']) ? trim($_POST['title']) : '';
+        if (empty($title)) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => 'タイトルは必須です'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+
+    // 既存グループに追加の場合は存在確認
+    $groupPost = null;
+    $isSensitive = 0;
+    $maxDisplayOrder = 0;
+
+    if ($isAddingToExisting) {
+        $groupPost = $groupPostModel->getById($groupPostId, true);
+        if (!$groupPost) {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'error' => 'グループ投稿が見つかりません'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 既存グループのセンシティブ設定を使用
+        $isSensitive = $groupPost['is_sensitive'];
+
+        // 現在のグループ内の最大display_orderを取得
+        foreach ($groupPost['images'] as $img) {
+            if ($img['display_order'] > $maxDisplayOrder) {
+                $maxDisplayOrder = $img['display_order'];
+            }
+        }
+    } else {
+        // 新規作成の場合はPOSTパラメータから取得
+        $isSensitive = isset($_POST['is_sensitive']) ? (int)$_POST['is_sensitive'] : 0;
     }
 
     $uploadedFiles = $_FILES['images'];
-    $groupPostModel = new GroupPost();
 
     // ImageUploaderを初期化
     $imageUploader = new ImageUploader(
@@ -73,14 +108,9 @@ try {
         20 * 1024 * 1024 // 20MB
     );
 
-    // メタデータ取得
-    $tags = $_POST['tags'] ?? '';
-    $detail = $_POST['detail'] ?? '';
-    $isSensitive = isset($_POST['is_sensitive']) ? (int)$_POST['is_sensitive'] : 0;
-    $isVisible = isset($_POST['is_visible']) ? (int)$_POST['is_visible'] : 1;
-
     $imagePaths = [];
     $results = [];
+    $successCount = 0;
     $errorCount = 0;
 
     // 複数ファイルの処理
@@ -126,16 +156,27 @@ try {
                 throw new Exception($uploadResult['error']);
             }
 
-            // 画像パスを保存
-            $imagePaths[] = [
-                'image' => $uploadResult['image_path'],
-                'thumb' => $uploadResult['thumb_path']
-            ];
+            // 新規作成の場合は配列に追加、既存グループへの追加の場合は直接DB登録
+            if ($isAddingToExisting) {
+                $maxDisplayOrder++;
+                $groupPostModel->addImage(
+                    $groupPostId,
+                    $uploadResult['image_path'],
+                    $uploadResult['thumb_path'],
+                    $maxDisplayOrder
+                );
+            } else {
+                $imagePaths[] = [
+                    'image' => $uploadResult['image_path'],
+                    'thumb' => $uploadResult['thumb_path']
+                ];
+            }
 
             $results[] = [
                 'filename' => $filename,
                 'success' => true
             ];
+            $successCount++;
 
         } catch (Exception $e) {
             $results[] = [
@@ -148,7 +189,7 @@ try {
     }
 
     // 少なくとも1枚の画像が成功している必要がある
-    if (empty($imagePaths)) {
+    if ($successCount === 0) {
         http_response_code(400);
         echo json_encode([
             'success' => false,
@@ -158,29 +199,41 @@ try {
         exit;
     }
 
-    // グループ投稿を作成
-    $groupPostId = $groupPostModel->create(
-        $title,
-        $imagePaths,
-        $tags,
-        $detail,
-        $isSensitive,
-        $isVisible
-    );
+    // 新規作成の場合のみグループ投稿を作成
+    if (!$isAddingToExisting) {
+        $tags = $_POST['tags'] ?? '';
+        $detail = $_POST['detail'] ?? '';
+        $isVisible = isset($_POST['is_visible']) ? (int)$_POST['is_visible'] : 1;
+
+        $groupPostId = $groupPostModel->create(
+            $title,
+            $imagePaths,
+            $tags,
+            $detail,
+            $isSensitive,
+            $isVisible
+        );
+    }
 
     // キャッシュを無効化
     $cache = new CacheManager();
     $cache->invalidateAllPosts();
 
     // レスポンス
+    if ($isAddingToExisting) {
+        $message = "{$successCount}枚の画像をグループ投稿に追加しました";
+    } else {
+        $message = "グループ投稿「{$title}」を作成しました（{$successCount}枚の画像）";
+    }
+
     echo json_encode([
         'success' => true,
         'group_post_id' => $groupPostId,
         'total' => $fileCount,
-        'success_count' => count($imagePaths),
+        'success_count' => $successCount,
         'error_count' => $errorCount,
         'results' => $results,
-        'message' => "グループ投稿「{$title}」を作成しました（" . count($imagePaths) . "枚の画像）"
+        'message' => $message
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {

@@ -21,6 +21,12 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
 header('Content-Type: application/json; charset=utf-8');
 
 $method = $_SERVER['REQUEST_METHOD'];
+
+// POSTで_methodが指定されている場合はそれを使う
+if ($method === 'POST' && isset($_POST['_method'])) {
+    $method = strtoupper($_POST['_method']);
+}
+
 $groupPostModel = new GroupPost();
 
 try {

@@ -182,37 +182,88 @@ try {
         $config = require __DIR__ . '/../../../config/config.php';
         $filterSettings = $config['nsfw']['filter_settings'];
 
-        // is_sensitiveが変更された場合、NSFWフィルター画像を処理
-        $oldIsSensitive = (int)$existingPost['is_sensitive'];
-        $newIsSensitive = $isSensitive;
+        // 画像が差し替えられた場合の処理
+        $newImagePath = $existingPost['image_path'];
+        $newThumbPath = $existingPost['thumb_path'];
 
-        if ($oldIsSensitive !== $newIsSensitive) {
-            $thumbPath = $existingPost['thumb_path'];
-            if (!empty($thumbPath)) {
-                $thumbFullPath = __DIR__ . '/../../../public/' . $thumbPath;
-                $pathInfo = pathinfo($thumbFullPath);
-                $nsfwPath = $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '_nsfw.' . ($pathInfo['extension'] ?? 'webp');
+        if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+            // 新しい画像をアップロード
+            $imageUploader = new ImageUploader(
+                __DIR__ . '/../../../public/uploads/images',
+                __DIR__ . '/../../../public/uploads/thumbs'
+            );
 
-                if ($newIsSensitive === 1) {
-                    // 0→1: NSFWフィルター画像を生成
-                    if (file_exists($thumbFullPath)) {
-                        $imageUploader = new ImageUploader(
-                            __DIR__ . '/../../../public/uploads/images',
-                            __DIR__ . '/../../../public/uploads/thumbs'
-                        );
-                        $imageUploader->createNsfwThumbnail($thumbFullPath, $nsfwPath, $filterSettings);
+            $uploadResult = $imageUploader->upload($_FILES['image'], $isSensitive, $filterSettings);
+
+            if ($uploadResult['success']) {
+                // 古い画像ファイルを削除
+                $uploadsDir = realpath(__DIR__ . '/../../uploads/');
+
+                if (!empty($existingPost['image_path'])) {
+                    $oldImagePath = realpath(__DIR__ . '/../../' . $existingPost['image_path']);
+                    if ($oldImagePath && $uploadsDir && strpos($oldImagePath, $uploadsDir) === 0 && file_exists($oldImagePath)) {
+                        unlink($oldImagePath);
                     }
-                } else {
-                    // 1→0: NSFWフィルター画像を削除
-                    if (file_exists($nsfwPath)) {
-                        unlink($nsfwPath);
+                }
+
+                if (!empty($existingPost['thumb_path'])) {
+                    $oldThumbPath = realpath(__DIR__ . '/../../' . $existingPost['thumb_path']);
+                    if ($oldThumbPath && $uploadsDir && strpos($oldThumbPath, $uploadsDir) === 0 && file_exists($oldThumbPath)) {
+                        unlink($oldThumbPath);
+
+                        // NSFWフィルター画像も削除
+                        $pathInfo = pathinfo($oldThumbPath);
+                        $nsfwPath = $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '_nsfw.' . ($pathInfo['extension'] ?? 'webp');
+                        if (file_exists($nsfwPath)) {
+                            unlink($nsfwPath);
+                        }
+                    }
+                }
+
+                // 新しい画像パスを設定
+                $newImagePath = $uploadResult['image_path'];
+                $newThumbPath = $uploadResult['thumb_path'];
+
+                // 画像を含めて更新
+                $result = $postModel->update($id, $title, $tags, $detail, $newImagePath, $newThumbPath);
+            } else {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => $uploadResult['error']], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+        } else {
+            // is_sensitiveが変更された場合、NSFWフィルター画像を処理
+            $oldIsSensitive = (int)$existingPost['is_sensitive'];
+            $newIsSensitive = $isSensitive;
+
+            if ($oldIsSensitive !== $newIsSensitive) {
+                $thumbPath = $existingPost['thumb_path'];
+                if (!empty($thumbPath)) {
+                    $thumbFullPath = __DIR__ . '/../../../public/' . $thumbPath;
+                    $pathInfo = pathinfo($thumbFullPath);
+                    $nsfwPath = $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '_nsfw.' . ($pathInfo['extension'] ?? 'webp');
+
+                    if ($newIsSensitive === 1) {
+                        // 0→1: NSFWフィルター画像を生成
+                        if (file_exists($thumbFullPath)) {
+                            $imageUploader = new ImageUploader(
+                                __DIR__ . '/../../../public/uploads/images',
+                                __DIR__ . '/../../../public/uploads/thumbs'
+                            );
+                            $imageUploader->createNsfwThumbnail($thumbFullPath, $nsfwPath, $filterSettings);
+                        }
+                    } else {
+                        // 1→0: NSFWフィルター画像を削除
+                        if (file_exists($nsfwPath)) {
+                            unlink($nsfwPath);
+                        }
                     }
                 }
             }
-        }
 
-        // 投稿を更新
-        $result = $postModel->updateTextOnly($id, $title, $tags, $detail, $isSensitive);
+            // 投稿を更新（画像パスは変更なし）
+            $result = $postModel->updateTextOnly($id, $title, $tags, $detail, $isSensitive);
+        }
 
         // 表示/非表示を更新
         if ($result) {

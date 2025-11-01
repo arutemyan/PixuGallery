@@ -217,6 +217,7 @@ class Connection
         // マイグレーション一覧（バージョン番号 => [名前, 関数]）
         $migrations = [
             1 => ['add_tag_columns', function($db) { self::migration_001_addTagColumns($db); }],
+            2 => ['add_updated_at_columns', function($db) { self::migration_002_addUpdatedAtColumns($db); }],
         ];
 
         // 実行済みマイグレーションを取得
@@ -315,6 +316,58 @@ class Connection
 
         // 注意: tagsカラムは後方互換性のため残す（将来的に削除可能）
         // $db->exec("ALTER TABLE posts DROP COLUMN tags"); // SQLiteではDROPがサポートされていない
+    }
+
+    /**
+     * マイグレーション 002: updated_atカラムの追加
+     */
+    private static function migration_002_addUpdatedAtColumns(PDO $db): void
+    {
+        // postsテーブルにupdated_atカラムを追加
+        // カラムが既に存在するかチェック
+        $stmt = $db->query("PRAGMA table_info(posts)");
+        $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $hasUpdatedAt = false;
+
+        foreach ($columns as $column) {
+            if ($column['name'] === 'updated_at') {
+                $hasUpdatedAt = true;
+                break;
+            }
+        }
+
+        if (!$hasUpdatedAt) {
+            // updated_atカラムを追加
+            $db->exec("ALTER TABLE posts ADD COLUMN updated_at DATETIME");
+
+            // 既存のレコードのupdated_atをcreated_atと同じ値に設定
+            $db->exec("UPDATE posts SET updated_at = created_at");
+        }
+
+        // group_postsテーブルにupdated_atカラムを追加（テーブルが存在する場合）
+        $stmt = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='group_posts'");
+        $groupPostsExists = $stmt->fetch();
+
+        if ($groupPostsExists) {
+            $stmt = $db->query("PRAGMA table_info(group_posts)");
+            $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $hasUpdatedAt = false;
+
+            foreach ($columns as $column) {
+                if ($column['name'] === 'updated_at') {
+                    $hasUpdatedAt = true;
+                    break;
+                }
+            }
+
+            if (!$hasUpdatedAt) {
+                // updated_atカラムを追加
+                $db->exec("ALTER TABLE group_posts ADD COLUMN updated_at DATETIME");
+
+                // 既存のレコードのupdated_atをcreated_atと同じ値に設定
+                $db->exec("UPDATE group_posts SET updated_at = created_at");
+            }
+        }
     }
 
     /**
