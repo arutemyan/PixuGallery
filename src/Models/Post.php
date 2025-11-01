@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Database\Connection;
 use App\Utils\ViewCounter;
 use App\Utils\AccessLogger;
+use App\Services\PostTagService;
 use PDO;
 
 /**
@@ -19,12 +20,14 @@ class Post
     private PDO $db;
     private ViewCounter $viewCounter;
     private ?AccessLogger $accessLogger;
+    private PostTagService $tagService;
 
     public function __construct()
     {
         $this->db = Connection::getInstance();
         $this->viewCounter = new ViewCounter();
         $this->accessLogger = AccessLogger::isEnabled() ? new AccessLogger() : null;
+        $this->tagService = new PostTagService($this->db);
     }
 
     /**
@@ -90,7 +93,7 @@ class Post
 
             foreach ($posts as &$post) {
                 $post['view_count'] = $viewCounts[$post['id']] ?? 0;
-                $post['tags'] = $this->getTagsFromRow($post);
+                $post['tags'] = $this->tagService->getTagsFromRow($post);
             }
         }
 
@@ -118,7 +121,7 @@ class Post
             // 閲覧数を追加
             $result['view_count'] = $this->viewCounter->get((int)$result['id']);
             // tag1～tag10をtagsフィールドに変換
-            $result['tags'] = $this->getTagsFromRow($result);
+            $result['tags'] = $this->tagService->getTagsFromRow($result);
             return $result;
         }
 
@@ -146,9 +149,8 @@ class Post
         int $isSensitive = 0,
         int $isVisible = 1
     ): int {
-        // タグをカンマ区切りから配列に変換し、前後のスペース/タブを除去
-        $tagArray = $this->tagsToArray($tags);
-        $tagIds = $this->getOrCreateTagIds($tagArray);
+        // タグ文字列をタグID配列に変換
+        $tagIds = $this->tagService->parseTagsToIds($tags);
 
         // tag1～tag10を含むINSERT文を構築
         $sql = "INSERT INTO posts (title, detail, image_path, thumb_path, is_sensitive, is_visible, tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -184,9 +186,8 @@ class Post
         ?string $imagePath = null,
         ?string $thumbPath = null
     ): bool {
-        // タグをカンマ区切りから配列に変換
-        $tagArray = $this->tagsToArray($tags);
-        $tagIds = $this->getOrCreateTagIds($tagArray);
+        // タグ文字列をタグID配列に変換
+        $tagIds = $this->tagService->parseTagsToIds($tags);
 
         $stmt = $this->db->prepare("
             UPDATE posts
@@ -221,9 +222,8 @@ class Post
         ?string $detail = null,
         int $isSensitive = 0
     ): bool {
-        // タグをカンマ区切りから配列に変換
-        $tagArray = $this->tagsToArray($tags);
-        $tagIds = $this->getOrCreateTagIds($tagArray);
+        // タグ文字列をタグID配列に変換
+        $tagIds = $this->tagService->parseTagsToIds($tags);
 
         $stmt = $this->db->prepare("
             UPDATE posts
@@ -313,7 +313,7 @@ class Post
 
             foreach ($posts as &$post) {
                 $post['view_count'] = $viewCounts[$post['id']] ?? 0;
-                $post['tags'] = $this->getTagsFromRow($post);
+                $post['tags'] = $this->tagService->getTagsFromRow($post);
             }
         }
 
@@ -351,7 +351,7 @@ class Post
 
         if ($result !== false) {
             $result['view_count'] = $this->viewCounter->get((int)$result['id']);
-            $result['tags'] = $this->getTagsFromRow($result);
+            $result['tags'] = $this->tagService->getTagsFromRow($result);
             return $result;
         }
 
@@ -430,22 +430,20 @@ class Post
 
         $tagId = (int)$tag['id'];
 
-        // tag1～tag10のいずれかがタグIDと一致する投稿を検索
+        // タグ検索条件を生成
+        $condition = $this->tagService->buildTagSearchCondition($tagId);
+
         $stmt = $this->db->prepare("
             SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
-            WHERE is_visible = 1
-              AND (tag1 = ? OR tag2 = ? OR tag3 = ? OR tag4 = ? OR tag5 = ?
-                   OR tag6 = ? OR tag7 = ? OR tag8 = ? OR tag9 = ? OR tag10 = ?)
+            WHERE is_visible = 1 AND {$condition['sql']}
             ORDER BY created_at DESC
             LIMIT ?
         ");
-        $stmt->execute([
-            $tagId, $tagId, $tagId, $tagId, $tagId,
-            $tagId, $tagId, $tagId, $tagId, $tagId,
-            $limit
-        ]);
+
+        $params = array_merge($condition['params'], [$limit]);
+        $stmt->execute($params);
         $results = $stmt->fetchAll();
 
         // 閲覧数を一括取得して追加 & tag1～tag10をtagsフィールドに変換
@@ -455,7 +453,7 @@ class Post
 
             foreach ($results as &$result) {
                 $result['view_count'] = $viewCounts[$result['id']] ?? 0;
-                $result['tags'] = $this->getTagsFromRow($result);
+                $result['tags'] = $this->tagService->getTagsFromRow($result);
             }
         }
 
@@ -479,43 +477,25 @@ class Post
         $tagNames = array_slice($tagNames, 0, 10); // 最大10個まで
 
         // タグ名からタグIDを取得
-        $tagIds = [];
-        foreach ($tagNames as $tagName) {
-            $stmt = $this->db->prepare("SELECT id FROM tags WHERE name = ?");
-            $stmt->execute([$tagName]);
-            $tag = $stmt->fetch();
-            if ($tag) {
-                $tagIds[] = (int)$tag['id'];
-            }
-        }
+        $tagIds = $this->tagService->resolveTagNamesToIds($tagNames);
 
         if (empty($tagIds)) {
             return [];
         }
 
-        // tag1～tag10のいずれかに各タグIDが含まれているかをチェック
-        $conditions = [];
-        $params = [];
-
-        foreach ($tagIds as $tagId) {
-            $conditions[] = "(tag1 = ? OR tag2 = ? OR tag3 = ? OR tag4 = ? OR tag5 = ? OR tag6 = ? OR tag7 = ? OR tag8 = ? OR tag9 = ? OR tag10 = ?)";
-            for ($i = 0; $i < 10; $i++) {
-                $params[] = $tagId;
-            }
-        }
-
-        $whereClause = implode(' AND ', $conditions);
+        // タグ検索条件を生成
+        $condition = $this->tagService->buildMultiTagSearchCondition($tagIds);
 
         $stmt = $this->db->prepare("
             SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
             FROM posts
-            WHERE is_visible = 1 AND ({$whereClause})
+            WHERE is_visible = 1 AND {$condition['sql']}
             ORDER BY created_at DESC
             LIMIT ?
         ");
 
-        $params[] = $limit;
+        $params = array_merge($condition['params'], [$limit]);
         $stmt->execute($params);
         $results = $stmt->fetchAll();
 
@@ -526,99 +506,10 @@ class Post
 
             foreach ($results as &$result) {
                 $result['view_count'] = $viewCounts[$result['id']] ?? 0;
-                $result['tags'] = $this->getTagsFromRow($result);
+                $result['tags'] = $this->tagService->getTagsFromRow($result);
             }
         }
 
         return $results;
-    }
-
-    /**
-     * タグ文字列（カンマ区切り）を配列に変換
-     * 前後のスペース/タブを除去し、空要素を削除、最大10個に制限
-     *
-     * @param string|null $tags タグ文字列（カンマ区切り）
-     * @return array タグ配列（最大10個）
-     */
-    private function tagsToArray(?string $tags): array
-    {
-        if (empty($tags)) {
-            return [];
-        }
-
-        // カンマで分割し、前後のスペース/タブを除去
-        $tagArray = array_map('trim', explode(',', $tags));
-
-        // 空要素を削除
-        $tagArray = array_filter($tagArray, function($tag) {
-            return !empty($tag);
-        });
-
-        // 最大10個に制限
-        return array_slice($tagArray, 0, 10);
-    }
-
-    /**
-     * タグ名配列からタグIDを取得または作成
-     * 10個未満の場合はnullで埋める
-     *
-     * @param array $tagNames タグ名配列
-     * @return array 10要素の配列（tag1～tag10のタグID、または null）
-     */
-    private function getOrCreateTagIds(array $tagNames): array
-    {
-        $tagIds = array_fill(0, 10, null);
-
-        for ($i = 0; $i < min(count($tagNames), 10); $i++) {
-            $tagName = $tagNames[$i];
-            if (empty($tagName)) {
-                continue;
-            }
-
-            // タグを取得または作成
-            $stmt = $this->db->prepare("INSERT OR IGNORE INTO tags (name) VALUES (?)");
-            $stmt->execute([$tagName]);
-
-            $stmt = $this->db->prepare("SELECT id FROM tags WHERE name = ?");
-            $stmt->execute([$tagName]);
-            $tag = $stmt->fetch();
-
-            if ($tag) {
-                $tagIds[$i] = (int)$tag['id'];
-            }
-        }
-
-        return $tagIds;
-    }
-
-    /**
-     * 投稿行データからtag1～tag10（タグID）を読み取り、タグ名のカンマ区切り文字列に変換
-     *
-     * @param array $row 投稿行データ
-     * @return string カンマ区切りのタグ名文字列
-     */
-    private function getTagsFromRow(array $row): string
-    {
-        $tagIds = [];
-
-        // tag1～tag10からタグIDを取得
-        for ($i = 1; $i <= 10; $i++) {
-            $tagKey = "tag{$i}";
-            if (isset($row[$tagKey]) && !empty($row[$tagKey])) {
-                $tagIds[] = (int)$row[$tagKey];
-            }
-        }
-
-        if (empty($tagIds)) {
-            return '';
-        }
-
-        // タグIDからタグ名を一括取得
-        $placeholders = implode(',', array_fill(0, count($tagIds), '?'));
-        $stmt = $this->db->prepare("SELECT name FROM tags WHERE id IN ({$placeholders}) ORDER BY id");
-        $stmt->execute($tagIds);
-        $tags = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-        return implode(',', $tags);
     }
 }

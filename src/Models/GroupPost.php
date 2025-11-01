@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Database\Connection;
+use App\Services\PostTagService;
 use App\Utils\ViewCounter;
 use PDO;
 
@@ -17,11 +18,13 @@ class GroupPost
 {
     private PDO $db;
     private ViewCounter $viewCounter;
+    private PostTagService $tagService;
 
     public function __construct()
     {
         $this->db = Connection::getInstance();
         $this->viewCounter = new ViewCounter();
+        $this->tagService = new PostTagService($this->db);
     }
 
     /**
@@ -56,10 +59,9 @@ class GroupPost
 
         // タグフィルタ
         if ($tagId !== null && $tagId > 0) {
-            $sql .= " AND (gp.tag1 = ? OR gp.tag2 = ? OR gp.tag3 = ? OR gp.tag4 = ? OR gp.tag5 = ? OR gp.tag6 = ? OR gp.tag7 = ? OR gp.tag8 = ? OR gp.tag9 = ? OR gp.tag10 = ?)";
-            for ($i = 0; $i < 10; $i++) {
-                $params[] = $tagId;
-            }
+            $tagCondition = $this->tagService->buildTagSearchCondition($tagId);
+            $sql .= " AND " . $tagCondition['sql'];
+            $params = array_merge($params, $tagCondition['params']);
         }
 
         $sql .= " ORDER BY gp.created_at DESC LIMIT ? OFFSET ?";
@@ -72,7 +74,7 @@ class GroupPost
 
         // 各グループの代表画像（最初の画像）を取得
         foreach ($groupPosts as &$groupPost) {
-            $groupPost['tags'] = $this->getTagsFromRow($groupPost);
+            $groupPost['tags'] = $this->tagService->getTagsFromRow($groupPost);
             $groupPost['view_count'] = $this->viewCounter->get($groupPost['id']);
 
             // 代表画像を取得
@@ -127,7 +129,7 @@ class GroupPost
         }
 
         // タグを取得
-        $groupPost['tags'] = $this->getTagsFromRow($groupPost);
+        $groupPost['tags'] = $this->tagService->getTagsFromRow($groupPost);
         $groupPost['view_count'] = $this->viewCounter->get($id);
 
         // グループ内の全画像を取得
@@ -175,8 +177,7 @@ class GroupPost
         int $isVisible = 1
     ): int {
         // タグIDを取得
-        $tagArray = $this->tagsToArray($tags);
-        $tagIds = $this->getOrCreateTagIds($tagArray);
+        $tagIds = $this->tagService->parseTagsToIds($tags);
 
         // グループ投稿を作成
         $stmt = $this->db->prepare("
@@ -239,8 +240,7 @@ class GroupPost
         int $isSensitive,
         int $isVisible
     ): bool {
-        $tagArray = $this->tagsToArray($tags);
-        $tagIds = $this->getOrCreateTagIds($tagArray);
+        $tagIds = $this->tagService->parseTagsToIds($tags);
 
         $stmt = $this->db->prepare("
             UPDATE group_posts
@@ -281,76 +281,5 @@ class GroupPost
     public function incrementViewCount(int $id): bool
     {
         return $this->viewCounter->increment($id);
-    }
-
-    /**
-     * タグ文字列を配列に変換
-     */
-    private function tagsToArray(?string $tags): array
-    {
-        if (empty($tags)) {
-            return [];
-        }
-
-        $tagArray = array_map('trim', explode(',', $tags));
-        $tagArray = array_filter($tagArray, function($tag) {
-            return !empty($tag);
-        });
-
-        return array_slice($tagArray, 0, 10);
-    }
-
-    /**
-     * タグ名配列からタグIDを取得または作成
-     */
-    private function getOrCreateTagIds(array $tagNames): array
-    {
-        $tagIds = array_fill(0, 10, null);
-
-        for ($i = 0; $i < min(count($tagNames), 10); $i++) {
-            $tagName = $tagNames[$i];
-            if (empty($tagName)) {
-                continue;
-            }
-
-            $stmt = $this->db->prepare("INSERT OR IGNORE INTO tags (name) VALUES (?)");
-            $stmt->execute([$tagName]);
-
-            $stmt = $this->db->prepare("SELECT id FROM tags WHERE name = ?");
-            $stmt->execute([$tagName]);
-            $tag = $stmt->fetch();
-
-            if ($tag) {
-                $tagIds[$i] = (int)$tag['id'];
-            }
-        }
-
-        return $tagIds;
-    }
-
-    /**
-     * 行データからタグ名を取得
-     */
-    private function getTagsFromRow(array $row): string
-    {
-        $tagIds = [];
-
-        for ($i = 1; $i <= 10; $i++) {
-            $tagKey = "tag{$i}";
-            if (isset($row[$tagKey]) && !empty($row[$tagKey])) {
-                $tagIds[] = (int)$row[$tagKey];
-            }
-        }
-
-        if (empty($tagIds)) {
-            return '';
-        }
-
-        $placeholders = implode(',', array_fill(0, count($tagIds), '?'));
-        $stmt = $this->db->prepare("SELECT name FROM tags WHERE id IN ({$placeholders}) ORDER BY id");
-        $stmt->execute($tagIds);
-        $tags = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-        return implode(',', $tags);
     }
 }

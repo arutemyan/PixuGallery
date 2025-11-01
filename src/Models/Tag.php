@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Database\Connection;
+use App\Services\PostTagService;
 use PDO;
 
 /**
@@ -15,6 +16,7 @@ use PDO;
 class Tag
 {
     private PDO $db;
+    private ?PostTagService $tagService = null;
 
     public function __construct()
     {
@@ -22,28 +24,38 @@ class Tag
     }
 
     /**
-     * すべてのタグを取得（投稿数付き）
-     * 表示中の投稿（is_visible=1）のみをカウント
+     * PostTagServiceのインスタンスを取得（遅延初期化）
      *
+     * @return PostTagService
+     */
+    private function getTagService(): PostTagService
+    {
+        if ($this->tagService === null) {
+            $this->tagService = new PostTagService($this->db);
+        }
+        return $this->tagService;
+    }
+
+    /**
+     * すべてのタグを取得
+     *
+     * @param bool $includePostCount 投稿数を含めるか（デフォルト: false）
      * @return array タグデータの配列
      */
-    public function getAll(): array
+    public function getAll(bool $includePostCount = false): array
     {
         $stmt = $this->db->query("
-            SELECT
-                t.id,
-                t.name,
-                (
-                    SELECT COUNT(DISTINCT p.id)
-                    FROM posts p
-                    WHERE p.is_visible = 1
-                      AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
-                           OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
-                ) as post_count
+            SELECT t.id, t.name, t.created_at
             FROM tags t
-            ORDER BY post_count DESC, t.name ASC
+            ORDER BY t.name ASC
         ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $tags = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($includePostCount) {
+            $tags = $this->addPostCountsToTags($tags);
+        }
+
+        return $tags;
     }
 
     /**
@@ -51,96 +63,97 @@ class Tag
      * 表示中の投稿（is_visible=1）のみをカウント
      *
      * @param int $limit 取得件数（デフォルト: 10）
-     * @return array タグデータの配列
+     * @return array タグデータの配列（post_count含む）
      */
     public function getPopular(int $limit = 10): array
     {
-        $stmt = $this->db->prepare("
-            SELECT
-                t.id,
-                t.name,
-                (
-                    SELECT COUNT(DISTINCT p.id)
-                    FROM posts p
-                    WHERE p.is_visible = 1
-                      AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
-                           OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
-                ) as post_count
-            FROM tags t
-            WHERE (
-                SELECT COUNT(DISTINCT p.id)
-                FROM posts p
-                WHERE p.is_visible = 1
-                  AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
-                       OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
-            ) > 0
-            ORDER BY post_count DESC, t.name ASC
-            LIMIT ?
-        ");
-        $stmt->execute([$limit]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // すべてのタグを取得
+        $stmt = $this->db->query("SELECT id, name, created_at FROM tags");
+        $allTags = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 投稿数を追加
+        $tagsWithCounts = $this->addPostCountsToTags($allTags);
+
+        // 投稿数が1以上のタグのみフィルタリング
+        $tagsWithCounts = array_filter($tagsWithCounts, function($tag) {
+            return $tag['post_count'] > 0;
+        });
+
+        // 投稿数でソート（降順）、次にタグ名でソート（昇順）
+        usort($tagsWithCounts, function($a, $b) {
+            if ($a['post_count'] !== $b['post_count']) {
+                return $b['post_count'] - $a['post_count'];
+            }
+            return strcmp($a['name'], $b['name']);
+        });
+
+        // 指定件数まで制限
+        return array_slice($tagsWithCounts, 0, $limit);
     }
 
     /**
      * タグ名でタグを検索（部分一致）
-     * 表示中の投稿（is_visible=1）のみをカウント
      *
      * @param string $name 検索する名前
+     * @param bool $includePostCount 投稿数を含めるか（デフォルト: true）
      * @return array タグデータの配列
      */
-    public function searchByName(string $name): array
+    public function searchByName(string $name, bool $includePostCount = true): array
     {
         $stmt = $this->db->prepare("
-            SELECT
-                t.id,
-                t.name,
-                (
-                    SELECT COUNT(DISTINCT p.id)
-                    FROM posts p
-                    WHERE p.is_visible = 1
-                      AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
-                           OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
-                ) as post_count
+            SELECT t.id, t.name, t.created_at
             FROM tags t
             WHERE t.name LIKE ?
-            ORDER BY post_count DESC, t.name ASC
+            ORDER BY t.name ASC
         ");
         $stmt->execute(['%' . $name . '%']);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $tags = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($includePostCount) {
+            $tags = $this->addPostCountsToTags($tags);
+            // 投稿数でソート（降順）、次にタグ名でソート（昇順）
+            usort($tags, function($a, $b) {
+                if ($a['post_count'] !== $b['post_count']) {
+                    return $b['post_count'] - $a['post_count'];
+                }
+                return strcmp($a['name'], $b['name']);
+            });
+        }
+
+        return $tags;
     }
 
     /**
      * タグIDでタグを取得
-     * 表示中の投稿（is_visible=1）のみをカウント
      *
      * @param int $id タグID
+     * @param bool $includePostCount 投稿数を含めるか（デフォルト: false）
      * @return array|null タグデータ、存在しない場合はnull
      */
-    public function getById(int $id): ?array
+    public function getById(int $id, bool $includePostCount = false): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT
-                t.id,
-                t.name,
-                (
-                    SELECT COUNT(DISTINCT p.id)
-                    FROM posts p
-                    WHERE p.is_visible = 1
-                      AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
-                           OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
-                ) as post_count
+            SELECT t.id, t.name, t.created_at
             FROM tags t
             WHERE t.id = ?
         ");
         $stmt->execute([$id]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $result !== false ? $result : null;
+        if ($result === false) {
+            return null;
+        }
+
+        if ($includePostCount) {
+            $tags = $this->addPostCountsToTags([$result]);
+            return $tags[0];
+        }
+
+        return $result;
     }
 
     /**
      * タグ名でタグを取得（完全一致）
-     * 表示中の投稿（is_visible=1）のみをカウント
      *
      * @param string $name タグ名
      * @return array|null タグデータ、存在しない場合はnull
@@ -148,16 +161,7 @@ class Tag
     public function getByName(string $name): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT
-                t.id,
-                t.name,
-                (
-                    SELECT COUNT(DISTINCT p.id)
-                    FROM posts p
-                    WHERE p.is_visible = 1
-                      AND (p.tag1 = t.id OR p.tag2 = t.id OR p.tag3 = t.id OR p.tag4 = t.id OR p.tag5 = t.id
-                           OR p.tag6 = t.id OR p.tag7 = t.id OR p.tag8 = t.id OR p.tag9 = t.id OR p.tag10 = t.id)
-                ) as post_count
+            SELECT t.id, t.name, t.created_at
             FROM tags t
             WHERE t.name = ?
         ");
@@ -260,5 +264,33 @@ class Tag
         $stmt = $this->db->query("SELECT COUNT(*) as count FROM tags");
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return (int)$result['count'];
+    }
+
+    /**
+     * タグ配列に投稿数を追加
+     *
+     * @param array $tags タグデータの配列
+     * @return array 投稿数が追加されたタグデータの配列
+     */
+    private function addPostCountsToTags(array $tags): array
+    {
+        if (empty($tags)) {
+            return $tags;
+        }
+
+        $tagService = $this->getTagService();
+
+        // タグIDを収集
+        $tagIds = array_column($tags, 'id');
+
+        // 投稿数を一括取得
+        $counts = $tagService->getPostCountsForTags($tagIds);
+
+        // 各タグに投稿数を追加
+        foreach ($tags as &$tag) {
+            $tag['post_count'] = $counts[$tag['id']] ?? 0;
+        }
+
+        return $tags;
     }
 }
