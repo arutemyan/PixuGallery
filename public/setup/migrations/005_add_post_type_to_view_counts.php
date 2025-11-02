@@ -5,65 +5,53 @@
  *
  * - post_typeカラム追加（0=single, 1=group）
  * - 既存データは全てsingle（post_type=0）として扱う
- * - ユニークキー制約を(post_id, post_type)に変更
+ * - 主キーを(post_id, post_type)の複合キーに変更
+ *
+ * 対象DB:
+ * - MySQL/PostgreSQL: gallery.db内のview_countsテーブル
+ * - SQLite: counters.dbのview_countsテーブル（CountersConnectionが自動処理）
  */
+
+use App\Database\DatabaseHelper;
+use App\Database\MigrationHelper;
+use App\Database\CountersConnection;
 
 return [
     'name' => 'add_post_type_to_view_counts',
 
-    'up' => function (PDO $db) {
-        $helper = \App\Database\DatabaseHelper::class;
-        $driver = $helper::getDriver($db);
-        $intType = $helper::getIntegerType($db);
+    'up' => function (PDO $db, MigrationHelper $helper) {
+        $driver = DatabaseHelper::getDriver($db);
+        $intType = DatabaseHelper::getIntegerType($db);
 
         error_log("Migration 005: Starting migration for driver: {$driver}");
 
-        // SQLiteの場合はCountersConnection::initializeSchema()が処理するためスキップ
+        // SQLiteの場合はCountersConnection::initializeSchema()が自動処理するためスキップ
         if ($driver === 'sqlite') {
-            error_log("Migration 005: SQLite detected - migration handled by CountersConnection");
-            error_log("Migration 005: Skipping (counters.db is managed separately)");
+            error_log("Migration 005: SQLite detected - counters.db is managed by CountersConnection");
+            error_log("Migration 005: Triggering CountersConnection to ensure migration");
+
+            // CountersConnectionを呼び出して自動マイグレーションをトリガー
+            try {
+                CountersConnection::getInstance();
+                error_log("Migration 005: CountersConnection initialized successfully");
+            } catch (Exception $e) {
+                error_log("Migration 005: CountersConnection initialization failed: " . $e->getMessage());
+                // CountersConnectionの初期化失敗は致命的ではない（次回アクセス時に再試行される）
+            }
+
             return;
         }
 
-        // MySQL/PostgreSQLの場合のみ処理
+        // MySQL/PostgreSQLの場合: gallery.db内のview_countsテーブルを処理
         error_log("Migration 005: Processing MySQL/PostgreSQL migration");
 
-        // post_typeカラムの存在確認
-        $hasPostType = false;
-        try {
-            if ($driver === 'mysql') {
-                $stmt = $db->query("SHOW COLUMNS FROM view_counts LIKE 'post_type'");
-                $hasPostType = $stmt->fetch() !== false;
-            } elseif ($driver === 'postgresql') {
-                $stmt = $db->query("
-                    SELECT column_name
-                    FROM information_schema.columns
-                    WHERE table_name = 'view_counts' AND column_name = 'post_type'
-                ");
-                $hasPostType = $stmt->fetch() !== false;
-            }
-        } catch (PDOException $e) {
-            error_log("Migration 005: Error checking post_type column: " . $e->getMessage());
-        }
-
-        if ($hasPostType) {
-            error_log("Migration 005: post_type column already exists, skipping");
-            return;
-        }
-
         // post_typeカラムを追加
-        try {
+        if (!$helper->columnExists($db, 'view_counts', 'post_type')) {
             error_log("Migration 005: Adding post_type column");
-            $db->exec("ALTER TABLE view_counts ADD COLUMN post_type {$intType} DEFAULT 0 NOT NULL");
-            error_log("Migration 005: Successfully added post_type column");
-        } catch (PDOException $e) {
-            if (strpos($e->getMessage(), 'Duplicate column') !== false ||
-                strpos($e->getMessage(), 'already exists') !== false) {
-                error_log("Migration 005: post_type column already exists (ignored)");
-            } else {
-                error_log("Migration 005: Failed to add post_type column: " . $e->getMessage());
-                throw $e;
-            }
+            $helper->addColumnIfNotExists($db, 'view_counts', 'post_type', "{$intType} DEFAULT 0 NOT NULL");
+        } else {
+            error_log("Migration 005: post_type column already exists (skipped)");
+            return; // 既にマイグレーション済み
         }
 
         // 主キー制約の変更
@@ -124,16 +112,17 @@ return [
                 }
             }
 
-            error_log("Migration 005: Successfully updated primary key to (post_id, post_type)");
+            error_log("Migration 005: Successfully updated primary key");
 
         } catch (PDOException $e) {
+            error_log("Migration 005: Primary key update error: " . $e->getMessage());
+
             // 既に複合キーの場合はエラーを無視
             if (strpos($e->getMessage(), 'already exists') !== false ||
                 strpos($e->getMessage(), 'Duplicate') !== false ||
                 strpos($e->getMessage(), 'Multiple primary key') !== false) {
-                error_log("Migration 005: Primary key already exists (ignored): " . $e->getMessage());
+                error_log("Migration 005: Primary key already exists (ignored)");
             } else {
-                error_log("Migration 005: Failed to update primary key: " . $e->getMessage());
                 throw $e;
             }
         }

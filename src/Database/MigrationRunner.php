@@ -10,7 +10,9 @@ use Exception;
 /**
  * マイグレーション実行クラス
  *
- * public/setup/migrations/ ディレクトリ内のマイグレーションファイルを自動検出・実行します
+ * - マイグレーション記録はgallery.dbで一元管理
+ * - マイグレーションファイル内で必要に応じて他のDB接続を取得可能
+ * - MigrationHelperによる冪等性サポート
  */
 class MigrationRunner
 {
@@ -20,8 +22,8 @@ class MigrationRunner
     /**
      * コンストラクタ
      *
-     * @param PDO $db データベース接続
-     * @param string|null $migrationsDir マイグレーションディレクトリ（デフォルト: public/setup/migrations）
+     * @param PDO $db データベース接続（gallery.db）
+     * @param string|null $migrationsDir マイグレーションディレクトリ
      */
     public function __construct(PDO $db, ?string $migrationsDir = null)
     {
@@ -73,7 +75,7 @@ class MigrationRunner
                 ];
 
                 error_log("Migration {$version} failed: " . $e->getMessage());
-                throw $e; // エラー時は例外をスロー
+                throw $e;
             }
         }
 
@@ -82,8 +84,6 @@ class MigrationRunner
 
     /**
      * マイグレーションファイルを検出
-     *
-     * @return array バージョン番号 => ファイルパスの配列
      */
     private function discoverMigrations(): array
     {
@@ -101,14 +101,12 @@ class MigrationRunner
         foreach ($files as $file) {
             $filename = basename($file);
 
-            // ファイル名から バージョン番号を抽出（例: 001_add_tag_columns.php → 1）
             if (preg_match('/^(\d+)_.*\.php$/', $filename, $matches)) {
                 $version = (int)$matches[1];
                 $migrations[$version] = $file;
             }
         }
 
-        // バージョン順にソート
         ksort($migrations);
 
         return $migrations;
@@ -116,18 +114,12 @@ class MigrationRunner
 
     /**
      * マイグレーションファイルを実行
-     *
-     * @param string $file マイグレーションファイルのパス
-     * @param int $version バージョン番号
-     * @return string マイグレーション名
-     * @throws Exception
      */
     private function executeMigration(string $file, int $version): string
     {
         // マイグレーションファイルを読み込み
         $migration = require $file;
 
-        // マイグレーション配列の検証
         if (!is_array($migration)) {
             throw new Exception("Migration file must return an array: {$file}");
         }
@@ -140,17 +132,23 @@ class MigrationRunner
             throw new Exception("Migration 'up' must be callable: {$file}");
         }
 
-        // up関数を実行
-        $migration['up']($this->db);
+        // up関数の引数の数をチェックして、新旧両方の形式に対応
+        $reflection = new \ReflectionFunction($migration['up']);
+        $paramCount = $reflection->getNumberOfParameters();
+
+        if ($paramCount >= 2) {
+            // 新形式: function(PDO $db, MigrationHelper $helper)
+            $migration['up']($this->db, new MigrationHelper());
+        } else {
+            // 旧形式: function(PDO $db)
+            $migration['up']($this->db);
+        }
 
         return $migration['name'];
     }
 
     /**
      * 実行済みマイグレーションを記録
-     *
-     * @param int $version バージョン番号
-     * @param string $name マイグレーション名
      */
     private function recordMigration(int $version, string $name): void
     {
@@ -160,8 +158,6 @@ class MigrationRunner
 
     /**
      * 実行済みマイグレーションのバージョン番号を取得
-     *
-     * @return array バージョン番号の配列
      */
     private function getExecutedMigrations(): array
     {
@@ -171,8 +167,6 @@ class MigrationRunner
 
     /**
      * すべての実行済みマイグレーション情報を取得
-     *
-     * @return array マイグレーション情報の配列
      */
     public function getExecutedMigrationDetails(): array
     {
@@ -182,9 +176,6 @@ class MigrationRunner
 
     /**
      * 指定したマイグレーションが実行済みかチェック
-     *
-     * @param int $version マイグレーションバージョン
-     * @return bool 実行済みの場合true
      */
     public function isMigrationExecuted(int $version): bool
     {
