@@ -75,7 +75,7 @@ class GroupPost
         // 各グループの代表画像（最初の画像）を取得
         foreach ($groupPosts as &$groupPost) {
             $groupPost['tags'] = $this->tagService->getTagsFromRow($groupPost);
-            $groupPost['view_count'] = $this->viewCounter->get($groupPost['id']);
+            $groupPost['view_count'] = $this->viewCounter->get($groupPost['id'], 1); // 1=group
 
             // 代表画像を取得
             $stmt = $this->db->prepare("
@@ -130,7 +130,7 @@ class GroupPost
 
         // タグを取得
         $groupPost['tags'] = $this->tagService->getTagsFromRow($groupPost);
-        $groupPost['view_count'] = $this->viewCounter->get($id);
+        $groupPost['view_count'] = $this->viewCounter->get($id, 1); // 1=group
 
         // グループ内の全画像を取得
         $groupPost['images'] = $this->getImages($id);
@@ -328,6 +328,6 @@ class GroupPost
      */
     public function incrementViewCount(int $id): bool
     {
-        return $this->viewCounter->increment($id);
+        return $this->viewCounter->increment($id, 1); // 1=group
     }
 }

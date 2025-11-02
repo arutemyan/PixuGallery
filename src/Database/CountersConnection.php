@@ -101,14 +101,75 @@ class CountersConnection
     {
         $db = self::$instance;
 
-        // view_countsテーブル（投稿の閲覧数）
-        $db->exec("
-            CREATE TABLE IF NOT EXISTS view_counts (
-                post_id INTEGER PRIMARY KEY,
-                count INTEGER DEFAULT 0,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        ");
+        // view_countsテーブルの存在確認
+        $stmt = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='view_counts'");
+        $tableExists = $stmt->fetch() !== false;
+
+        if (!$tableExists) {
+            // 新規作成：最初からpost_typeを含める
+            $db->exec("
+                CREATE TABLE view_counts (
+                    post_id INTEGER NOT NULL,
+                    post_type INTEGER DEFAULT 0 NOT NULL,
+                    count INTEGER DEFAULT 0,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (post_id, post_type)
+                )
+            ");
+        } else {
+            // 既存テーブル：post_typeカラムの追加が必要かチェック
+            $stmt = $db->query("PRAGMA table_info(view_counts)");
+            $columns = $stmt->fetchAll();
+            $hasPostType = false;
+
+            foreach ($columns as $column) {
+                if ($column['name'] === 'post_type') {
+                    $hasPostType = true;
+                    break;
+                }
+            }
+
+            if (!$hasPostType) {
+                // post_typeカラムを追加してテーブルを再作成
+                $db->exec("BEGIN TRANSACTION");
+
+                try {
+                    // 既存データを一時テーブルにコピー
+                    $db->exec("CREATE TABLE view_counts_temp AS SELECT * FROM view_counts");
+
+                    // 古いテーブルを削除
+                    $db->exec("DROP TABLE view_counts");
+
+                    // 新しいスキーマでテーブルを作成
+                    $db->exec("
+                        CREATE TABLE view_counts (
+                            post_id INTEGER NOT NULL,
+                            post_type INTEGER DEFAULT 0 NOT NULL,
+                            count INTEGER DEFAULT 0,
+                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            PRIMARY KEY (post_id, post_type)
+                        )
+                    ");
+
+                    // データを戻す（既存データは全てpost_type=0として扱う）
+                    $db->exec("
+                        INSERT INTO view_counts (post_id, post_type, count, updated_at)
+                        SELECT post_id, 0, count, updated_at FROM view_counts_temp
+                    ");
+
+                    // 一時テーブルを削除
+                    $db->exec("DROP TABLE view_counts_temp");
+
+                    $db->exec("COMMIT");
+
+                    error_log("CountersConnection: Added post_type column to view_counts table");
+                } catch (\Exception $e) {
+                    $db->exec("ROLLBACK");
+                    error_log("CountersConnection: Failed to add post_type column: " . $e->getMessage());
+                    throw $e;
+                }
+            }
+        }
 
         // インデックス作成
         $db->exec("CREATE INDEX IF NOT EXISTS idx_view_counts_updated ON view_counts(updated_at DESC)");

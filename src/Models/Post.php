@@ -89,7 +89,7 @@ class Post
         // 閲覧数を一括取得して追加 & tag1～tag10をtagsフィールドに変換
         if (!empty($posts)) {
             $postIds = array_column($posts, 'id');
-            $viewCounts = $this->viewCounter->getBatch($postIds);
+            $viewCounts = $this->viewCounter->getBatch($postIds, 0); // 0=single
 
             foreach ($posts as &$post) {
                 $post['view_count'] = $viewCounts[$post['id']] ?? 0;
@@ -119,7 +119,7 @@ class Post
 
         if ($result !== false) {
             // 閲覧数を追加
-            $result['view_count'] = $this->viewCounter->get((int)$result['id']);
+            $result['view_count'] = $this->viewCounter->get((int)$result['id'], 0); // 0=single
             // tag1～tag10をtagsフィールドに変換
             $result['tags'] = $this->tagService->getTagsFromRow($result);
             return $result;
@@ -273,8 +273,8 @@ class Post
      */
     public function incrementViewCount(int $id): bool
     {
-        // カウンターDBで閲覧数をインクリメント
-        $success = $this->viewCounter->increment($id);
+        // カウンターDBで閲覧数をインクリメント (0=single)
+        $success = $this->viewCounter->increment($id, 0);
 
         // アクセスログが有効な場合は記録
         if ($this->accessLogger !== null) {
@@ -309,7 +309,7 @@ class Post
         // 閲覧数を一括取得して追加 & tag1～tag10をtagsフィールドに変換
         if (!empty($posts)) {
             $postIds = array_column($posts, 'id');
-            $viewCounts = $this->viewCounter->getBatch($postIds);
+            $viewCounts = $this->viewCounter->getBatch($postIds, 0); // 0=single
 
             foreach ($posts as &$post) {
                 $post['view_count'] = $viewCounts[$post['id']] ?? 0;
@@ -405,7 +405,7 @@ class Post
      */
     public function getViewCount(int $id): int
     {
-        return $this->viewCounter->get($id);
+        return $this->viewCounter->get($id, 0); // 0=single
     }
 
     /**
@@ -449,7 +449,7 @@ class Post
         // 閲覧数を一括取得して追加 & tag1～tag10をtagsフィールドに変換
         if (!empty($results)) {
             $postIds = array_column($results, 'id');
-            $viewCounts = $this->viewCounter->getBatch($postIds);
+            $viewCounts = $this->viewCounter->getBatch($postIds, 0); // 0=single
 
             foreach ($results as &$result) {
                 $result['view_count'] = $viewCounts[$result['id']] ?? 0;
@@ -502,7 +502,7 @@ class Post
         // 閲覧数を一括取得して追加 & tag1～tag10をtagsフィールドに変換
         if (!empty($results)) {
             $postIds = array_column($results, 'id');
-            $viewCounts = $this->viewCounter->getBatch($postIds);
+            $viewCounts = $this->viewCounter->getBatch($postIds, 0); // 0=single
 
             foreach ($results as &$result) {
                 $result['view_count'] = $viewCounts[$result['id']] ?? 0;

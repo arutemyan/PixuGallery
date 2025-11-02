@@ -62,6 +62,9 @@ try {
             header('Location: /index.php');
             exit;
         }
+
+        // シングル投稿の閲覧数をインクリメント
+        $model->incrementViewCount($id);
     }
 
 } catch (Exception $e) {
@@ -244,7 +247,7 @@ $imageUrl = !empty($shareImagePath) ? $protocol . ($_SERVER['HTTP_HOST'] ?? 'loc
                             $isSensitive = isset($data['is_sensitive']) && $data['is_sensitive'] == 1;
                             $imagePath = '/' . escapeHtml($image['image_path']);
                             // センシティブ画像の場合、最初はNSFWフィルター版を表示
-                            if ($isSensitive) {
+                            if ($index === 0 && $isSensitive) {
                                 $displayPath = createNsfwThumb($image);
                             } else {
                                 $displayPath = $imagePath;
