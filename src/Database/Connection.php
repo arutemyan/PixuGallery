@@ -279,9 +279,11 @@ class Connection
         if ($driver !== 'sqlite') {
             $db->exec("
                 CREATE TABLE IF NOT EXISTS view_counts (
-                    post_id {$intType} PRIMARY KEY,
+                    post_id {$intType} NOT NULL,
+                    post_type {$intType} DEFAULT 0 NOT NULL,
                     count {$intType} DEFAULT 0,
-                    updated_at {$datetimeType} DEFAULT {$currentTimestamp}
+                    updated_at {$datetimeType} DEFAULT {$currentTimestamp},
+                    PRIMARY KEY (post_id, post_type)
                 )
             ");
             $db->exec("CREATE INDEX IF NOT EXISTS idx_view_counts_updated ON view_counts(updated_at DESC)");

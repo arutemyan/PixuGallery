@@ -107,6 +107,7 @@ class CountersConnection
 
         if (!$tableExists) {
             // 新規作成：最初からpost_typeを含める
+            error_log("CountersConnection: Creating new view_counts table with post_type");
             $db->exec("
                 CREATE TABLE view_counts (
                     post_id INTEGER NOT NULL,
@@ -116,63 +117,132 @@ class CountersConnection
                     PRIMARY KEY (post_id, post_type)
                 )
             ");
-        } else {
-            // 既存テーブル：post_typeカラムの追加が必要かチェック
-            $stmt = $db->query("PRAGMA table_info(view_counts)");
-            $columns = $stmt->fetchAll();
-            $hasPostType = false;
+            $db->exec("CREATE INDEX IF NOT EXISTS idx_view_counts_updated ON view_counts(updated_at DESC)");
+            error_log("CountersConnection: Successfully created view_counts table");
+            return;
+        }
 
-            foreach ($columns as $column) {
-                if ($column['name'] === 'post_type') {
-                    $hasPostType = true;
-                    break;
-                }
-            }
+        // 既存テーブル：post_typeカラムの追加が必要かチェック
+        $stmt = $db->query("PRAGMA table_info(view_counts)");
+        $columns = $stmt->fetchAll();
+        $hasPostType = false;
 
-            if (!$hasPostType) {
-                // post_typeカラムを追加してテーブルを再作成
-                $db->exec("BEGIN TRANSACTION");
-
-                try {
-                    // 既存データを一時テーブルにコピー
-                    $db->exec("CREATE TABLE view_counts_temp AS SELECT * FROM view_counts");
-
-                    // 古いテーブルを削除
-                    $db->exec("DROP TABLE view_counts");
-
-                    // 新しいスキーマでテーブルを作成
-                    $db->exec("
-                        CREATE TABLE view_counts (
-                            post_id INTEGER NOT NULL,
-                            post_type INTEGER DEFAULT 0 NOT NULL,
-                            count INTEGER DEFAULT 0,
-                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            PRIMARY KEY (post_id, post_type)
-                        )
-                    ");
-
-                    // データを戻す（既存データは全てpost_type=0として扱う）
-                    $db->exec("
-                        INSERT INTO view_counts (post_id, post_type, count, updated_at)
-                        SELECT post_id, 0, count, updated_at FROM view_counts_temp
-                    ");
-
-                    // 一時テーブルを削除
-                    $db->exec("DROP TABLE view_counts_temp");
-
-                    $db->exec("COMMIT");
-
-                    error_log("CountersConnection: Added post_type column to view_counts table");
-                } catch (\Exception $e) {
-                    $db->exec("ROLLBACK");
-                    error_log("CountersConnection: Failed to add post_type column: " . $e->getMessage());
-                    throw $e;
-                }
+        foreach ($columns as $column) {
+            if ($column['name'] === 'post_type') {
+                $hasPostType = true;
+                break;
             }
         }
 
-        // インデックス作成
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_view_counts_updated ON view_counts(updated_at DESC)");
+        if (!$hasPostType) {
+            error_log("CountersConnection: Migrating view_counts table to add post_type column");
+
+            // 一時テーブルが既に存在する場合は削除（前回の失敗を考慮）
+            try {
+                $stmt = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='view_counts_temp'");
+                if ($stmt->fetch() !== false) {
+                    error_log("CountersConnection: Cleaning up existing view_counts_temp table");
+                    $db->exec("DROP TABLE view_counts_temp");
+                }
+            } catch (\Exception $e) {
+                error_log("CountersConnection: Warning during cleanup: " . $e->getMessage());
+            }
+
+            // マイグレーション実行
+            try {
+                error_log("CountersConnection: Step 1 - Starting transaction");
+                $db->exec("BEGIN TRANSACTION");
+
+                error_log("CountersConnection: Step 2 - Creating temporary table");
+                $db->exec("CREATE TABLE view_counts_temp AS SELECT * FROM view_counts");
+
+                // データ件数を確認
+                $stmt = $db->query("SELECT COUNT(*) as count FROM view_counts_temp");
+                $count = $stmt->fetchColumn();
+                error_log("CountersConnection: Step 3 - Copied {$count} records to temporary table");
+
+                error_log("CountersConnection: Step 4 - Dropping old table");
+                $db->exec("DROP TABLE view_counts");
+
+                error_log("CountersConnection: Step 5 - Creating new table with post_type");
+                $db->exec("
+                    CREATE TABLE view_counts (
+                        post_id INTEGER NOT NULL,
+                        post_type INTEGER DEFAULT 0 NOT NULL,
+                        count INTEGER DEFAULT 0,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (post_id, post_type)
+                    )
+                ");
+
+                error_log("CountersConnection: Step 6 - Migrating data");
+                $db->exec("
+                    INSERT INTO view_counts (post_id, post_type, count, updated_at)
+                    SELECT post_id, 0, count, updated_at FROM view_counts_temp
+                ");
+
+                // 移行後のデータ件数を確認
+                $stmt = $db->query("SELECT COUNT(*) as count FROM view_counts");
+                $newCount = $stmt->fetchColumn();
+                error_log("CountersConnection: Step 7 - Migrated {$newCount} records to new table");
+
+                error_log("CountersConnection: Step 8 - Dropping temporary table");
+                $db->exec("DROP TABLE view_counts_temp");
+
+                error_log("CountersConnection: Step 9 - Creating index");
+                $db->exec("CREATE INDEX IF NOT EXISTS idx_view_counts_updated ON view_counts(updated_at DESC)");
+
+                error_log("CountersConnection: Step 10 - Committing transaction");
+                $db->exec("COMMIT");
+
+                error_log("CountersConnection: Successfully migrated view_counts table (migrated {$newCount}/{$count} records)");
+
+            } catch (\Exception $e) {
+                error_log("CountersConnection: Migration failed at: " . $e->getMessage());
+                error_log("CountersConnection: Stack trace: " . $e->getTraceAsString());
+
+                // トランザクションをロールバック
+                try {
+                    $db->exec("ROLLBACK");
+                    error_log("CountersConnection: Transaction rolled back");
+                } catch (\Exception $rollbackError) {
+                    error_log("CountersConnection: Rollback also failed: " . $rollbackError->getMessage());
+                }
+
+                // フォールバック：エラーが発生した場合は安全策として一時テーブルを確認
+                try {
+                    $stmt = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='view_counts_temp'");
+                    if ($stmt->fetch() !== false) {
+                        error_log("CountersConnection: Attempting to recover from view_counts_temp");
+
+                        // view_countsが存在しない場合、tempから戻す
+                        $stmt = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='view_counts'");
+                        if ($stmt->fetch() === false) {
+                            error_log("CountersConnection: Restoring view_counts from temp table");
+                            $db->exec("ALTER TABLE view_counts_temp RENAME TO view_counts");
+                            error_log("CountersConnection: Restored original table, migration will retry on next access");
+                            return;
+                        }
+                    }
+                } catch (\Exception $recoveryError) {
+                    error_log("CountersConnection: Recovery attempt failed: " . $recoveryError->getMessage());
+                }
+
+                // 致命的エラー：マイグレーション失敗
+                error_log("CountersConnection: CRITICAL - Migration failed completely");
+                error_log("CountersConnection: The view_counts table may be in an inconsistent state");
+                error_log("CountersConnection: To fix manually, delete the counters.db file and it will be recreated");
+
+                throw new \Exception(
+                    "Failed to migrate view_counts table. " .
+                    "Please check error logs or delete counters.db to recreate: " .
+                    $e->getMessage()
+                );
+            }
+        } else {
+            // post_typeカラムが既に存在する場合、インデックスのみ確認
+            $db->exec("CREATE INDEX IF NOT EXISTS idx_view_counts_updated ON view_counts(updated_at DESC)");
+        }
     }
 
     /**
