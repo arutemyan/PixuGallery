@@ -136,10 +136,20 @@ class Theme
 
         $fields[] = "updated_at = CURRENT_TIMESTAMP";
 
-        $sql = "UPDATE themes SET " . implode(', ', $fields) .
-               " WHERE id = (SELECT id FROM themes ORDER BY id ASC LIMIT 1)";
+        // まず最初のテーマIDを取得
+        $idStmt = $this->db->query("SELECT id FROM themes ORDER BY id ASC LIMIT 1");
+        $result = $idStmt->fetch();
+
+        if ($result === false) {
+            return false;
+        }
+
+        $themeId = $result['id'];
+
+        $sql = "UPDATE themes SET " . implode(', ', $fields) . " WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
+        $values[] = $themeId;
         return $stmt->execute($values);
     }
 
@@ -165,13 +175,23 @@ class Theme
         // マッピングされた安全なフィールド名を使用
         $safeField = $allowedFields[$field];
 
+        // まず最初のテーマIDを取得
+        $idStmt = $this->db->query("SELECT id FROM themes ORDER BY id ASC LIMIT 1");
+        $result = $idStmt->fetch();
+
+        if ($result === false) {
+            return false;
+        }
+
+        $themeId = $result['id'];
+
         $stmt = $this->db->prepare("
             UPDATE themes
             SET {$safeField} = ?,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = (SELECT id FROM themes ORDER BY id ASC LIMIT 1)
+            WHERE id = ?
         ");
 
-        return $stmt->execute([$path]);
+        return $stmt->execute([$path, $themeId]);
     }
 }
