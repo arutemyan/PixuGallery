@@ -13,7 +13,9 @@ require_once __DIR__ . '/../Security/SecurityUtil.php';
  * カウンターデータベース接続クラス
  *
  * 閲覧数などの頻繁に更新されるカウンターを管理
- * メインDBとは分離して書き込みロックの競合を回避
+ *
+ * - SQLite: メインDBとは分離して書き込みロックの競合を回避（counters.db）
+ * - MySQL/PostgreSQL: 1DB構成のためConnection::getInstance()を返す
  */
 class CountersConnection
 {
@@ -50,21 +52,36 @@ class CountersConnection
      */
     public static function getInstance(): PDO
     {
+        // MySQL/PostgreSQLの場合は、Connectionと同じインスタンスを返す（1DB構成）
+        self::loadConfig();
+        $driver = self::$config['database']['driver'] ?? 'sqlite';
+
+        if ($driver !== 'sqlite') {
+            return Connection::getInstance();
+        }
+
+        // SQLiteの場合は専用のcounters.dbを使用
         if (self::$instance === null) {
             try {
                 self::loadConfig();
-                $dbPath = self::$config['database']['counters']['path'];
+                $dbPath = self::$config['database']['sqlite']['counters']['path'];
 
                 // データベースディレクトリを作成して保護
                 $dbDir = dirname($dbPath);
-                $permission = self::$config['directory_permission'] ?? 0755;
+                $permission = self::$config['database']['directory_permission'] ?? 0755;
                 ensureSecureDirectory($dbDir, $permission);
+
+                $pdoOptions = [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                ];
 
                 self::$instance = new PDO(
                     'sqlite:' . $dbPath,
                     null,
                     null,
-                    self::$config['database']['pdo_options']
+                    $pdoOptions
                 );
 
                 // データベーススキーマを初期化
@@ -78,7 +95,7 @@ class CountersConnection
     }
 
     /**
-     * データベーススキーマを初期化
+     * データベーススキーマを初期化（SQLiteのみ）
      */
     private static function initializeSchema(): void
     {

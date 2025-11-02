@@ -45,12 +45,27 @@ class Setting
      */
     public function set(string $key, string $value): bool
     {
-        $stmt = $this->db->prepare("
-            INSERT INTO settings (key, value)
-            VALUES (?, ?)
-            ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP
-        ");
-        return $stmt->execute([$key, $value, $value]);
+        // DatabaseHelperを使用してUPSERT SQLを生成
+        $helper = \App\Database\DatabaseHelper::class;
+        $driver = $helper::getDriver($this->db);
+
+        if ($driver === 'mysql') {
+            // MySQLの場合
+            $stmt = $this->db->prepare("
+                INSERT INTO settings (`key`, value, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = CURRENT_TIMESTAMP
+            ");
+            return $stmt->execute([$key, $value]);
+        } else {
+            // SQLite/PostgreSQLの場合
+            $stmt = $this->db->prepare("
+                INSERT INTO settings (key, value, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
+            ");
+            return $stmt->execute([$key, $value]);
+        }
     }
 
     /**

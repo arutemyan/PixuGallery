@@ -14,6 +14,9 @@ require_once __DIR__ . '/../Security/SecurityUtil.php';
  *
  * オプション機能として詳細なアクセスログを記録
  * 設定でON/OFFを切り替え可能
+ *
+ * - SQLite: 専用のaccess_logs.dbを使用
+ * - MySQL/PostgreSQL: 1DB構成のためConnection::getInstance()を返す
  */
 class AccessLogsConnection
 {
@@ -50,7 +53,14 @@ class AccessLogsConnection
     public static function isEnabled(): bool
     {
         self::loadConfig();
-        return self::$config['database']['access_logs']['enabled'] ?? false;
+        $driver = self::$config['database']['driver'] ?? 'sqlite';
+
+        if ($driver === 'sqlite') {
+            return self::$config['database']['sqlite']['access_logs']['enabled'] ?? false;
+        } else {
+            // MySQL/PostgreSQLの場合は常に有効（1DB構成で管理）
+            return true;
+        }
     }
 
     /**
@@ -61,26 +71,41 @@ class AccessLogsConnection
      */
     public static function getInstance(): ?PDO
     {
-        // アクセスログが無効の場合はnullを返す
+        // 無効の場合はnullを返す
         if (!self::isEnabled()) {
             return null;
         }
 
+        // MySQL/PostgreSQLの場合は、Connectionと同じインスタンスを返す（1DB構成）
+        self::loadConfig();
+        $driver = self::$config['database']['driver'] ?? 'sqlite';
+
+        if ($driver !== 'sqlite') {
+            return Connection::getInstance();
+        }
+
+        // SQLiteの場合は専用のaccess_logs.dbを使用
         if (self::$instance === null) {
             try {
                 self::loadConfig();
-                $dbPath = self::$config['database']['access_logs']['path'];
+                $dbPath = self::$config['database']['sqlite']['access_logs']['path'];
 
                 // データベースディレクトリを作成して保護
                 $dbDir = dirname($dbPath);
                 $permission = self::$config['database']['directory_permission'] ?? 0755;
                 ensureSecureDirectory($dbDir, $permission);
 
+                $pdoOptions = [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                ];
+
                 self::$instance = new PDO(
                     'sqlite:' . $dbPath,
                     null,
                     null,
-                    self::$config['database']['pdo_options']
+                    $pdoOptions
                 );
 
                 // データベーススキーマを初期化
@@ -94,27 +119,28 @@ class AccessLogsConnection
     }
 
     /**
-     * データベーススキーマを初期化
+     * データベーススキーマを初期化（SQLiteのみ）
      */
     private static function initializeSchema(): void
     {
         $db = self::$instance;
 
-        // access_logsテーブル（詳細なアクセスログ）
+        // access_logsテーブル
         $db->exec("
             CREATE TABLE IF NOT EXISTS access_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                post_id INTEGER,
                 ip_address TEXT,
                 user_agent TEXT,
                 referer TEXT,
-                accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                request_uri TEXT,
+                request_method TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ");
 
         // インデックス作成
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_access_logs_post_id ON access_logs(post_id)");
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_access_logs_accessed ON access_logs(accessed_at DESC)");
+        $db->exec("CREATE INDEX IF NOT EXISTS idx_access_logs_created ON access_logs(created_at DESC)");
+        $db->exec("CREATE INDEX IF NOT EXISTS idx_access_logs_ip ON access_logs(ip_address)");
     }
 
     /**

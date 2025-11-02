@@ -12,9 +12,22 @@ return [
     'name' => 'add_tag_columns',
 
     'up' => function (PDO $db) {
+        // DB種別を取得
+        $helper = \App\Database\DatabaseHelper::class;
+        $driver = $helper::getDriver($db);
+        $intType = $helper::getIntegerType($db);
+
         // tag1～tag10カラムを追加（INTEGER型でタグIDを保存）
         for ($i = 1; $i <= 10; $i++) {
-            $db->exec("ALTER TABLE posts ADD COLUMN tag{$i} INTEGER");
+            try {
+                $db->exec("ALTER TABLE posts ADD COLUMN tag{$i} {$intType}");
+            } catch (PDOException $e) {
+                // カラムが既に存在する場合はスキップ
+                if (strpos($e->getMessage(), 'Duplicate column') === false &&
+                    strpos($e->getMessage(), 'already exists') === false) {
+                    throw $e;
+                }
+            }
         }
 
         // tag1～tag10にインデックスを追加（整数なので高速）
@@ -45,7 +58,9 @@ return [
             $tagIds = [];
             foreach ($tagArray as $tagName) {
                 // タグを取得または作成
-                $stmt = $db->prepare("INSERT OR IGNORE INTO tags (name) VALUES (?)");
+                $helper = \App\Database\DatabaseHelper::class;
+                $insertIgnoreSQL = $helper::getInsertIgnoreSQL($db, 'tags', ['name']);
+                $stmt = $db->prepare($insertIgnoreSQL);
                 $stmt->execute([$tagName]);
 
                 $stmt = $db->prepare("SELECT id FROM tags WHERE name = ?");

@@ -10,15 +10,17 @@ use PDOException;
 require_once __DIR__ . '/../Security/SecurityUtil.php';
 
 /**
- * SQLite データベース接続クラス
+ * データベース接続クラス
  *
  * シングルトンパターンでPDO接続を管理
+ * SQLite / MySQL / PostgreSQL をサポート
  */
 class Connection
 {
     private static ?PDO $instance = null;
     private static ?string $dbPath = null;
     private static ?array $config = null;
+    private static ?string $driver = null;
 
     /**
      * コンストラクタをプライベートに（シングルトン）
@@ -41,16 +43,76 @@ class Connection
     }
 
     /**
-     * データベースパスを取得
+     * データベースドライバーを取得
      */
-    private static function getDatabasePath(): string
+    public static function getDriver(): string
     {
-        if (self::$dbPath !== null) {
-            return self::$dbPath;
+        if (self::$driver === null) {
+            self::loadConfig();
+            self::$driver = self::$config['database']['driver'] ?? 'sqlite';
         }
+        return self::$driver;
+    }
 
+    /**
+     * DSN文字列を生成
+     */
+    private static function getDSN(): string
+    {
         self::loadConfig();
-        return self::$config['database']['gallery']['path'];
+        $driver = self::getDriver();
+
+        switch ($driver) {
+            case 'sqlite':
+                $dbPath = self::$dbPath ?? self::$config['database']['sqlite']['gallery']['path'];
+                return 'sqlite:' . $dbPath;
+
+            case 'mysql':
+                $config = self::$config['database']['mysql'];
+                return sprintf(
+                    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+                    $config['host'],
+                    $config['port'],
+                    $config['database'],
+                    $config['charset']
+                );
+
+            case 'postgresql':
+                $config = self::$config['database']['postgresql'];
+                return sprintf(
+                    'pgsql:host=%s;port=%d;dbname=%s',
+                    $config['host'],
+                    $config['port'],
+                    $config['database']
+                );
+
+            default:
+                throw new PDOException("Unsupported database driver: {$driver}");
+        }
+    }
+
+    /**
+     * 認証情報を取得
+     */
+    private static function getCredentials(): array
+    {
+        $driver = self::getDriver();
+
+        switch ($driver) {
+            case 'sqlite':
+                return [null, null];
+
+            case 'mysql':
+                $config = self::$config['database']['mysql'];
+                return [$config['username'], $config['password']];
+
+            case 'postgresql':
+                $config = self::$config['database']['postgresql'];
+                return [$config['username'], $config['password']];
+
+            default:
+                return [null, null];
+        }
     }
 
     /**
@@ -64,12 +126,15 @@ class Connection
         if (self::$instance === null) {
             try {
                 self::loadConfig();
-                $dbPath = self::getDatabasePath();
+                $driver = self::getDriver();
 
-                // データベースディレクトリを作成して保護
-                $dbDir = dirname($dbPath);
-                $permission = self::$config['directory_permission'] ?? 0755;
-                ensureSecureDirectory($dbDir, $permission);
+                // SQLiteの場合はデータベースディレクトリを作成して保護
+                if ($driver === 'sqlite') {
+                    $dbPath = self::$dbPath ?? self::$config['database']['sqlite']['gallery']['path'];
+                    $dbDir = dirname($dbPath);
+                    $permission = self::$config['database']['directory_permission'] ?? 0755;
+                    ensureSecureDirectory($dbDir, $permission);
+                }
 
                 // PDOオプションを設定
                 $pdoOptions = [
@@ -78,12 +143,16 @@ class Connection
                     PDO::ATTR_EMULATE_PREPARES => false,
                 ];
 
-                self::$instance = new PDO(
-                    'sqlite:' . $dbPath,
-                    null,
-                    null,
-                    $pdoOptions
-                );
+                [$username, $password] = self::getCredentials();
+                $dsn = self::getDSN();
+
+                self::$instance = new PDO($dsn, $username, $password, $pdoOptions);
+
+                // PostgreSQLの場合は検索パスを設定
+                if ($driver === 'postgresql') {
+                    $schema = self::$config['database']['postgresql']['schema'] ?? 'public';
+                    self::$instance->exec("SET search_path TO {$schema}");
+                }
 
                 // データベーススキーマを初期化
                 self::initializeSchema();
@@ -104,29 +173,38 @@ class Connection
     private static function initializeSchema(): void
     {
         $db = self::$instance;
+        $driver = self::getDriver();
+        $helper = DatabaseHelper::class;
+
+        $autoInc = $helper::getAutoIncrement($db);
+        $intType = $helper::getIntegerType($db);
+        $textType = $helper::getTextType($db);
+        $datetimeType = $helper::getDateTimeType($db);
+        $timestampType = $helper::getTimestampType($db);
+        $currentTimestamp = $helper::getCurrentTimestamp($db);
 
         // usersテーブル（管理者認証用）
         $db->exec("
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                id {$autoInc},
+                username {$textType} NOT NULL UNIQUE,
+                password_hash {$textType} NOT NULL,
+                created_at {$datetimeType} DEFAULT {$currentTimestamp}
             )
         ");
 
         // postsテーブル
         $db->exec("
             CREATE TABLE IF NOT EXISTS posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                tags TEXT,
-                detail TEXT,
-                image_path TEXT,
-                thumb_path TEXT,
-                is_sensitive INTEGER DEFAULT 0,
-                is_visible INTEGER NOT NULL DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                id {$autoInc},
+                title {$textType} NOT NULL,
+                tags {$textType},
+                detail {$textType},
+                image_path {$textType},
+                thumb_path {$textType},
+                is_sensitive {$intType} DEFAULT 0,
+                is_visible {$intType} NOT NULL DEFAULT 1,
+                created_at {$datetimeType} DEFAULT {$currentTimestamp}
             )
         ");
 
@@ -137,9 +215,9 @@ class Connection
         // tagsテーブル（タグマスタ）
         $db->exec("
             CREATE TABLE IF NOT EXISTS tags (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                id {$autoInc},
+                name {$textType} NOT NULL UNIQUE,
+                created_at {$timestampType} DEFAULT {$currentTimestamp}
             )
         ");
 
@@ -149,56 +227,65 @@ class Connection
         // migrationsテーブル（マイグレーションバージョン管理）
         $db->exec("
             CREATE TABLE IF NOT EXISTS migrations (
-                version INTEGER PRIMARY KEY,
-                name TEXT NOT NULL,
-                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                version {$intType} PRIMARY KEY,
+                name {$textType} NOT NULL,
+                executed_at {$timestampType} DEFAULT {$currentTimestamp}
             )
         ");
 
         // settingsテーブル
         $db->exec("
             CREATE TABLE IF NOT EXISTS settings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                key TEXT NOT NULL UNIQUE,
-                value TEXT NOT NULL,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                id {$autoInc},
+                key {$textType} NOT NULL UNIQUE,
+                value {$textType} NOT NULL,
+                updated_at {$timestampType} DEFAULT {$currentTimestamp}
             )
         ");
 
         // themesテーブル（テーマカスタマイズ用）
         $db->exec("
             CREATE TABLE IF NOT EXISTS themes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                header_html TEXT,
-                footer_html TEXT,
-                site_title TEXT DEFAULT 'イラストポートフォリオ',
-                site_subtitle TEXT DEFAULT 'Illustration Portfolio',
-                site_description TEXT DEFAULT 'イラストレーターのポートフォリオサイト',
-                primary_color TEXT DEFAULT '#8B5AFA',
-                secondary_color TEXT DEFAULT '#667eea',
-                accent_color TEXT DEFAULT '#FFD700',
-                background_color TEXT DEFAULT '#1a1a1a',
-                text_color TEXT DEFAULT '#ffffff',
-                heading_color TEXT DEFAULT '#ffffff',
-                footer_bg_color TEXT DEFAULT '#2a2a2a',
-                footer_text_color TEXT DEFAULT '#cccccc',
-                card_border_color TEXT DEFAULT '#333333',
-                card_bg_color TEXT DEFAULT '#252525',
-                card_shadow_opacity TEXT DEFAULT '0.3',
-                link_color TEXT DEFAULT '#8B5AFA',
-                link_hover_color TEXT DEFAULT '#a177ff',
-                tag_bg_color TEXT DEFAULT '#8B5AFA',
-                tag_text_color TEXT DEFAULT '#ffffff',
-                filter_active_bg_color TEXT DEFAULT '#8B5AFA',
-                filter_active_text_color TEXT DEFAULT '#ffffff',
-                header_image TEXT,
-                logo_image TEXT,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                id {$autoInc},
+                header_html {$textType},
+                footer_html {$textType},
+                site_title {$textType} DEFAULT 'イラストポートフォリオ',
+                site_subtitle {$textType} DEFAULT 'Illustration Portfolio',
+                site_description {$textType} DEFAULT 'イラストレーターのポートフォリオサイト',
+                primary_color {$textType} DEFAULT '#8B5AFA',
+                secondary_color {$textType} DEFAULT '#667eea',
+                accent_color {$textType} DEFAULT '#FFD700',
+                background_color {$textType} DEFAULT '#1a1a1a',
+                text_color {$textType} DEFAULT '#ffffff',
+                heading_color {$textType} DEFAULT '#ffffff',
+                footer_bg_color {$textType} DEFAULT '#2a2a2a',
+                footer_text_color {$textType} DEFAULT '#cccccc',
+                card_border_color {$textType} DEFAULT '#333333',
+                card_bg_color {$textType} DEFAULT '#252525',
+                card_shadow_opacity {$textType} DEFAULT '0.3',
+                link_color {$textType} DEFAULT '#8B5AFA',
+                link_hover_color {$textType} DEFAULT '#a177ff',
+                tag_bg_color {$textType} DEFAULT '#8B5AFA',
+                tag_text_color {$textType} DEFAULT '#ffffff',
+                filter_active_bg_color {$textType} DEFAULT '#8B5AFA',
+                filter_active_text_color {$textType} DEFAULT '#ffffff',
+                header_image {$textType},
+                logo_image {$textType},
+                updated_at {$datetimeType} DEFAULT {$currentTimestamp}
             )
         ");
 
-        // 管理者ユーザーの自動作成は行わない
-        // 初回セットアップはpublic/setup.phpで行う
+        // MySQL/PostgreSQLの場合のみ、view_countsテーブルも作成（1DB構成のため）
+        if ($driver !== 'sqlite') {
+            $db->exec("
+                CREATE TABLE IF NOT EXISTS view_counts (
+                    post_id {$intType} PRIMARY KEY,
+                    count {$intType} DEFAULT 0,
+                    updated_at {$datetimeType} DEFAULT {$currentTimestamp}
+                )
+            ");
+            $db->exec("CREATE INDEX IF NOT EXISTS idx_view_counts_updated ON view_counts(updated_at DESC)");
+        }
 
         // デフォルトテーマを作成（存在しない場合）
         $stmt = $db->query("SELECT COUNT(*) as count FROM themes");
@@ -255,7 +342,7 @@ class Connection
     }
 
     /**
-     * テスト用にデータベースパスを設定
+     * テスト用にデータベースパスを設定（SQLiteのみ）
      *
      * @param string $path データベースファイルのパス
      */

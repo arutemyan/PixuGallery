@@ -30,16 +30,39 @@ class ViewCounter
     public function increment(int $postId): bool
     {
         try {
-            // レコードが存在しない場合は作成、存在する場合は更新
-            $stmt = $this->db->prepare("
-                INSERT INTO view_counts (post_id, count, updated_at)
-                VALUES (:post_id, 1, CURRENT_TIMESTAMP)
-                ON CONFLICT(post_id) DO UPDATE SET
-                    count = count + 1,
-                    updated_at = CURRENT_TIMESTAMP
-            ");
+            // DatabaseHelperを使用してUPSERT SQLを生成
+            $helper = \App\Database\DatabaseHelper::class;
+            $sql = $helper::getUpsertSQL(
+                $this->db,
+                'view_counts',
+                ['post_id', 'count', 'updated_at'],
+                ['count', 'updated_at'],
+                'post_id'
+            );
 
-            $stmt->execute(['post_id' => $postId]);
+            // MySQL/PostgreSQLでは単純にVALUESを更新するが、SQLiteではcount+1にする必要がある
+            $driver = $helper::getDriver($this->db);
+            if ($driver === 'mysql') {
+                // MySQLの場合はcount + 1を手動で実装
+                $stmt = $this->db->prepare("
+                    INSERT INTO view_counts (post_id, count, updated_at)
+                    VALUES (?, 1, CURRENT_TIMESTAMP)
+                    ON DUPLICATE KEY UPDATE
+                        count = count + 1,
+                        updated_at = CURRENT_TIMESTAMP
+                ");
+            } else {
+                // SQLite/PostgreSQLの場合
+                $stmt = $this->db->prepare("
+                    INSERT INTO view_counts (post_id, count, updated_at)
+                    VALUES (?, 1, CURRENT_TIMESTAMP)
+                    ON CONFLICT(post_id) DO UPDATE SET
+                        count = count + 1,
+                        updated_at = CURRENT_TIMESTAMP
+                ");
+            }
+
+            $stmt->execute([$postId]);
             return true;
         } catch (\Exception $e) {
             error_log("ViewCounter::increment error: " . $e->getMessage());

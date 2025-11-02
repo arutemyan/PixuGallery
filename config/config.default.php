@@ -28,26 +28,52 @@ return [
      * データベース設定
      */
     'database' => [
-        // メインデータベース（ギャラリーコンテンツ）
-        'gallery' => [
-            'path' => __DIR__ . '/../data/gallery.db',
-            'description' => 'Main gallery content (posts, users, themes, settings)',
+        // データベースタイプ: 'sqlite', 'mysql', 'postgresql'
+        'driver' => 'sqlite',
+
+        // SQLite設定（driver='sqlite'の場合）
+        'sqlite' => [
+            // メインデータベース（ギャラリーコンテンツ）
+            'gallery' => [
+                'path' => __DIR__ . '/../data/gallery.db',
+                'description' => 'Main gallery content (posts, users, themes, settings)',
+            ],
+            // カウンターデータベース（閲覧数など）
+            'counters' => [
+                'path' => __DIR__ . '/../data/counters.db',
+                'description' => 'View counts and other frequently updated counters',
+            ],
+            // アクセスログデータベース（オプション）
+            'access_logs' => [
+                'path' => __DIR__ . '/../data/access_logs.db',
+                'description' => 'Access logs (IP, UserAgent, Referer, etc.)',
+                'enabled' => false,
+            ],
         ],
 
-        // カウンターデータベース（閲覧数など）
-        'counters' => [
-            'path' => __DIR__ . '/../data/counters.db',
-            'description' => 'View counts and other frequently updated counters',
+        // MySQL設定（driver='mysql'の場合）
+        'mysql' => [
+            'host' => 'localhost',
+            'port' => 3306,
+            'database' => 'photo_site',
+            'username' => 'photo_user',
+            'password' => '',
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
         ],
 
-        // アクセスログデータベース（オプション）
-        'access_logs' => [
-            'path' => __DIR__ . '/../data/access_logs.db',
-            'description' => 'Access logs (IP, UserAgent, Referer, etc.)',
-            'enabled' => false, // デフォルトは無効
+        // PostgreSQL設定（driver='postgresql'の場合）
+        'postgresql' => [
+            'host' => 'localhost',
+            'port' => 5432,
+            'database' => 'photo_site',
+            'username' => 'photo_user',
+            'password' => '',
+            'charset' => 'utf8',
+            'schema' => 'public',
         ],
 
-        // データベースディレクトリのパーミッション
+        // データベースディレクトリのパーミッション（SQLiteのみ）
         'directory_permission' => 0755,
 
         // PDO接続オプション
