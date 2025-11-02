@@ -95,7 +95,103 @@ function createNsfwThumb($post) {
 ?>
 <!DOCTYPE html>
 <html lang="ja">
-<?php require_once(__DIR__ . "/block/detail_head.php") ?>
+<?php
+// ----------------------------------------------------------------
+// データの取得
+$title = escapeHtml($data['title']);
+$siteTitle = escapeHtml($theme['site_title'] ?? 'イラストポートフォリオ');
+$description = escapeHtml($data['detail'] ?? $data['title']);
+
+// SNS共有用の画像パスを決定
+$isSensitive = isset($data['is_sensitive']) && $data['is_sensitive'] == 1;
+$shareImagePath = '';
+
+if ($isGroupPost) {
+    // グループ投稿の場合：最初の画像のサムネイル
+    if (!empty($data['images']) && !empty($data['images'][0]['thumb_path'])) {
+        $shareImagePath = $data['images'][0]['thumb_path'];
+
+        if ($isSensitive) {
+            $pathInfo = pathinfo($shareImagePath);
+            $nsfwFilename = basename($pathInfo['filename'] . '_nsfw.' . ($pathInfo['extension'] ?? 'webp'));
+            $shareImagePath = $pathInfo['dirname'] . '/' . $nsfwFilename;
+        }
+    }
+} else {
+    // 単一投稿の場合
+    if (!empty($data['image_path'])) {
+        if ($isSensitive) {
+            // NSFW画像の場合はNSFWフィルター版を使用
+            $pathInfo = pathinfo($data['image_path']);
+            $nsfwFilename = basename($pathInfo['filename'] . '_nsfw.' . ($pathInfo['extension'] ?? 'webp'));
+            $shareImagePath = $pathInfo['dirname'] . '/' . $nsfwFilename;
+
+            // パスの検証（uploadsディレクトリ内であることを確認）
+            $fullPath = realpath(__DIR__ . '/../' . $shareImagePath);
+            $uploadsDir = realpath(__DIR__ . '/../uploads/');
+
+            // NSFWフィルター版が存在しない、または不正なパスの場合はサムネイルのNSFWフィルター版を使用
+            if (!$fullPath || !$uploadsDir || strpos($fullPath, $uploadsDir) !== 0 || !file_exists($fullPath)) {
+                if (!empty($data['thumb_path'])) {
+                    $thumbInfo = pathinfo($data['thumb_path']);
+                    $nsfwThumbFilename = basename($thumbInfo['filename'] . '_nsfw.' . ($thumbInfo['extension'] ?? 'webp'));
+                    $shareImagePath = $thumbInfo['dirname'] . '/' . $nsfwThumbFilename;
+                } else {
+                    $shareImagePath = '';
+                }
+            }
+        } else {
+            // 通常の画像はサムネイルを使用
+            $shareImagePath = $data['thumb_path'] ?? $data['image_path'];
+        }
+    }
+}
+
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+$fullUrl = $protocol . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $_SERVER['REQUEST_URI'];
+$imageUrl = !empty($shareImagePath) ? $protocol . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/' . $shareImagePath : '';
+?>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= $title ?> - <?= $siteTitle ?></title>
+    <meta name="description" content="<?= $description ?>">
+
+    <!-- OGP (Open Graph Protocol) -->
+    <meta property="og:title" content="<?= $title ?>">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="<?= escapeHtml($fullUrl) ?>">
+    <meta property="og:description" content="<?= escapeHtml(mb_substr($data['detail'] ?? $data['title'], 0, 200)) ?>">
+    <meta property="og:site_name" content="<?= $siteTitle ?>">
+    <?php if (!empty($imageUrl)): ?>
+    <meta property="og:image" content="<?= escapeHtml($imageUrl) ?>">
+    <?php endif; ?>
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<?= $title ?>">
+    <meta name="twitter:description" content="<?= escapeHtml(mb_substr($data['detail'] ?? $data['title'], 0, 200)) ?>">
+    <?php if (!empty($imageUrl)): ?>
+    <meta name="twitter:image" content="<?= escapeHtml($imageUrl) ?>">
+    <?php endif; ?>
+
+    <!-- Googleフォント -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <!-- スタイルシート -->
+    <link rel="stylesheet" href="/res/css/main.css">
+
+    <!-- テーマカラー -->
+    <style>
+        <?php require_once(__DIR__ . "/block/style.php") ?>
+    </style>
+</head>
+<?php /**************************************************************/ ?>
 <body data-age-verification-minutes="<?= $ageVerificationMinutes ?>" data-nsfw-config-version="<?= $nsfwConfigVersion ?>" data-post-id="<?= $id ?>" data-is-sensitive="<?= isset($data['is_sensitive']) && $data['is_sensitive'] == 1 ? '1' : '0' ?>">
     <script>
         // 設定値をdata属性から読み込み（const定義で改ざん防止）
@@ -203,8 +299,63 @@ function createNsfwThumb($post) {
                 <?php endif; ?>
 
                 <h1 class="detail-title"><?= escapeHtml($data['title']) ?></h1>
+                <?php /*----------------------------------------------------------*/ ?>
+                <div class="detail-meta">
+                    <?php if ($isGroupPost && isset($data['image_count'])): ?>
+                        <span class="meta-item">
+                            <i class="bi bi-images me-1"></i><?= $data['image_count'] ?>枚
+                        </span>
+                    <?php endif; ?>
 
-                <?php require_once(__DIR__ . "/block/detail_meta.php") ?>
+                    <span class="meta-item">
+                        📅 投稿: <?= date('Y年m月d日', strtotime($data['created_at'])) ?>
+                    </span>
+
+                    <?php
+                    // 最終更新日の表示（2000年以下の場合は作成日と同じとして扱う）
+                    $updatedAt = $data['updated_at'] ?? $data['created_at'];
+                    $updatedYear = (int)date('Y', strtotime($updatedAt));
+                    if ($updatedYear <= 2000) {
+                        $updatedAt = $data['created_at'];
+                    }
+                    // 作成日と更新日が異なる場合のみ表示
+                    if ($updatedAt !== $data['created_at']):
+                    ?>
+                        <span class="meta-item">
+                            🔄 更新: <?= date('Y年m月d日', strtotime($updatedAt)) ?>
+                        </span>
+                    <?php endif; ?>
+
+                    <?php if ($showViewCount && isset($data['view_count'])): ?>
+                        <span class="meta-item view-count">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -2px;">
+                                <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                                <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                            </svg>
+                            <?= number_format($data['view_count']) ?> 回閲覧
+                        </span>
+                    <?php endif; ?>
+                </div>
+                <?php /*----------------------------------------------------------*/ ?>
+                <?php if (!empty($data['tags'])): ?>
+                    <div class="detail-tags">
+                        <?php
+                        $tags = explode(',', $data['tags']);
+                        foreach ($tags as $tag):
+                            $tag = trim($tag);
+                            if (!empty($tag)):
+                        ?>
+                            <span class="tag"><?= escapeHtml($tag) ?></span>
+                        <?php
+                            endif;
+                        endforeach;
+                        ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($data['detail'])): ?>
+                    <div class="detail-description"><?= nl2br(escapeHtml($data['detail'])) ?></div>
+                <?php endif; ?>
 
                 <!-- SNS共有ボタン -->
                 <div class="detail-actions" style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
