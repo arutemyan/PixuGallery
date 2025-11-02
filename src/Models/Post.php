@@ -220,7 +220,7 @@ class Post
     public function getById(int $id): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
+            SELECT id, post_type, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10, sort_order
             FROM posts
             WHERE id = ? AND is_visible = 1
@@ -459,7 +459,7 @@ class Post
         $offset = max($offset, 0);
 
         $stmt = $this->db->prepare("
-            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
+            SELECT id, post_type, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10, sort_order
             FROM posts
             ORDER BY sort_order DESC, created_at DESC
@@ -468,14 +468,50 @@ class Post
         $stmt->execute([$limit, $offset]);
         $posts = $stmt->fetchAll();
 
-        // 閲覧数を一括取得して追加 & tag1～tag10をtagsフィールドに変換
+        // 投稿タイプごとに処理
         if (!empty($posts)) {
-            $postIds = array_column($posts, 'id');
-            $viewCounts = $this->viewCounter->getBatch($postIds, 0); // 0=single
+            // GroupPostImageモデルのインスタンス化
+            $groupPostImageModel = new GroupPostImage();
 
+            // 閲覧数を一括取得（post_typeごと）
+            $singlePostIds = [];
+            $groupPostIds = [];
+
+            foreach ($posts as $post) {
+                if ($post['post_type'] == 0) {
+                    $singlePostIds[] = $post['id'];
+                } else {
+                    $groupPostIds[] = $post['id'];
+                }
+            }
+
+            $singleViewCounts = !empty($singlePostIds) ? $this->viewCounter->getBatch($singlePostIds, 0) : [];
+            $groupViewCounts = !empty($groupPostIds) ? $this->viewCounter->getBatch($groupPostIds, 1) : [];
+
+            // 各投稿にデータを付加
             foreach ($posts as &$post) {
-                $post['view_count'] = $viewCounts[$post['id']] ?? 0;
                 $post['tags'] = $this->tagService->getTagsFromRow($post);
+
+                if ($post['post_type'] == 0) {
+                    // シングル投稿
+                    $post['view_count'] = $singleViewCounts[$post['id']] ?? 0;
+                } else {
+                    // グループ投稿
+                    $post['view_count'] = $groupViewCounts[$post['id']] ?? 0;
+
+                    // 代表画像を取得
+                    $firstImage = $groupPostImageModel->getFirstImageByPostId($post['id']);
+                    if ($firstImage) {
+                        $post['image_path'] = $firstImage['image_path'];
+                        $post['thumb_path'] = $firstImage['thumb_path'];
+                    } else {
+                        $post['image_path'] = null;
+                        $post['thumb_path'] = null;
+                    }
+
+                    // 画像数を取得
+                    $post['image_count'] = $groupPostImageModel->getImageCountByPostId($post['id']);
+                }
             }
         }
 
@@ -503,7 +539,7 @@ class Post
     public function getByIdForAdmin(int $id): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT id, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
+            SELECT id, post_type, title, detail, image_path, thumb_path, is_sensitive, is_visible, created_at, updated_at,
                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10, sort_order
             FROM posts
             WHERE id = ?
