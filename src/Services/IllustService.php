@@ -30,14 +30,32 @@ class IllustService
 
         $userId = (int)$payload['user_id'];
 
+        // Determine if this is an update (id provided) or create
+        $isUpdate = !empty($payload['id']);
+        $id = $isUpdate ? (int)$payload['id'] : null;
+
         // Begin transaction to ensure DB consistency with file writes
         $this->db->beginTransaction();
         $createdFiles = [];
+        $backups = [];
         try {
-            // generate id by inserting DB record placeholder
-            $stmt = $this->db->prepare('INSERT INTO illusts (user_id, title) VALUES (:user_id, :title)');
-            $stmt->execute([':user_id' => $userId, ':title' => $payload['title'] ?? '']);
-            $id = (int)$this->db->lastInsertId();
+            if ($isUpdate) {
+                // fetch existing record
+                $stmt = $this->db->prepare('SELECT * FROM illusts WHERE id = :id');
+                $stmt->execute([':id' => $id]);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$row) {
+                    throw new \RuntimeException('Illust not found for update');
+                }
+                if ((int)$row['user_id'] !== $userId) {
+                    throw new \RuntimeException('Permission denied');
+                }
+            } else {
+                // generate id by inserting DB record placeholder
+                $stmt = $this->db->prepare('INSERT INTO illusts (user_id, title) VALUES (:user_id, :title)');
+                $stmt->execute([':user_id' => $userId, ':title' => $payload['title'] ?? '']);
+                $id = (int)$this->db->lastInsertId();
+            }
 
             // paths
             $sub = sprintf('%03d', $id % 1000);
@@ -54,9 +72,25 @@ class IllustService
             $thumbPath = $imagesDir . '/illust_' . $id . '_thumb.webp';
             $timelapsePath = $timelapseDir . '/timelapse_' . $id . '.msgpack.gz';
 
-            // save .illust
-            if (file_put_contents($dataPath, $payload['illust_json']) === false) {
+            // if update, create backups of existing files to allow rollback
+            if ($isUpdate) {
+                foreach ([$dataPath, $imagePath, $timelapsePath, $thumbPath] as $fp) {
+                    if (file_exists($fp)) {
+                        $bak = $fp . '.bak';
+                        if (@copy($fp, $bak)) {
+                            $backups[] = [$fp, $bak];
+                        }
+                    }
+                }
+            }
+
+            // save .illust (write to tmp then rename)
+            $tmpData = $dataPath . '.tmp';
+            if (file_put_contents($tmpData, $payload['illust_json']) === false) {
                 throw new \RuntimeException('Failed to write .illust file');
+            }
+            if (!@rename($tmpData, $dataPath)) {
+                throw new \RuntimeException('Failed to move .illust file into place');
             }
             $createdFiles[] = $dataPath;
 
@@ -64,8 +98,12 @@ class IllustService
             $thumbGenerated = false;
             if (!empty($payload['image_data'])) {
                 [$mime, $bin] = \App\Utils\FileValidator::validateDataUriImage($payload['image_data']);
-                if (file_put_contents($imagePath, $bin) === false) {
+                $tmpImage = $imagePath . '.tmp';
+                if (file_put_contents($tmpImage, $bin) === false) {
                     throw new \RuntimeException('Failed to write image file');
+                }
+                if (!@rename($tmpImage, $imagePath)) {
+                    throw new \RuntimeException('Failed to move image file into place');
                 }
                 $createdFiles[] = $imagePath;
                 // generate thumbnail webp (may be skipped if not supported)
@@ -73,40 +111,52 @@ class IllustService
                 if ($thumbGenerated && file_exists($thumbPath)) {
                     $createdFiles[] = $thumbPath;
                 } else {
-                    // Log thumbnail generation failure for operational visibility
                     error_log(sprintf('IllustService: thumbnail not generated for illust id=%d src=%s dst=%s', $id, $imagePath, $thumbPath));
                 }
+            } elseif (!$isUpdate) {
+                // no image provided for new record -> leave image/timelapse empty
             }
 
             // save timelapse if provided
             if (!empty($payload['timelapse_data'])) {
-                // payload contains raw binary for timelapse
                 \App\Utils\FileValidator::validateTimelapseBinary($payload['timelapse_data']);
-                if (file_put_contents($timelapsePath, $payload['timelapse_data']) === false) {
+                $tmpTL = $timelapsePath . '.tmp';
+                if (file_put_contents($tmpTL, $payload['timelapse_data']) === false) {
                     throw new \RuntimeException('Failed to write timelapse file');
+                }
+                if (!@rename($tmpTL, $timelapsePath)) {
+                    throw new \RuntimeException('Failed to move timelapse into place');
                 }
                 $createdFiles[] = $timelapsePath;
             }
 
             // update DB row with paths and sizes
-            $update = $this->db->prepare('UPDATE illusts SET data_path = :data_path, image_path = :image_path, thumbnail_path = :thumbnail_path, timelapse_path = :timelapse_path, file_size = :file_size WHERE id = :id');
+            $update = $this->db->prepare('UPDATE illusts SET title = :title, data_path = :data_path, image_path = :image_path, thumbnail_path = :thumbnail_path, timelapse_path = :timelapse_path, file_size = :file_size WHERE id = :id');
             $update->execute([
+                ':title' => $payload['title'] ?? '',
                 ':data_path' => $this->toPublicPath($dataPath),
-                ':image_path' => $this->toPublicPath($imagePath),
-                ':thumbnail_path' => ($thumbGenerated && file_exists($thumbPath)) ? $this->toPublicPath($thumbPath) : null,
-                ':timelapse_path' => $this->toPublicPath($timelapsePath),
+                ':image_path' => file_exists($imagePath) ? $this->toPublicPath($imagePath) : null,
+                ':thumbnail_path' => (file_exists($thumbPath) ? $this->toPublicPath($thumbPath) : null),
+                ':timelapse_path' => file_exists($timelapsePath) ? $this->toPublicPath($timelapsePath) : null,
                 ':file_size' => filesize($dataPath) ?: 0,
                 ':id' => $id,
             ]);
 
             $this->db->commit();
 
+            // cleanup backups on success
+            foreach ($backups as [$orig, $bak]) {
+                if (file_exists($bak)) {
+                    @unlink($bak);
+                }
+            }
+
             return [
                 'id' => $id,
                 'data_path' => $this->toPublicPath($dataPath),
-                'image_path' => $this->toPublicPath($imagePath),
-                'thumbnail_path' => ($thumbGenerated && file_exists($thumbPath)) ? $this->toPublicPath($thumbPath) : null,
-                'timelapse_path' => $this->toPublicPath($timelapsePath),
+                'image_path' => file_exists($imagePath) ? $this->toPublicPath($imagePath) : null,
+                'thumbnail_path' => (file_exists($thumbPath) ? $this->toPublicPath($thumbPath) : null),
+                'timelapse_path' => file_exists($timelapsePath) ? $this->toPublicPath($timelapsePath) : null,
             ];
         } catch (\Throwable $e) {
             $this->db->rollBack();
@@ -114,6 +164,13 @@ class IllustService
             foreach ($createdFiles as $f) {
                 if (file_exists($f)) {
                     @unlink($f);
+                }
+            }
+            // attempt to restore backups
+            foreach ($backups as [$orig, $bak]) {
+                if (file_exists($bak)) {
+                    @copy($bak, $orig);
+                    @unlink($bak);
                 }
             }
             throw $e;

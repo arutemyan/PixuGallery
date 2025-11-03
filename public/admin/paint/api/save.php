@@ -9,8 +9,17 @@ use App\Services\IllustService;
 use App\Security\CsrfProtection;
 
 session_start();
-// simple admin check - reuse existing auth system as appropriate
-if (empty($_SESSION['admin'])) {
+// support existing admin session keys used elsewhere in the app
+// - normal app login sets $_SESSION['admin_logged_in']=true with admin_user_id
+// - our test helper uses $_SESSION['admin'] for convenience
+$userId = null;
+if (!empty($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+    $userId = $_SESSION['admin_user_id'] ?? null;
+} elseif (!empty($_SESSION['admin']) && is_array($_SESSION['admin'])) {
+    $userId = $_SESSION['admin']['id'] ?? null;
+}
+
+if ($userId === null) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Unauthorized']);
     exit;
@@ -42,7 +51,9 @@ if (!is_array($raw)) {
 
 try {
     $result = $service->save([
-        'user_id' => $_SESSION['admin']['id'],
+        'user_id' => $userId,
+        // optional id for updates
+        'id' => isset($raw['id']) ? (int)$raw['id'] : null,
         'title' => $raw['title'] ?? '',
         'canvas_width' => $raw['canvas_width'] ?? 800,
         'canvas_height' => $raw['canvas_height'] ?? 600,
