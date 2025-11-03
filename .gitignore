@@ -29,6 +29,8 @@ composer.lock
 /.phpunit.cache/
 /coverage/
 /tests/reports/
+/tests/tests
+/tests/tmp_data
 
 # IDE
 /.idea/
