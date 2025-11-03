@@ -335,9 +335,11 @@ class IllustService
             }
 
             // update DB row with paths and sizes
-            $update = $this->db->prepare('UPDATE illusts SET title = :title, data_path = :data_path, image_path = :image_path, thumbnail_path = :thumbnail_path, timelapse_path = :timelapse_path, file_size = :file_size WHERE id = :id');
+            $update = $this->db->prepare('UPDATE illusts SET title = :title, description = :description, tags = :tags, data_path = :data_path, image_path = :image_path, thumbnail_path = :thumbnail_path, timelapse_path = :timelapse_path, file_size = :file_size WHERE id = :id');
             $update->execute([
                 ':title' => $payload['title'] ?? '',
+                ':description' => $payload['description'] ?? '',
+                ':tags' => $payload['tags'] ?? '',
                 ':data_path' => $this->toPublicPath($dataPath),
                 ':image_path' => file_exists($imagePath) ? $this->toPublicPath($imagePath) : null,
                 ':thumbnail_path' => (file_exists($thumbPath) ? $this->toPublicPath($thumbPath) : null),

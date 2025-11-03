@@ -41,6 +41,9 @@
     timelapseSnapshots: [], // { idx, t, data }
     lastSnapshotTime: 0,
         currentIllustId: null,
+        currentIllustTitle: '',
+        currentIllustDescription: '',
+        currentIllustTags: '',
         zoomLevel: 1,
         isPanning: false,
         panStart: { x: 0, y: 0 },
@@ -60,6 +63,7 @@
         btnTimelapse: document.getElementById('btn-timelapse'),
         btnNew: document.getElementById('btn-new'),
         btnClear: document.getElementById('btn-clear'),
+        btnResize: document.getElementById('btn-resize'),
         illustId: document.getElementById('illust-id'),
 
         // Tools
@@ -69,12 +73,22 @@
         toolZoomIn: document.getElementById('tool-zoom-in'),
         toolZoomOut: document.getElementById('tool-zoom-out'),
         toolZoomFit: document.getElementById('tool-zoom-fit'),
+        toolRotateCW: document.getElementById('tool-rotate-cw'),
+        toolRotateCCW: document.getElementById('tool-rotate-ccw'),
+        toolFlipH: document.getElementById('tool-flip-h'),
+        toolFlipV: document.getElementById('tool-flip-v'),
 
         // Color palette
         colorPicker: document.getElementById('color-picker'),
         currentColor: document.getElementById('current-color'),
         currentColorHex: document.getElementById('current-color-hex'),
         colorPaletteGrid: document.getElementById('color-palette-grid'),
+        rgbR: document.getElementById('rgb-r'),
+        rgbG: document.getElementById('rgb-g'),
+        rgbB: document.getElementById('rgb-b'),
+        rgbRValue: document.getElementById('rgb-r-value'),
+        rgbGValue: document.getElementById('rgb-g-value'),
+        rgbBValue: document.getElementById('rgb-b-value'),
 
         // Tool settings
         penSize: document.getElementById('pen-size'),
@@ -120,7 +134,47 @@
         timelapseCurrentTime: document.getElementById('timelapse-current-time'),
         timelapseTotalTime: document.getElementById('timelapse-total-time'),
         timelapseClose: document.getElementById('timelapse-close'),
-        timelapseIgnoreTime: document.getElementById('timelapse-ignore-time')
+        timelapseIgnoreTime: document.getElementById('timelapse-ignore-time'),
+
+        // Resize modal
+        resizeModalOverlay: document.getElementById('resize-modal-overlay'),
+        resizeModalClose: document.getElementById('resize-modal-close'),
+        resizeModalCancel: document.getElementById('resize-modal-cancel'),
+        resizeModalApply: document.getElementById('resize-modal-apply'),
+        resizeWidth: document.getElementById('resize-width'),
+        resizeHeight: document.getElementById('resize-height'),
+        resizeKeepRatio: document.getElementById('resize-keep-ratio'),
+
+        // Edit Color modal
+        editColorModalOverlay: document.getElementById('edit-color-modal-overlay'),
+        editColorModalClose: document.getElementById('edit-color-modal-close'),
+        editColorModalCancel: document.getElementById('edit-color-modal-cancel'),
+        editColorModalSave: document.getElementById('edit-color-modal-save'),
+        editColorInput: document.getElementById('edit-color-input'),
+
+        // Save modal
+        saveModalOverlay: document.getElementById('save-modal-overlay'),
+        saveModalCancel: document.getElementById('save-modal-cancel'),
+        saveModalSave: document.getElementById('save-modal-save'),
+        saveTitle: document.getElementById('save-title'),
+        saveDescription: document.getElementById('save-description'),
+        saveTags: document.getElementById('save-tags'),
+        editColorPreview: document.getElementById('edit-color-preview'),
+        editRgbR: document.getElementById('edit-rgb-r'),
+        editRgbG: document.getElementById('edit-rgb-g'),
+        editRgbB: document.getElementById('edit-rgb-b'),
+        editRgbRValue: document.getElementById('edit-rgb-r-value'),
+        editRgbGValue: document.getElementById('edit-rgb-g-value'),
+        editRgbBValue: document.getElementById('edit-rgb-b-value'),
+        editHsvH: document.getElementById('edit-hsv-h'),
+        editHsvS: document.getElementById('edit-hsv-s'),
+        editHsvV: document.getElementById('edit-hsv-v'),
+        editHsvHValue: document.getElementById('edit-hsv-h-value'),
+        editHsvSValue: document.getElementById('edit-hsv-s-value'),
+        editHsvVValue: document.getElementById('edit-hsv-v-value'),
+        hsvSliders: document.getElementById('hsv-sliders'),
+        rgbSliders: document.getElementById('rgb-sliders'),
+        colorModeTabs: document.querySelectorAll('.color-mode-tab')
     };
 
     // ===== Initialization =====
@@ -139,6 +193,7 @@
 
         // Initialize UI
         initColorPalette();
+        initRGBPicker();
         initLayers();
         initLayerContextMenu();
         initToolListeners();
@@ -147,21 +202,39 @@
         initTimelapseModal();
         initCanvasPan();
         initOpenModal();
+        initResizeModal();
+        initTransformTools();
+        initEditColorModal();
+        initSaveModal();
+        loadColorPalette();
 
         setStatus('準備完了');
     }
 
     // ===== Color Palette =====
     function initColorPalette() {
-        // Generate 16-color palette
-        DEFAULT_COLORS.forEach(color => {
+        // Generate 16-color palette (will be populated from DB)
+        for (let i = 0; i < 16; i++) {
             const swatch = document.createElement('div');
             swatch.className = 'color-swatch';
-            swatch.style.background = color;
-            swatch.title = color;
-            swatch.addEventListener('click', () => setColor(color));
+            swatch.style.background = DEFAULT_COLORS[i];
+            swatch.title = DEFAULT_COLORS[i];
+            swatch.dataset.slotIndex = i;
+            
+            // Single click to select
+            swatch.addEventListener('click', () => setColor(swatch.style.background));
+            
+            // Double click to edit - use closure to capture index and swatch
+            swatch.addEventListener('dblclick', ((index, element) => {
+                return () => {
+                    if (window.openEditColorModal) {
+                        window.openEditColorModal(index, element.style.background);
+                    }
+                };
+            })(i, swatch));
+            
             elements.colorPaletteGrid.appendChild(swatch);
-        });
+        }
 
         // Color picker
         elements.colorPicker.addEventListener('input', (e) => {
@@ -170,6 +243,13 @@
     }
 
     function setColor(color) {
+        // Normalize color format
+        if (color.startsWith('rgb')) {
+            // Convert rgb to hex
+            const rgb = color.match(/\d+/g);
+            color = '#' + rgb.map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+        }
+        
         state.currentColor = color;
         elements.currentColor.style.background = color;
         elements.currentColorHex.textContent = color.toUpperCase();
@@ -460,7 +540,7 @@
         elements.toolZoomFit.addEventListener('click', zoomFit);
 
         // Header buttons
-        elements.btnSave.addEventListener('click', saveIllust);
+        elements.btnSave.addEventListener('click', openSaveModal);
         elements.btnTimelapse.addEventListener('click', openTimelapseModal);
         elements.btnNew.addEventListener('click', newIllust);
         elements.btnClear.addEventListener('click', clearCurrentLayer);
@@ -987,6 +1067,9 @@
         if (total === 0) return;
         const targetIdx = Math.max(0, Math.min(total - 1, Math.floor(total * pct)));
 
+        // 再生状態を保存
+        const wasPlaying = timelapseState.playing && !timelapseState.paused;
+
         // find nearest snapshot not after targetIdx
         let snap = null;
         for (let i = state.timelapseSnapshots.length - 1; i >= 0; i--) {
@@ -1009,6 +1092,14 @@
                     applyTimelapseEventToCanvas(ctx, state.timelapseEvents[i]);
                 }
                 elements.timelapseSeek.value = Math.floor(((targetIdx+1) / (total || 1)) * 100);
+                
+                // シーク後に再生状態を復元
+                if (wasPlaying && timelapseState.events) {
+                    timelapseState.idx = targetIdx;
+                    const virtualT = timelapseState.events[targetIdx]?._virtualT || timelapseState.startT;
+                    timelapseState.startReal = performance.now();
+                    timelapseState.startT = virtualT;
+                }
             };
             img.src = snap.data;
         } else {
@@ -1017,6 +1108,14 @@
                 applyTimelapseEventToCanvas(ctx, state.timelapseEvents[i]);
             }
             elements.timelapseSeek.value = Math.floor(((targetIdx+1) / (total || 1)) * 100);
+            
+            // シーク後に再生状態を復元
+            if (wasPlaying && timelapseState.events) {
+                timelapseState.idx = targetIdx;
+                const virtualT = timelapseState.events[targetIdx]?._virtualT || timelapseState.startT;
+                timelapseState.startReal = performance.now();
+                timelapseState.startT = virtualT;
+            }
         }
     }
 
@@ -1047,6 +1146,23 @@
 
         elements.timelapseSpeed.addEventListener('input', (e) => {
             elements.timelapseSpeedValue.textContent = e.target.value + 'x';
+            // 速度を即座に反映
+            if (timelapseState.playing && !timelapseState.paused) {
+                const newSpeed = parseFloat(e.target.value) || 1;
+                const oldSpeed = timelapseState.speed;
+                
+                // 現在の仮想時間を計算
+                const now = performance.now();
+                const elapsedReal = now - timelapseState.startReal;
+                const virtualT = timelapseState.startT + elapsedReal * oldSpeed;
+                
+                // 新しい速度で再計算
+                timelapseState.speed = newSpeed;
+                timelapseState.startReal = now;
+                timelapseState.startT = virtualT;
+            } else {
+                timelapseState.speed = parseFloat(e.target.value) || 1;
+            }
         });
 
         // Seek range: update quick preview on input, perform heavy seek on change/pointerup
@@ -1398,7 +1514,7 @@
         elements.illustId.textContent = id;
     }
 
-    async function saveIllust() {
+    async function saveIllust(title, description = '', tags = '') {
         setStatus('保存中...');
 
         // Composite layers
@@ -1484,7 +1600,9 @@
         }
 
         const payload = {
-            title: 'Canvas Artwork',
+            title: title,
+            description: description,
+            tags: tags,
             canvas_width: w,
             canvas_height: h,
             background_color: '#FFFFFF',
@@ -1511,6 +1629,11 @@
             if (json.success) {
                 setStatus(`保存完了 (ID: ${json.data.id})`);
                 setCurrentId(json.data.id);
+
+                // Update current illust info
+                state.currentIllustTitle = title;
+                state.currentIllustDescription = description;
+                state.currentIllustTags = tags;
 
                 // Clear timelapse events
                 state.timelapseEvents = [];
@@ -1542,6 +1665,9 @@
         state.redoStacks = [[], [], [], []];
         state.timelapseEvents = [];
         state.currentIllustId = null;
+        state.currentIllustTitle = '';
+        state.currentIllustDescription = '';
+        state.currentIllustTags = '';
 
         elements.illustId.textContent = '(未保存)';
 
@@ -1704,6 +1830,10 @@
             const info = document.createElement('div');
             info.className = 'illust-info';
 
+            const titleEl = document.createElement('div');
+            titleEl.className = 'illust-title';
+            titleEl.textContent = illust.title || '無題';
+
             const idEl = document.createElement('div');
             idEl.className = 'illust-id';
             idEl.textContent = `ID: ${illust.id}`;
@@ -1713,6 +1843,7 @@
             const date = new Date(illust.updated_at || illust.created_at);
             dateEl.textContent = date.toLocaleDateString('ja-JP');
 
+            info.appendChild(titleEl);
             info.appendChild(idEl);
             info.appendChild(dateEl);
 
@@ -1861,6 +1992,11 @@
 
             // Set current ID
             setCurrentId(idToLoad);
+            
+            // Store current illust info for save modal
+            state.currentIllustTitle = illust.title || '';
+            state.currentIllustDescription = illust.description || '';
+            state.currentIllustTags = illust.tags || '';
 
             renderLayers();
             setStatus(`イラスト ID:${idToLoad} を読み込みました`);
@@ -1870,6 +2006,658 @@
             console.error('Failed to load illustration:', e);
             setStatus('イラストの読み込みに失敗しました: ' + e.message);
         }
+    }
+
+    // ===== RGB Color Picker =====
+    function initRGBPicker() {
+        if (!elements.rgbR || !elements.rgbG || !elements.rgbB) return;
+
+        function updateColorFromRGB() {
+            const r = parseInt(elements.rgbR.value);
+            const g = parseInt(elements.rgbG.value);
+            const b = parseInt(elements.rgbB.value);
+            
+            const hex = '#' + 
+                r.toString(16).padStart(2, '0') + 
+                g.toString(16).padStart(2, '0') + 
+                b.toString(16).padStart(2, '0');
+            
+            setColor(hex);
+        }
+
+        function updateRGBFromColor(hex) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            
+            elements.rgbR.value = r;
+            elements.rgbG.value = g;
+            elements.rgbB.value = b;
+            
+            elements.rgbRValue.textContent = r;
+            elements.rgbGValue.textContent = g;
+            elements.rgbBValue.textContent = b;
+        }
+
+        elements.rgbR.addEventListener('input', () => {
+            elements.rgbRValue.textContent = elements.rgbR.value;
+            updateColorFromRGB();
+        });
+
+        elements.rgbG.addEventListener('input', () => {
+            elements.rgbGValue.textContent = elements.rgbG.value;
+            updateColorFromRGB();
+        });
+
+        elements.rgbB.addEventListener('input', () => {
+            elements.rgbBValue.textContent = elements.rgbB.value;
+            updateColorFromRGB();
+        });
+
+        // Update RGB sliders when color changes
+        const originalSetColor = setColor;
+        window.setColor = function(color) {
+            originalSetColor(color);
+            updateRGBFromColor(color);
+        };
+
+        // Initialize with current color
+        updateRGBFromColor(state.currentColor);
+    }
+
+    // ===== Canvas Resize Modal =====
+    function initResizeModal() {
+        if (!elements.btnResize) return;
+
+        let aspectRatio = 1;
+
+        elements.btnResize.addEventListener('click', () => {
+            const currentWidth = state.layers[0].width;
+            const currentHeight = state.layers[0].height;
+            
+            elements.resizeWidth.value = currentWidth;
+            elements.resizeHeight.value = currentHeight;
+            aspectRatio = currentWidth / currentHeight;
+            
+            elements.resizeModalOverlay.classList.add('active');
+        });
+
+        elements.resizeModalClose.addEventListener('click', closeResizeModal);
+        elements.resizeModalCancel.addEventListener('click', closeResizeModal);
+
+        elements.resizeModalOverlay.addEventListener('click', (e) => {
+            if (e.target === elements.resizeModalOverlay) {
+                closeResizeModal();
+            }
+        });
+
+        // Width/Height input with aspect ratio lock
+        elements.resizeWidth.addEventListener('input', () => {
+            if (elements.resizeKeepRatio.checked) {
+                const newWidth = parseInt(elements.resizeWidth.value) || 512;
+                elements.resizeHeight.value = Math.round(newWidth / aspectRatio);
+            }
+        });
+
+        elements.resizeHeight.addEventListener('input', () => {
+            if (elements.resizeKeepRatio.checked) {
+                const newHeight = parseInt(elements.resizeHeight.value) || 512;
+                elements.resizeWidth.value = Math.round(newHeight * aspectRatio);
+            }
+        });
+
+        // Preset buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const width = parseInt(btn.dataset.width);
+                const height = parseInt(btn.dataset.height);
+                elements.resizeWidth.value = width;
+                elements.resizeHeight.value = height;
+                aspectRatio = width / height;
+            });
+        });
+
+        // Apply resize
+        elements.resizeModalApply.addEventListener('click', () => {
+            const newWidth = parseInt(elements.resizeWidth.value) || 512;
+            const newHeight = parseInt(elements.resizeHeight.value) || 512;
+            
+            if (newWidth < 64 || newWidth > 2048 || newHeight < 64 || newHeight > 2048) {
+                alert('サイズは64～2048pxの範囲で指定してください');
+                return;
+            }
+            
+            resizeCanvas(newWidth, newHeight);
+            closeResizeModal();
+        });
+
+        function closeResizeModal() {
+            elements.resizeModalOverlay.classList.remove('active');
+        }
+    }
+
+    function resizeCanvas(newWidth, newHeight) {
+        // Save current layer data
+        const layerData = state.layers.map((canvas, idx) => {
+            return canvas.toDataURL();
+        });
+
+        // Update canvas-wrap container size
+        if (elements.canvasWrap) {
+            elements.canvasWrap.style.width = `${newWidth}px`;
+            elements.canvasWrap.style.height = `${newHeight}px`;
+        }
+
+        // Resize all layers
+        state.layers.forEach((canvas, idx) => {
+            const oldWidth = canvas.width;
+            const oldHeight = canvas.height;
+            
+            // Update both canvas internal size and CSS size
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            canvas.style.width = `${newWidth}px`;
+            canvas.style.height = `${newHeight}px`;
+
+            // Redraw layer content
+            const img = new Image();
+            img.onload = () => {
+                state.contexts[idx].drawImage(img, 0, 0);
+            };
+            img.src = layerData[idx];
+        });
+
+        // Update canvas info
+        const canvasInfo = document.querySelector('.canvas-info');
+        if (canvasInfo) {
+            canvasInfo.textContent = `${newWidth} x ${newHeight} px`;
+        }
+
+        // Update timelapse canvas
+        if (elements.timelapseCanvas) {
+            elements.timelapseCanvas.width = newWidth;
+            elements.timelapseCanvas.height = newHeight;
+        }
+
+        setStatus(`キャンバスサイズを ${newWidth}×${newHeight} に変更しました`);
+        saveUndoState();
+    }
+
+    // ===== Canvas Transform Tools =====
+    function initTransformTools() {
+        if (elements.toolRotateCW) {
+            elements.toolRotateCW.addEventListener('click', () => rotateCanvas(90));
+        }
+        
+        if (elements.toolRotateCCW) {
+            elements.toolRotateCCW.addEventListener('click', () => rotateCanvas(-90));
+        }
+        
+        if (elements.toolFlipH) {
+            elements.toolFlipH.addEventListener('click', () => flipCanvas('horizontal'));
+        }
+        
+        if (elements.toolFlipV) {
+            elements.toolFlipV.addEventListener('click', () => flipCanvas('vertical'));
+        }
+    }
+
+    function rotateCanvas(degrees) {
+        const layer = state.layers[state.activeLayer];
+        const ctx = state.contexts[state.activeLayer];
+        
+        // Save current state
+        const imageData = layer.toDataURL();
+        const img = new Image();
+        
+        img.onload = () => {
+            const oldWidth = layer.width;
+            const oldHeight = layer.height;
+            
+            // For 90/-90 degree rotation, swap width and height
+            if (Math.abs(degrees) === 90) {
+                layer.width = oldHeight;
+                layer.height = oldWidth;
+            }
+            
+            // Clear and setup transformation
+            ctx.clearRect(0, 0, layer.width, layer.height);
+            ctx.save();
+            
+            // Move to center, rotate, move back
+            ctx.translate(layer.width / 2, layer.height / 2);
+            ctx.rotate((degrees * Math.PI) / 180);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+            
+            ctx.restore();
+            
+            // Update canvas info if dimensions changed
+            if (Math.abs(degrees) === 90) {
+                const canvasInfo = document.querySelector('.canvas-info');
+                if (canvasInfo) {
+                    canvasInfo.textContent = `${layer.width} x ${layer.height} px`;
+                }
+                
+                // Resize all other layers to match
+                state.layers.forEach((canvas, idx) => {
+                    if (idx !== state.activeLayer) {
+                        const tempData = canvas.toDataURL();
+                        canvas.width = layer.width;
+                        canvas.height = layer.height;
+                        const tempImg = new Image();
+                        tempImg.onload = () => {
+                            state.contexts[idx].drawImage(tempImg, 0, 0);
+                        };
+                        tempImg.src = tempData;
+                    }
+                });
+            }
+            
+            setStatus(`${degrees}度回転しました`);
+            saveUndoState();
+        };
+        
+        img.src = imageData;
+    }
+
+    function flipCanvas(direction) {
+        const layer = state.layers[state.activeLayer];
+        const ctx = state.contexts[state.activeLayer];
+        
+        // Save current state
+        const imageData = layer.toDataURL();
+        const img = new Image();
+        
+        img.onload = () => {
+            ctx.clearRect(0, 0, layer.width, layer.height);
+            ctx.save();
+            
+            if (direction === 'horizontal') {
+                ctx.translate(layer.width, 0);
+                ctx.scale(-1, 1);
+            } else {
+                ctx.translate(0, layer.height);
+                ctx.scale(1, -1);
+            }
+            
+            ctx.drawImage(img, 0, 0);
+            ctx.restore();
+            
+            setStatus(`${direction === 'horizontal' ? '左右' : '上下'}反転しました`);
+            saveUndoState();
+        };
+        
+        img.src = imageData;
+    }
+
+    // ===== Color Palette Management =====
+    
+    // HSV <-> RGB conversion utilities
+    function rgbToHsv(r, g, b) {
+        r /= 255;
+        g /= 255;
+        b /= 255;
+        
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const diff = max - min;
+        
+        let h = 0;
+        let s = max === 0 ? 0 : diff / max;
+        let v = max;
+        
+        if (diff !== 0) {
+            if (max === r) {
+                h = 60 * (((g - b) / diff) % 6);
+            } else if (max === g) {
+                h = 60 * ((b - r) / diff + 2);
+            } else {
+                h = 60 * ((r - g) / diff + 4);
+            }
+        }
+        
+        if (h < 0) h += 360;
+        
+        return {
+            h: Math.round(h),
+            s: Math.round(s * 100),
+            v: Math.round(v * 100)
+        };
+    }
+    
+    function hsvToRgb(h, s, v) {
+        s /= 100;
+        v /= 100;
+        
+        const c = v * s;
+        const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        const m = v - c;
+        
+        let r = 0, g = 0, b = 0;
+        
+        if (h >= 0 && h < 60) {
+            r = c; g = x; b = 0;
+        } else if (h >= 60 && h < 120) {
+            r = x; g = c; b = 0;
+        } else if (h >= 120 && h < 180) {
+            r = 0; g = c; b = x;
+        } else if (h >= 180 && h < 240) {
+            r = 0; g = x; b = c;
+        } else if (h >= 240 && h < 300) {
+            r = x; g = 0; b = c;
+        } else {
+            r = c; g = 0; b = x;
+        }
+        
+        return {
+            r: Math.round((r + m) * 255),
+            g: Math.round((g + m) * 255),
+            b: Math.round((b + m) * 255)
+        };
+    }
+    
+    function rgbToHex(r, g, b) {
+        return '#' + 
+            r.toString(16).padStart(2, '0') + 
+            g.toString(16).padStart(2, '0') + 
+            b.toString(16).padStart(2, '0');
+    }
+    
+    function hexToRgb(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return { r, g, b };
+    }
+    
+    async function loadColorPalette() {
+        try {
+            const response = await fetch('/admin/paint/api/palette.php');
+            const data = await response.json();
+            
+            if (data.success && data.colors) {
+                const swatches = elements.colorPaletteGrid.querySelectorAll('.color-swatch');
+                data.colors.forEach((color, index) => {
+                    if (swatches[index]) {
+                        swatches[index].style.background = color;
+                        swatches[index].title = color;
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load color palette:', error);
+        }
+    }
+
+    async function saveColorToSlot(slotIndex, color) {
+        try {
+            const response = await fetch('/admin/paint/api/palette.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    csrf_token: window.CSRF_TOKEN,
+                    slot_index: slotIndex,
+                    color: color
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update the swatch
+                const swatches = elements.colorPaletteGrid.querySelectorAll('.color-swatch');
+                if (swatches[slotIndex]) {
+                    swatches[slotIndex].style.background = color;
+                    swatches[slotIndex].title = color;
+                }
+                setStatus(`パレット色を更新しました`);
+            } else {
+                throw new Error(data.error || 'Failed to save color');
+            }
+        } catch (error) {
+            console.error('Failed to save color:', error);
+            setStatus('色の保存に失敗しました');
+        }
+    }
+
+    // ===== Save Modal =====
+    function initSaveModal() {
+        if (!elements.saveModalOverlay) return;
+
+        elements.saveModalCancel.addEventListener('click', closeSaveModal);
+        elements.saveModalSave.addEventListener('click', handleSaveIllust);
+
+        elements.saveModalOverlay.addEventListener('click', (e) => {
+            if (e.target === elements.saveModalOverlay) {
+                closeSaveModal();
+            }
+        });
+    }
+
+    function openSaveModal() {
+        if (!elements.saveModalOverlay) return;
+
+        // Pre-fill with current illust info
+        elements.saveTitle.value = state.currentIllustTitle;
+        elements.saveDescription.value = state.currentIllustDescription;
+        elements.saveTags.value = state.currentIllustTags;
+
+        elements.saveModalOverlay.classList.add('active');
+        elements.saveTitle.focus();
+    }
+
+    function closeSaveModal() {
+        elements.saveModalOverlay.classList.remove('active');
+    }
+
+    async function handleSaveIllust() {
+        const title = elements.saveTitle.value.trim();
+        const description = elements.saveDescription.value.trim();
+        const tags = elements.saveTags.value.trim();
+
+        if (!title) {
+            alert('タイトルを入力してください。');
+            elements.saveTitle.focus();
+            return;
+        }
+
+        closeSaveModal();
+        await saveIllust(title, description, tags);
+    }
+
+    function initEditColorModal() {
+        if (!elements.editColorModalOverlay) return;
+
+        let currentSlotIndex = 0;
+        let currentMode = 'hsv';
+        let isUpdating = false; // Prevent circular updates
+
+        elements.editColorModalClose.addEventListener('click', closeEditColorModal);
+        elements.editColorModalCancel.addEventListener('click', closeEditColorModal);
+
+        elements.editColorModalOverlay.addEventListener('click', (e) => {
+            if (e.target === elements.editColorModalOverlay) {
+                closeEditColorModal();
+            }
+        });
+
+        // Tab switching
+        elements.colorModeTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const mode = tab.dataset.mode;
+                switchMode(mode);
+            });
+        });
+
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            elements.colorModeTabs.forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.mode === mode);
+            });
+
+            if (mode === 'hsv') {
+                elements.hsvSliders.style.display = 'block';
+                elements.rgbSliders.style.display = 'none';
+            } else {
+                elements.hsvSliders.style.display = 'none';
+                elements.rgbSliders.style.display = 'block';
+            }
+        }
+
+        // HSV sliders
+        function updatePreviewFromHSV() {
+            if (isUpdating) return;
+            isUpdating = true;
+
+            const h = parseInt(elements.editHsvH.value);
+            const s = parseInt(elements.editHsvS.value);
+            const v = parseInt(elements.editHsvV.value);
+            
+            const rgb = hsvToRgb(h, s, v);
+            const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+            
+            elements.editColorPreview.style.background = hex;
+            elements.editColorInput.value = hex.toUpperCase();
+            
+            // Update RGB sliders
+            elements.editRgbR.value = rgb.r;
+            elements.editRgbG.value = rgb.g;
+            elements.editRgbB.value = rgb.b;
+            elements.editRgbRValue.textContent = rgb.r;
+            elements.editRgbGValue.textContent = rgb.g;
+            elements.editRgbBValue.textContent = rgb.b;
+
+            isUpdating = false;
+        }
+
+        function updateHSVFromRGB() {
+            if (isUpdating) return;
+            isUpdating = true;
+
+            const r = parseInt(elements.editRgbR.value);
+            const g = parseInt(elements.editRgbG.value);
+            const b = parseInt(elements.editRgbB.value);
+            
+            const hex = rgbToHex(r, g, b);
+            const hsv = rgbToHsv(r, g, b);
+            
+            elements.editColorPreview.style.background = hex;
+            elements.editColorInput.value = hex.toUpperCase();
+            
+            // Update HSV sliders
+            elements.editHsvH.value = hsv.h;
+            elements.editHsvS.value = hsv.s;
+            elements.editHsvV.value = hsv.v;
+            elements.editHsvHValue.textContent = hsv.h + '°';
+            elements.editHsvSValue.textContent = hsv.s + '%';
+            elements.editHsvVValue.textContent = hsv.v + '%';
+
+            isUpdating = false;
+        }
+
+        function updateAllFromHex(hex) {
+            if (isUpdating) return;
+            isUpdating = true;
+
+            const rgb = hexToRgb(hex);
+            const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+            
+            elements.editColorPreview.style.background = hex;
+            
+            // Update RGB
+            elements.editRgbR.value = rgb.r;
+            elements.editRgbG.value = rgb.g;
+            elements.editRgbB.value = rgb.b;
+            elements.editRgbRValue.textContent = rgb.r;
+            elements.editRgbGValue.textContent = rgb.g;
+            elements.editRgbBValue.textContent = rgb.b;
+            
+            // Update HSV
+            elements.editHsvH.value = hsv.h;
+            elements.editHsvS.value = hsv.s;
+            elements.editHsvV.value = hsv.v;
+            elements.editHsvHValue.textContent = hsv.h + '°';
+            elements.editHsvSValue.textContent = hsv.s + '%';
+            elements.editHsvVValue.textContent = hsv.v + '%';
+
+            isUpdating = false;
+        }
+
+        // HSV slider events
+        elements.editHsvH.addEventListener('input', () => {
+            elements.editHsvHValue.textContent = elements.editHsvH.value + '°';
+            updatePreviewFromHSV();
+        });
+
+        elements.editHsvS.addEventListener('input', () => {
+            elements.editHsvSValue.textContent = elements.editHsvS.value + '%';
+            updatePreviewFromHSV();
+        });
+
+        elements.editHsvV.addEventListener('input', () => {
+            elements.editHsvVValue.textContent = elements.editHsvV.value + '%';
+            updatePreviewFromHSV();
+        });
+
+        // RGB slider events
+        elements.editRgbR.addEventListener('input', () => {
+            elements.editRgbRValue.textContent = elements.editRgbR.value;
+            updateHSVFromRGB();
+        });
+
+        elements.editRgbG.addEventListener('input', () => {
+            elements.editRgbGValue.textContent = elements.editRgbG.value;
+            updateHSVFromRGB();
+        });
+
+        elements.editRgbB.addEventListener('input', () => {
+            elements.editRgbBValue.textContent = elements.editRgbB.value;
+            updateHSVFromRGB();
+        });
+
+        // Text input
+        elements.editColorInput.addEventListener('input', (e) => {
+            const value = e.target.value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+                updateAllFromHex(value);
+            }
+        });
+
+        // Save button
+        elements.editColorModalSave.addEventListener('click', async () => {
+            const color = elements.editColorInput.value.toUpperCase();
+            if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                await saveColorToSlot(currentSlotIndex, color);
+                closeEditColorModal();
+            } else {
+                alert('正しいカラーコードを入力してください（例: #FF0000）');
+            }
+        });
+
+        function closeEditColorModal() {
+            elements.editColorModalOverlay.classList.remove('active');
+        }
+
+        // Make openEditColorModal available in the scope
+        window.openEditColorModal = (slotIndex, currentColor) => {
+            currentSlotIndex = slotIndex;
+            
+            // Normalize color
+            let color = currentColor;
+            if (color.startsWith('rgb')) {
+                const rgb = color.match(/\d+/g);
+                color = '#' + rgb.map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+            }
+            
+            // Initialize with current color
+            updateAllFromHex(color.toUpperCase());
+            
+            // Set to HSV mode by default
+            switchMode('hsv');
+            
+            elements.editColorModalOverlay.classList.add('active');
+        };
     }
 
     // ===== Start Application =====

@@ -55,6 +55,8 @@ try {
         // optional id for updates
         'id' => isset($raw['id']) ? (int)$raw['id'] : null,
         'title' => $raw['title'] ?? '',
+        'description' => $raw['description'] ?? '',
+        'tags' => $raw['tags'] ?? '',
         'canvas_width' => $raw['canvas_width'] ?? 800,
         'canvas_height' => $raw['canvas_height'] ?? 600,
         'background_color' => $raw['background_color'] ?? '#FFFFFF',

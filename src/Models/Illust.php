@@ -10,6 +10,8 @@ class Illust
     public int $id;
     public int $user_id;
     public string $title = '';
+    public string $description = '';
+    public string $tags = '';
     public int $canvas_width = 800;
     public int $canvas_height = 600;
     public string $background_color = '#FFFFFF';
@@ -33,11 +35,13 @@ class Illust
     public function create(array $data): int
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO illusts (user_id, title, canvas_width, canvas_height, background_color, data_path, image_path, thumbnail_path, timelapse_path, timelapse_size, file_size, status) VALUES (:user_id, :title, :canvas_width, :canvas_height, :background_color, :data_path, :image_path, :thumbnail_path, :timelapse_path, :timelapse_size, :file_size, :status)'
+            'INSERT INTO illusts (user_id, title, description, tags, canvas_width, canvas_height, background_color, data_path, image_path, thumbnail_path, timelapse_path, timelapse_size, file_size, status) VALUES (:user_id, :title, :description, :tags, :canvas_width, :canvas_height, :background_color, :data_path, :image_path, :thumbnail_path, :timelapse_path, :timelapse_size, :file_size, :status)'
         );
         $stmt->execute([
             ':user_id' => $data['user_id'],
             ':title' => $data['title'] ?? '',
+            ':description' => $data['description'] ?? '',
+            ':tags' => $data['tags'] ?? '',
             ':canvas_width' => $data['canvas_width'] ?? 800,
             ':canvas_height' => $data['canvas_height'] ?? 600,
             ':background_color' => $data['background_color'] ?? '#FFFFFF',
