@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../../../vendor/autoload.php';
 require_once __DIR__ . '/../../../../src/Security/SecurityUtil.php';
 
 use App\Database\Connection;
+use App\Services\TimelapseService;
 
 initSecureSession();
 
@@ -22,37 +23,21 @@ if ($userId === null) {
     exit;
 }
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : null;
-if (!$id) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Missing id']);
-    exit;
+header('Content-Type: application/json');
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$publicRoot = realpath(__DIR__ . '/../../..');  // public ディレクトリ
+
+$result = TimelapseService::getTimelapseData($id, $publicRoot);
+
+if (!$result['success']) {
+    $statusCode = 400;
+    if (strpos($result['error'], 'not found') !== false) {
+        $statusCode = 404;
+    } else if (strpos($result['error'], 'Server error') !== false) {
+        $statusCode = 500;
+    }
+    http_response_code($statusCode);
 }
 
-$db = Connection::getInstance();
-$stmt = $db->prepare('SELECT timelapse_path FROM illusts WHERE id = :id');
-$stmt->execute([':id' => $id]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$row || empty($row['timelapse_path'])) {
-    http_response_code(404);
-    echo json_encode(['success' => false, 'error' => 'Timelapse not found']);
-    exit;
-}
-
-$path = $row['timelapse_path'];
-// timelapse_path is relative to public (e.g., /uploads/paintfiles/timelapse/...)
-$publicRoot = __DIR__ . '/../../..';
-$abs = $publicRoot . $path;
-
-if (!file_exists($abs)) {
-    error_log("Timelapse file not found: $abs (from timelapse_path: $path)");
-    http_response_code(404);
-    echo json_encode(['success' => false, 'error' => 'Timelapse file not found']);
-    exit;
-}
-
-// stream binary
-header('Content-Type: application/octet-stream');
-header('Content-Length: ' . filesize($abs));
-readfile($abs);
-exit;
+echo json_encode($result, JSON_UNESCAPED_UNICODE);

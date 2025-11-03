@@ -42,6 +42,7 @@ $csrf = CsrfProtection::getToken();
         <button class="header-btn secondary" id="btn-new">新規作成</button>
         <button class="header-btn secondary" id="btn-open">開く</button>
         <button class="header-btn secondary" id="btn-clear">クリア</button>
+        <button class="header-btn secondary" id="btn-resize">サイズ変更</button>
     </div>
 
     <div class="header-right">
@@ -77,6 +78,13 @@ $csrf = CsrfProtection::getToken();
         <button class="tool-btn" id="tool-zoom-in" title="拡大">🔍+</button>
         <button class="tool-btn" id="tool-zoom-out" title="縮小">🔍-</button>
         <button class="tool-btn" id="tool-zoom-fit" title="フィット">📐</button>
+
+        <div class="tool-separator"></div>
+
+        <button class="tool-btn" id="tool-rotate-cw" title="右に90度回転">↻</button>
+        <button class="tool-btn" id="tool-rotate-ccw" title="左に90度回転">↺</button>
+        <button class="tool-btn" id="tool-flip-h" title="左右反転">⇄</button>
+        <button class="tool-btn" id="tool-flip-v" title="上下反転">⇅</button>
     </div>
 
     <!-- Canvas Area -->
@@ -112,6 +120,32 @@ $csrf = CsrfProtection::getToken();
 
             <div class="color-picker-wrapper">
                 <input type="color" id="color-picker" class="color-picker" value="#000000">
+            </div>
+
+            <!-- RGB Color Picker -->
+            <div class="rgb-picker">
+                <h4 class="rgb-picker-title">RGB調整</h4>
+                <div class="rgb-slider-group">
+                    <label class="rgb-label">
+                        <span class="rgb-label-text" style="color: #ff6b6b;">R</span>
+                        <input type="range" id="rgb-r" class="rgb-slider" min="0" max="255" value="0">
+                        <span class="rgb-value" id="rgb-r-value">0</span>
+                    </label>
+                </div>
+                <div class="rgb-slider-group">
+                    <label class="rgb-label">
+                        <span class="rgb-label-text" style="color: #51cf66;">G</span>
+                        <input type="range" id="rgb-g" class="rgb-slider" min="0" max="255" value="0">
+                        <span class="rgb-value" id="rgb-g-value">0</span>
+                    </label>
+                </div>
+                <div class="rgb-slider-group">
+                    <label class="rgb-label">
+                        <span class="rgb-label-text" style="color: #4dabf7;">B</span>
+                        <input type="range" id="rgb-b" class="rgb-slider" min="0" max="255" value="0">
+                        <span class="rgb-value" id="rgb-b-value">0</span>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -245,6 +279,153 @@ $csrf = CsrfProtection::getToken();
                     <label for="timelapse-ignore-time">時間を無視（等間隔再生）</label>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resize Canvas Modal -->
+<div class="open-modal-overlay" id="resize-modal-overlay">
+    <div class="open-modal">
+        <div class="open-modal-header">
+            <h2 class="open-modal-title">キャンバスサイズ変更</h2>
+            <button class="timelapse-close" id="resize-modal-close">×</button>
+        </div>
+        <div class="open-modal-content" style="padding: 20px;">
+            <div class="resize-options">
+                <div class="setting-row">
+                    <label class="setting-label">幅 (px):</label>
+                    <input type="number" id="resize-width" class="resize-input" min="64" max="2048" value="512">
+                </div>
+                <div class="setting-row">
+                    <label class="setting-label">高さ (px):</label>
+                    <input type="number" id="resize-height" class="resize-input" min="64" max="2048" value="512">
+                </div>
+                <div class="setting-row">
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="resize-keep-ratio" checked>
+                        <label for="resize-keep-ratio">縦横比を維持</label>
+                    </div>
+                </div>
+                <div class="resize-presets">
+                    <h4 style="margin: 15px 0 10px; font-size: 0.9em; color: #999;">プリセット:</h4>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="preset-btn" data-width="512" data-height="512">512×512</button>
+                        <button class="preset-btn" data-width="800" data-height="600">800×600</button>
+                        <button class="preset-btn" data-width="1024" data-height="768">1024×768</button>
+                        <button class="preset-btn" data-width="1280" data-height="720">1280×720</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="open-modal-actions">
+            <button class="modal-btn" id="resize-modal-cancel">キャンセル</button>
+            <button class="modal-btn primary" id="resize-modal-apply">適用</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Color Modal -->
+<div class="open-modal-overlay" id="edit-color-modal-overlay">
+    <div class="open-modal" style="max-width: 400px;">
+        <div class="open-modal-header">
+            <h2 class="open-modal-title">パレット色の編集</h2>
+            <button class="timelapse-close" id="edit-color-modal-close">×</button>
+        </div>
+        <div class="open-modal-content" style="padding: 20px;">
+            <div class="edit-color-preview" style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                <div style="width: 80px; height: 80px; border-radius: 8px; border: 2px solid #ddd;" id="edit-color-preview"></div>
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">カラーコード:</label>
+                    <input type="text" id="edit-color-input" class="resize-input" placeholder="#000000" pattern="^#[0-9A-Fa-f]{6}$" maxlength="7">
+                </div>
+            </div>
+            
+            <!-- Tab buttons -->
+            <div class="color-mode-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid #ddd;">
+                <button class="color-mode-tab active" data-mode="hsv">HSV</button>
+                <button class="color-mode-tab" data-mode="rgb">RGB</button>
+            </div>
+            
+            <!-- HSV Sliders -->
+            <div id="hsv-sliders" class="color-sliders-group">
+                <div class="rgb-slider-group">
+                    <label class="rgb-label">
+                        <span class="rgb-label-text" style="color: #ff6b6b;">H</span>
+                        <input type="range" id="edit-hsv-h" class="rgb-slider" min="0" max="360" value="0">
+                        <span class="rgb-value" id="edit-hsv-h-value">0°</span>
+                    </label>
+                </div>
+                <div class="rgb-slider-group">
+                    <label class="rgb-label">
+                        <span class="rgb-label-text" style="color: #51cf66;">S</span>
+                        <input type="range" id="edit-hsv-s" class="rgb-slider" min="0" max="100" value="0">
+                        <span class="rgb-value" id="edit-hsv-s-value">0%</span>
+                    </label>
+                </div>
+                <div class="rgb-slider-group">
+                    <label class="rgb-label">
+                        <span class="rgb-label-text" style="color: #4dabf7;">V</span>
+                        <input type="range" id="edit-hsv-v" class="rgb-slider" min="0" max="100" value="0">
+                        <span class="rgb-value" id="edit-hsv-v-value">0%</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- RGB Sliders -->
+            <div id="rgb-sliders" class="color-sliders-group" style="display: none;">
+                <div class="rgb-slider-group">
+                    <label class="rgb-label">
+                        <span class="rgb-label-text" style="color: #ff6b6b;">R</span>
+                        <input type="range" id="edit-rgb-r" class="rgb-slider" min="0" max="255" value="0">
+                        <span class="rgb-value" id="edit-rgb-r-value">0</span>
+                    </label>
+                </div>
+                <div class="rgb-slider-group">
+                    <label class="rgb-label">
+                        <span class="rgb-label-text" style="color: #51cf66;">G</span>
+                        <input type="range" id="edit-rgb-g" class="rgb-slider" min="0" max="255" value="0">
+                        <span class="rgb-value" id="edit-rgb-g-value">0</span>
+                    </label>
+                </div>
+                <div class="rgb-slider-group">
+                    <label class="rgb-label">
+                        <span class="rgb-label-text" style="color: #4dabf7;">B</span>
+                        <input type="range" id="edit-rgb-b" class="rgb-slider" min="0" max="255" value="0">
+                        <span class="rgb-value" id="edit-rgb-b-value">0</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="open-modal-actions">
+            <button class="modal-btn" id="edit-color-modal-cancel">キャンセル</button>
+            <button class="modal-btn primary" id="edit-color-modal-save">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- Save Modal -->
+<div id="save-modal-overlay" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>イラストを保存</h3>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="save-title">タイトル</label>
+                <input type="text" id="save-title" placeholder="イラストのタイトルを入力" maxlength="100">
+            </div>
+            <div class="form-group">
+                <label for="save-description">説明 (オプション)</label>
+                <textarea id="save-description" placeholder="イラストの説明を入力" rows="3" maxlength="500"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="save-tags">タグ (オプション)</label>
+                <input type="text" id="save-tags" placeholder="タグをカンマ区切りで入力 (例: 風景, 人物, イラスト)" maxlength="200">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="modal-btn" id="save-modal-cancel">キャンセル</button>
+            <button class="modal-btn primary" id="save-modal-save">保存</button>
         </div>
     </div>
 </div>
