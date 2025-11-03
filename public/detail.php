@@ -74,7 +74,7 @@ try {
 
 function createNsfwThumb($post) {
     // NSFW画像の場合はNSFWフィルター版を使用
-    $pathInfo = pathinfo($post['image_path'] ?? $data['thumb_path'] ?? '');
+    $pathInfo = pathinfo($post['image_path'] ?? $post['thumb_path'] ?? '');
     // basename()でディレクトリトラバーサルを防止
     $nsfwFilename = basename($pathInfo['filename'] . '_nsfw.' . ($pathInfo['extension'] ?? 'webp'));
     $shareImagePath = $pathInfo['dirname'] . '/' . $nsfwFilename;
@@ -91,7 +91,7 @@ function createNsfwThumb($post) {
             return $thumbInfo['dirname'] . '/' . $nsfwThumbFilename;
         }
     }
-    return "";
+    return $shareImagePath;
 }
 
 ?>
