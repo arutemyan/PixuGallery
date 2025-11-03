@@ -64,6 +64,16 @@ abstract class IntegrationTestCase extends TestCase
 
         file_put_contents($configPath, $testConfig);
 
+        // Run migrations for this test DB so the schema matches production migrations.
+        // We run the migration script as a separate PHP process to avoid in-process
+        // SQLite locking against the test runner.
+        $migrationCmd = escapeshellarg((defined('PHP_BINARY') ? PHP_BINARY : 'php')) . ' ' . escapeshellarg($projectRoot . '/public/setup/run_migrations.php') . ' > ' . escapeshellarg(self::$tmpDir . '/migrations.log') . ' 2>&1';
+        exec($migrationCmd, $migrationOut, $migrationRc);
+        if ($migrationRc !== 0) {
+            $log = @file_get_contents(self::$tmpDir . '/migrations.log');
+            throw new \RuntimeException('Failed to run migrations for integration tests. Log: ' . substr((string)$log, 0, 4000));
+        }
+
         // Note: migrations are run by CI during setup (see .github/workflows/phpunit.yml).
         // For local runs we avoid running the full migration runner here because
         // it can conflict with other test processes (SQLite locking). The
@@ -137,6 +147,14 @@ abstract class IntegrationTestCase extends TestCase
 
     public static function tearDownAfterClass(): void
     {
+        // When debugging, set PHOTO_SITE_KEEP_TMP=1 in the environment to
+        // preserve the temporary directory and leave the built-in server
+        // running so developers can inspect the server log and state.
+        if (getenv('PHOTO_SITE_KEEP_TMP')) {
+            // Do not kill server or remove tmp dir when debugging locally.
+            return;
+        }
+
         if (self::$serverPid) {
             exec('kill ' . (int)self::$serverPid);
         }

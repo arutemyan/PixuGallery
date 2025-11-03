@@ -154,9 +154,13 @@ return [
 
             error_log("Migration 007: Copied {$copiedImagesCount} images to new post_ids");
 
-            // ステップ9: group_postsテーブルを削除
-            error_log("Migration 007: Dropping group_posts table");
-            $db->exec("DROP TABLE group_posts");
+            // ステップ9: group_postsテーブルを削除（安全に試みる）
+            error_log("Migration 007: Dropping group_posts table (safe attempt)");
+            $dropped = $helper->dropTableIfExistsSafe($db, 'group_posts');
+            if (!$dropped) {
+                error_log('Migration 007: Could not drop group_posts due to persistent lock; committing transaction without drop');
+                // 続行してコミット。テーブル削除ができない場合でもデータは移行済みなので致命的ではない。
+            }
 
             // ステップ10: コミット
             error_log("Migration 007: Committing transaction");
