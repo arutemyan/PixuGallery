@@ -748,19 +748,21 @@
 
     function getPointerPos(e, canvas) {
         const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX ?? e.touches?.[0]?.clientX ?? 0) - rect.left;
-        const y = (e.clientY ?? e.touches?.[0]?.clientY ?? 0) - rect.top;
+        const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+        const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
 
-        // Reverse the canvas-wrap transform: scale and translate
-        // Transform is: scale(zoom) translate(offsetX/zoom, offsetY/zoom)
-        // So reverse is: translate(-offsetX/zoom, -offsetY/zoom) scale(1/zoom)
-        const reverseTranslateX = -state.panOffset.x / state.zoomLevel;
-        const reverseTranslateY = -state.panOffset.y / state.zoomLevel;
-        const reverseScale = 1 / state.zoomLevel;
+        // Get position relative to the bounding rect
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
 
-        // Apply reverse transform to get canvas coordinates
-        const canvasX = (x - reverseTranslateX) * reverseScale;
-        const canvasY = (y - reverseTranslateY) * reverseScale;
+        // The canvas is scaled and translated by canvas-wrap
+        // Transform: scale(zoom) translate(panOffset.x/zoom, panOffset.y/zoom)
+        // To get canvas pixel coordinates, we need to reverse this:
+        // 1. Undo the scale: divide by zoom
+        // 2. Undo the translate: subtract the pan offset
+        
+        const canvasX = (x / state.zoomLevel) - (state.panOffset.x / state.zoomLevel);
+        const canvasY = (y / state.zoomLevel) - (state.panOffset.y / state.zoomLevel);
 
         return {
             x: canvasX,
@@ -774,10 +776,7 @@
         const imageData = ctx.getImageData(pos.x, pos.y, 1, 1);
         const [r, g, b] = imageData.data;
 
-        const hex = '#' + [r, g, b].map(x => {
-            const h = x.toString(16);
-            return h.length === 1 ? '0' + h : h;
-        }).join('');
+        const hex = ColorUtils.rgbToHex(r, g, b);
 
         setColor(hex);
         setTool('pen');
@@ -804,7 +803,7 @@
         };
 
         // Parse fill color
-        const fillColor = hexToRgb(state.currentColor);
+        const fillColor = ColorUtils.hexToRgb(state.currentColor);
 
         // Check if already same color
         if (colorMatch(targetColor, fillColor, 0)) {
@@ -860,15 +859,6 @@
         });
 
         setStatus('塗りつぶし完了');
-    }
-
-    function hexToRgb(hex) {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : { r: 0, g: 0, b: 0 };
     }
 
     function colorMatch(c1, c2, tolerance) {
@@ -2480,20 +2470,6 @@
         }
     };
     
-    function rgbToHex(r, g, b) {
-        return '#' + 
-            r.toString(16).padStart(2, '0') + 
-            g.toString(16).padStart(2, '0') + 
-            b.toString(16).padStart(2, '0');
-    }
-    
-    function hexToRgb(hex) {
-        const r = parseInt(hex.slice(1, 3), 16);
-        const g = parseInt(hex.slice(3, 5), 16);
-        const b = parseInt(hex.slice(5, 7), 16);
-        return { r, g, b };
-    }
-    
     async function loadColorPalette() {
         try {
             const response = await fetch('/admin/paint/api/palette.php');
@@ -2639,7 +2615,7 @@
             const v = parseInt(elements.editHsvV.value);
             
             const rgb = ColorUtils.hsvToRgb(h, s, v);
-            const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+            const hex = ColorUtils.rgbToHex(rgb.r, rgb.g, rgb.b);
             
             elements.editColorPreview.style.background = hex;
             elements.editColorInput.value = hex.toUpperCase();
@@ -2663,7 +2639,7 @@
             const g = parseInt(elements.editRgbG.value);
             const b = parseInt(elements.editRgbB.value);
             
-            const hex = rgbToHex(r, g, b);
+            const hex = ColorUtils.rgbToHex(r, g, b);
             const hsv = ColorUtils.rgbToHsv(r, g, b);
             
             elements.editColorPreview.style.background = hex;
@@ -2684,7 +2660,7 @@
             if (isUpdating) return;
             isUpdating = true;
 
-            const rgb = hexToRgb(hex);
+            const rgb = ColorUtils.hexToRgb(hex);
             const hsv = ColorUtils.rgbToHsv(rgb.r, rgb.g, rgb.b);
             
             elements.editColorPreview.style.background = hex;
