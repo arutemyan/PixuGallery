@@ -27,8 +27,9 @@ header {
     <?php if (!empty($theme['header_image'])): ?>
     background-image: url('/<?= escapeHtml($theme['header_image']) ?>');
     background-size: cover;
-    background-position: center;
     background-blend-mode: overlay;
+    background-position: left top;
+    background-repeat: no-repeat;
     <?php endif; ?>
 }
 
