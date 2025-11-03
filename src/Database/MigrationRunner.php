@@ -38,6 +38,16 @@ class MigrationRunner
      */
     public function run(): array
     {
+        // Make the PDO connection more tolerant to transient locks during migrations
+        try {
+            // Increase busy timeout to 30s (30000 ms) to wait longer for locks
+            $this->db->exec('PRAGMA busy_timeout = 30000');
+            // Ensure WAL mode is used if possible to reduce writer/readers contention
+            @ $this->db->exec('PRAGMA journal_mode = WAL');
+        } catch (\Exception $e) {
+            error_log('MigrationRunner: Could not set PRAGMA options: ' . $e->getMessage());
+        }
+
         // 実行済みマイグレーションを取得
         $executed = $this->getExecutedMigrations();
 
@@ -54,9 +64,10 @@ class MigrationRunner
 
             try {
                 // マイグレーション実行（トランジェントなロックに備えてリトライ）
-                $maxRetries = 5;
+                $maxRetries = 20; // より多くのリトライを許容
                 $attempt = 0;
                 $lastException = null;
+                $baseDelayUs = 500000; // 0.5s
 
                 while ($attempt < $maxRetries) {
                     try {
@@ -84,8 +95,9 @@ class MigrationRunner
 
                         if ($isLocked) {
                             $attempt++;
-                            error_log("Migration {$version}: database is locked, retrying ({$attempt}/{$maxRetries}) - msg: {$msg}");
-                            usleep(500000); // 0.5s
+                            $delay = (int)($baseDelayUs * (1 + ($attempt / 4))); // 緩やかな増加
+                            error_log("Migration {$version}: database is locked, retrying ({$attempt}/{$maxRetries}) - msg: {$msg}, sleeping {$delay}us");
+                            usleep($delay);
                             continue;
                         }
 

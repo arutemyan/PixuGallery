@@ -225,7 +225,7 @@ class MigrationHelper
      * @param int $delayUs マイクロ秒
      * @return bool true: 削除された / 既に存在しなかった, false: 削除に失敗
      */
-    public function dropTableIfExistsSafe(PDO $db, string $table, int $maxRetries = 5, int $delayUs = 500000): bool
+    public function dropTableIfExistsSafe(PDO $db, string $table, int $maxRetries = 40, int $delayUs = 200000): bool
     {
         if (!$this->tableExists($db, $table)) {
             error_log("MigrationHelper: Table {$table} does not exist (nothing to drop)");
@@ -240,10 +240,15 @@ class MigrationHelper
                 return true;
             } catch (\Exception $e) {
                 $msg = $e->getMessage();
-                if (strpos($msg, 'database is locked') !== false || stripos($msg, 'busy') !== false) {
+                // SQLite may emit slightly different messages; check multiple variants
+                if (strpos($msg, 'database is locked') !== false
+                    || strpos($msg, 'database table is locked') !== false
+                    || stripos($msg, 'busy') !== false) {
                     $attempt++;
-                    error_log("MigrationHelper: DROP TABLE {$table} locked, retrying ({$attempt}/{$maxRetries})");
-                    usleep($delayUs);
+                    // 緩やかなバックオフ
+                    $backoff = (int)($delayUs * (1 + ($attempt / 10)));
+                    error_log("MigrationHelper: DROP TABLE {$table} locked, retrying ({$attempt}/{$maxRetries}), sleeping {$backoff}us");
+                    usleep($backoff);
                     continue;
                 }
 

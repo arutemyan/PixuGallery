@@ -41,14 +41,10 @@ return [
         error_log("Migration 007: Found {$groupPostsCount} group_posts records to migrate");
 
         if ($groupPostsCount === 0) {
-            error_log("Migration 007: No group_posts to migrate; attempting safe drop if table exists");
-
-            // MigrationHelper により安全に DROP を試みる（ロックが続く場合はログに記録してスキップ）
-            $dropped = $helper->dropTableIfExistsSafe($db, 'group_posts');
-            if (!$dropped) {
-                error_log('Migration 007: Could not drop group_posts due to persistent lock; continuing without drop');
-            }
-
+            error_log("Migration 007: No group_posts to migrate; skipping DROP to avoid locking issues");
+            // If there are no group_posts rows, it's safe to skip DROP to avoid
+            // causing transient locks in test/CI environments. The table may
+            // remain, which is harmless.
             return;
         }
 

@@ -4,12 +4,45 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-use App\Database\Connection;
-
+// Run migrations using an isolated PDO connection and a file lock to avoid concurrent
+// processes opening the same SQLite file and causing 'database is locked'.
 try {
     echo "=== Running Migrations ===\n\n";
 
-    $db = Connection::getInstance();
+    // Acquire a cross-process lock so only one migration runner touches the DB at a time.
+    $lockFile = sys_get_temp_dir() . '/photo_site_migrations.lock';
+    $lockFp = fopen($lockFile, 'c');
+    if ($lockFp === false) {
+        throw new Exception('Could not open migration lock file: ' . $lockFile);
+    }
+
+    // Block until exclusive lock is acquired
+    if (!flock($lockFp, LOCK_EX)) {
+        throw new Exception('Could not acquire migration lock');
+    }
+
+    // Load config to determine SQLite path (if using sqlite)
+    $configPath = __DIR__ . '/../../config/config.php';
+    $config = file_exists($configPath) ? require $configPath : [];
+
+    $driver = $config['database']['driver'] ?? 'sqlite';
+    if ($driver === 'sqlite') {
+        $dbPath = $config['database']['sqlite']['gallery']['path'] ?? __DIR__ . '/../../data/gallery.db';
+
+        // Ensure directory exists
+        $dbDir = dirname($dbPath);
+        if (!is_dir($dbDir)) {
+            mkdir($dbDir, 0755, true);
+        }
+
+        // Tell the application's Connection to use this path, then obtain the instance
+        \App\Database\Connection::setDatabasePath($dbPath);
+        $db = \App\Database\Connection::getInstance();
+    } else {
+        // Non-sqlite: use the application's connection
+        $db = \App\Database\Connection::getInstance();
+    }
+
     $runner = new \App\Database\MigrationRunner($db);
 
     $results = $runner->run();
@@ -48,7 +81,17 @@ try {
 
     echo "\n✓ Migration completed successfully.\n";
 
+    // Release lock
+    flock($lockFp, LOCK_UN);
+    fclose($lockFp);
+
 } catch (Exception $e) {
+    // Ensure lock is released on error as well
+    if (isset($lockFp) && is_resource($lockFp)) {
+        flock($lockFp, LOCK_UN);
+        fclose($lockFp);
+    }
+
     echo "\n✗ Migration failed: " . $e->getMessage() . "\n";
     echo "\nStack trace:\n" . $e->getTraceAsString() . "\n";
     exit(1);
