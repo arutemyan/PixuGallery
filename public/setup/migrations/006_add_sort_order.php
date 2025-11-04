@@ -1,7 +1,5 @@
 <?php
 
-require_once __DIR__ . '/../../../src/Utils/Logger.php';
-
 /**
  * マイグレーション 006: sort_orderカラムの追加
  *
@@ -16,6 +14,7 @@ require_once __DIR__ . '/../../../src/Utils/Logger.php';
 
 use App\Database\DatabaseHelper;
 use App\Database\MigrationHelper;
+use App\Utils\Logger;
 
 return [
     'name' => 'add_sort_order',

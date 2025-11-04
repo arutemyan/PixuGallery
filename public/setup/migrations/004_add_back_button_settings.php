@@ -1,12 +1,12 @@
 <?php
 
-require_once __DIR__ . '/../../../src/Utils/Logger.php';
-
 /**
  * マイグレーション 004: ナビゲーション設定（一覧に戻るボタン）を追加
  *
  * - themesテーブルにback_button_text, back_button_bg_color, back_button_text_colorカラムを追加
  */
+
+use App\Utils\Logger;
 
 return [
     'name' => 'add_back_button_settings',

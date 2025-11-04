@@ -12,10 +12,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../../src/Security/SecurityUtil.php';
-require_once __DIR__ . '/../../src/Utils/Logger.php';
 
 use App\Database\Connection;
 use App\Utils\PathHelper;
+use App\Utils\Logger;
 
 session_start();
 

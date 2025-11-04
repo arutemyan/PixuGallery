@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
-
-require_once __DIR__ . '/../Utils/Logger.php';
+use App\Utils\Logger;
 
 /**
  * セキュリティ関数ライブラリ

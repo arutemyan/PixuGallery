@@ -1,6 +1,7 @@
 <?php
 
-require_once __DIR__ . '/../../../src/Utils/Logger.php';
+
+use App\Utils\Logger;
 
 /**
  * マイグレーション 003: グループ投稿機能の追加
