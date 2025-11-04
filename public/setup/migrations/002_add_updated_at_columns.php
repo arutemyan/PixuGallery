@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
+
 /**
  * マイグレーション 002: updated_atカラムの追加
  *
@@ -26,7 +28,7 @@ return [
             if (strpos($e->getMessage(), 'Duplicate column') === false &&
                 strpos($e->getMessage(), 'already exists') === false) {
                 // それ以外のエラーはスロー
-                error_log("Migration 002 posts error: " . $e->getMessage());
+                Logger::getInstance()->error("Migration 002 posts error: " . $e->getMessage());
             }
         }
 
@@ -48,7 +50,7 @@ return [
                 // カラムが既に存在する場合はスキップ
                 if (strpos($e->getMessage(), 'Duplicate column') === false &&
                     strpos($e->getMessage(), 'already exists') === false) {
-                    error_log("Migration 002 group_posts error: " . $e->getMessage());
+                    Logger::getInstance()->error("Migration 002 group_posts error: " . $e->getMessage());
                 }
             }
         }

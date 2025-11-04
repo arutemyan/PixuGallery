@@ -9,6 +9,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/../../src/Utils/Logger.php';
 
 use App\Http\Router;
 use App\Models\Post;
@@ -43,7 +44,7 @@ $router->get('/api/posts', function () {
             'posts' => $posts
         ]);
     } catch (Exception $e) {
-        error_log('API Error (GET /api/posts): ' . $e->getMessage());
+        Logger::getInstance()->error('API Error (GET /api/posts): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -68,7 +69,7 @@ $router->get('/api/posts/:id', function (string $id) {
             'post' => $post
         ]);
     } catch (Exception $e) {
-        error_log('API Error (GET /api/posts/:id): ' . $e->getMessage());
+        Logger::getInstance()->error('API Error (GET /api/posts/:id): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -93,7 +94,7 @@ $router->get('/api/tags', function () {
             'tags' => $tags
         ]);
     } catch (Exception $e) {
-        error_log('API Error (GET /api/tags): ' . $e->getMessage());
+        Logger::getInstance()->error('API Error (GET /api/tags): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -118,7 +119,7 @@ $router->post('/api/increment_view', function () {
             'success' => $result
         ]);
     } catch (Exception $e) {
-        error_log('API Error (POST /api/increment_view): ' . $e->getMessage());
+        Logger::getInstance()->error('API Error (POST /api/increment_view): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });

@@ -11,6 +11,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
 
 use App\Http\Router;
 use App\Models\Post;
@@ -18,6 +19,7 @@ use App\Models\Theme;
 use App\Models\Setting;
 use App\Security\CsrfProtection;
 use App\Utils\ImageUploader;
+use App\Utils\Logger;
 
 // セッション開始
 initSecureSession();
@@ -50,7 +52,7 @@ $router->get('/admin/api/posts', function () {
             'posts' => $posts
         ]);
     } catch (Exception $e) {
-        error_log('Admin API Error (GET /admin/api/posts): ' . $e->getMessage());
+        Logger::getInstance()->error('Admin API Error (GET /admin/api/posts): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました: ' . $e->getMessage(), 500);
     }
 });
@@ -75,7 +77,7 @@ $router->get('/admin/api/posts/:id', function (string $id) {
             'post' => $post
         ]);
     } catch (Exception $e) {
-        error_log('Admin API Error (GET /admin/api/posts/:id): ' . $e->getMessage());
+        Logger::getInstance()->error('Admin API Error (GET /admin/api/posts/:id): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -158,7 +160,7 @@ $router->post('/admin/api/posts', function () {
             'post_id' => $postId
         ]);
     } catch (Exception $e) {
-        error_log('Admin API Error (POST /admin/api/posts): ' . $e->getMessage());
+        Logger::getInstance()->error('Admin API Error (POST /admin/api/posts): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -241,7 +243,7 @@ $router->put('/admin/api/posts/:id', function (string $id) {
             'message' => '投稿が更新されました'
         ]);
     } catch (Exception $e) {
-        error_log('Admin API Error (PUT /admin/api/posts/:id): ' . $e->getMessage());
+        Logger::getInstance()->error('Admin API Error (PUT /admin/api/posts/:id): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -267,7 +269,7 @@ $router->delete('/admin/api/posts/:id', function (string $id) {
             'message' => '投稿が削除されました'
         ]);
     } catch (Exception $e) {
-        error_log('Admin API Error (DELETE /admin/api/posts/:id): ' . $e->getMessage());
+        Logger::getInstance()->error('Admin API Error (DELETE /admin/api/posts/:id): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -370,7 +372,7 @@ $router->post('/admin/api/bulk-upload', function () {
             'results' => $results
         ]);
     } catch (Exception $e) {
-        error_log('Admin API Error (POST /admin/api/bulk-upload): ' . $e->getMessage());
+        Logger::getInstance()->error('Admin API Error (POST /admin/api/bulk-upload): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -389,7 +391,7 @@ $router->get('/admin/api/theme', function () {
             'theme' => $theme
         ]);
     } catch (Exception $e) {
-        error_log('Admin API Error (GET /admin/api/theme): ' . $e->getMessage());
+        Logger::getInstance()->error('Admin API Error (GET /admin/api/theme): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -428,7 +430,7 @@ $router->post('/admin/api/theme', function () {
             'message' => 'テーマ設定が更新されました'
         ]);
     } catch (Exception $e) {
-        error_log('Admin API Error (POST /admin/api/theme): ' . $e->getMessage());
+        Logger::getInstance()->error('Admin API Error (POST /admin/api/theme): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -482,7 +484,7 @@ $router->post('/admin/api/theme/upload-image', function () {
             'path' => 'uploads/theme/' . $filename
         ]);
     } catch (Exception $e) {
-        error_log('Admin API Error (POST /admin/api/theme/upload-image): ' . $e->getMessage());
+        Logger::getInstance()->error('Admin API Error (POST /admin/api/theme/upload-image): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -503,7 +505,7 @@ $router->get('/admin/api/settings', function () {
             ]
         ]);
     } catch (Exception $e) {
-        error_log('Admin API Error (GET /admin/api/settings): ' . $e->getMessage());
+        Logger::getInstance()->error('Admin API Error (GET /admin/api/settings): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });
@@ -530,7 +532,7 @@ $router->post('/admin/api/settings', function () {
             'message' => 'サイト設定が更新されました'
         ]);
     } catch (Exception $e) {
-        error_log('Admin API Error (POST /admin/api/settings): ' . $e->getMessage());
+        Logger::getInstance()->error('Admin API Error (POST /admin/api/settings): ' . $e->getMessage());
         Router::error('サーバーエラーが発生しました', 500);
     }
 });

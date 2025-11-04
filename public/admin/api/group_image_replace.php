@@ -5,12 +5,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__ . '/../auth_check.php';
 require_once __DIR__ . '/../../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
 
 use App\Models\Post;
 use App\Models\GroupPostImage;
 use App\Utils\ImageUploader;
 use App\Security\CsrfProtection;
 use App\Cache\CacheManager;
+use App\Utils\Logger;
 
 initSecureSession();
 
@@ -121,8 +123,8 @@ if ($method === 'DELETE') {
             'error' => 'サーバーエラー: ' . $e->getMessage(),
             'debug' => $errorDetails
         ], JSON_UNESCAPED_UNICODE);
-        error_log('Group Image Delete Error: ' . $errorDetails);
-        error_log('Stack trace: ' . $e->getTraceAsString());
+        Logger::getInstance()->error('Group Image Delete Error: ' . $errorDetails);
+        Logger::getInstance()->error('Stack trace: ' . $e->getTraceAsString());
     }
     exit;
 }
@@ -253,7 +255,7 @@ try {
         'error' => 'サーバーエラー: ' . $e->getMessage(),
         'debug' => $errorDetails
     ], JSON_UNESCAPED_UNICODE);
-    error_log('Group Image Replace Error: ' . $errorDetails);
-    error_log('Stack trace: ' . $e->getTraceAsString());
+    Logger::getInstance()->error('Group Image Replace Error: ' . $errorDetails);
+    Logger::getInstance()->error('Stack trace: ' . $e->getTraceAsString());
 }
 exit;

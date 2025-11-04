@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
+
 /**
  * マイグレーション 004: ナビゲーション設定（一覧に戻るボタン）を追加
  *
@@ -20,7 +22,7 @@ return [
         } catch (PDOException $e) {
             if (strpos($e->getMessage(), 'Duplicate column') === false &&
                 strpos($e->getMessage(), 'already exists') === false) {
-                error_log("Migration 004 back_button_text error: " . $e->getMessage());
+                Logger::getInstance()->warning("Migration 004 back_button_text error: " . $e->getMessage());
             }
         }
 
@@ -29,7 +31,7 @@ return [
         } catch (PDOException $e) {
             if (strpos($e->getMessage(), 'Duplicate column') === false &&
                 strpos($e->getMessage(), 'already exists') === false) {
-                error_log("Migration 004 back_button_bg_color error: " . $e->getMessage());
+                Logger::getInstance()->warning("Migration 004 back_button_bg_color error: " . $e->getMessage());
             }
         }
 
@@ -38,10 +40,10 @@ return [
         } catch (PDOException $e) {
             if (strpos($e->getMessage(), 'Duplicate column') === false &&
                 strpos($e->getMessage(), 'already exists') === false) {
-                error_log("Migration 004 back_button_text_color error: " . $e->getMessage());
+                Logger::getInstance()->warning("Migration 004 back_button_text_color error: " . $e->getMessage());
             }
         }
 
-        error_log("Migration 004: Added back_button settings columns to themes table");
+        Logger::getInstance()->info("Migration 004: Added back_button settings columns to themes table");
     }
 ];

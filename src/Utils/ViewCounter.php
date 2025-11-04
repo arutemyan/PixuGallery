@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Utils;
 
 use App\Database\CountersConnection;
+use App\Utils\Logger;
 use PDO;
 
 /**
@@ -57,7 +58,7 @@ class ViewCounter
             $stmt->execute([$postId, $postType]);
             return true;
         } catch (\Exception $e) {
-            error_log("ViewCounter::increment error: " . $e->getMessage());
+            Logger::getInstance()->error("ViewCounter::increment error: " . $e->getMessage());
             return false;
         }
     }
@@ -78,7 +79,7 @@ class ViewCounter
 
             return $result ? (int)$result['count'] : 0;
         } catch (\Exception $e) {
-            error_log("ViewCounter::get error: " . $e->getMessage());
+            Logger::getInstance()->error("ViewCounter::get error: " . $e->getMessage());
             return 0;
         }
     }
@@ -121,7 +122,7 @@ class ViewCounter
 
             return $counts;
         } catch (\Exception $e) {
-            error_log("ViewCounter::getBatch error: " . $e->getMessage());
+            Logger::getInstance()->error("ViewCounter::getBatch error: " . $e->getMessage());
             return array_fill_keys($postIds, 0);
         }
     }
@@ -140,7 +141,7 @@ class ViewCounter
             $stmt->execute([$postId, $postType]);
             return true;
         } catch (\Exception $e) {
-            error_log("ViewCounter::reset error: " . $e->getMessage());
+            Logger::getInstance()->error("ViewCounter::reset error: " . $e->getMessage());
             return false;
         }
     }
@@ -167,7 +168,7 @@ class ViewCounter
 
             return array_map(fn($row) => (int)$row['post_id'], $results);
         } catch (\Exception $e) {
-            error_log("ViewCounter::getPopularPostIds error: " . $e->getMessage());
+            Logger::getInstance()->error("ViewCounter::getPopularPostIds error: " . $e->getMessage());
             return [];
         }
     }

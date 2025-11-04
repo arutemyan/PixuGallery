@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Database\Connection;
+use App\Utils\Logger;
 use PDO;
 
 /**
@@ -44,7 +45,7 @@ class User
 
         // 空のパスワードハッシュの場合は認証失敗（セキュリティ対策）
         if (empty($user['password_hash'])) {
-            error_log('Login attempt with empty password hash for user: ' . $username);
+            Logger::getInstance()->warning('Login attempt with empty password hash for user: ' . $username);
             return null;
         }
 

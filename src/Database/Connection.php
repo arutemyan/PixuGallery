@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Database;
 
+use App\Utils\Logger;
 use PDO;
 use PDOException;
 
@@ -165,7 +166,7 @@ class Connection
                         self::$instance->exec('PRAGMA foreign_keys = ON');
                     } catch (PDOException $e) {
                         // ログに残すが処理は継続
-                        error_log('SQLite PRAGMA setup failed: ' . $e->getMessage());
+                        Logger::getInstance()->warning('SQLite PRAGMA setup failed: ' . $e->getMessage());
                     }
                 }
 
@@ -177,7 +178,7 @@ class Connection
                 if ($runMigrations) {
                     self::runMigrations();
                 } else {
-                    error_log('Connection: auto-run migrations disabled by configuration');
+                    Logger::getInstance()->info('Connection: auto-run migrations disabled by configuration');
                 }
             } catch (PDOException $e) {
                 throw new PDOException('データベース接続エラー: ' . $e->getMessage());
@@ -327,7 +328,7 @@ class Connection
             $runner = new MigrationRunner(self::$instance);
             $runner->run();
         } catch (\Exception $e) {
-            error_log("Migration execution failed: " . $e->getMessage());
+            Logger::getInstance()->error("Migration execution failed: " . $e->getMessage());
             // マイグレーションエラーは継続（既存の動作を維持）
         }
     }

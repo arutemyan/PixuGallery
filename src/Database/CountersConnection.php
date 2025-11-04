@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Database;
 
+use App\Utils\Logger;
 use PDO;
 use PDOException;
 
@@ -107,7 +108,7 @@ class CountersConnection
 
         if (!$tableExists) {
             // 新規作成：最初からpost_typeを含める
-            error_log("CountersConnection: Creating new view_counts table with post_type");
+            Logger::getInstance()->info("CountersConnection: Creating new view_counts table with post_type");
             $db->exec("
                 CREATE TABLE view_counts (
                     post_id INTEGER NOT NULL,
@@ -118,7 +119,7 @@ class CountersConnection
                 )
             ");
             $db->exec("CREATE INDEX IF NOT EXISTS idx_view_counts_updated ON view_counts(updated_at DESC)");
-            error_log("CountersConnection: Successfully created view_counts table");
+            Logger::getInstance()->info("CountersConnection: Successfully created view_counts table");
             return;
         }
 
@@ -135,36 +136,36 @@ class CountersConnection
         }
 
         if (!$hasPostType) {
-            error_log("CountersConnection: Migrating view_counts table to add post_type column");
+            Logger::getInstance()->info("CountersConnection: Migrating view_counts table to add post_type column");
 
             // 一時テーブルが既に存在する場合は削除（前回の失敗を考慮）
             try {
                 $stmt = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='view_counts_temp'");
                 if ($stmt->fetch() !== false) {
-                    error_log("CountersConnection: Cleaning up existing view_counts_temp table");
+                    Logger::getInstance()->info("CountersConnection: Cleaning up existing view_counts_temp table");
                     $db->exec("DROP TABLE view_counts_temp");
                 }
             } catch (\Exception $e) {
-                error_log("CountersConnection: Warning during cleanup: " . $e->getMessage());
+                Logger::getInstance()->warning("CountersConnection: Warning during cleanup: " . $e->getMessage());
             }
 
             // マイグレーション実行
             try {
-                error_log("CountersConnection: Step 1 - Starting transaction");
+                Logger::getInstance()->info("CountersConnection: Step 1 - Starting transaction");
                 $db->exec("BEGIN TRANSACTION");
 
-                error_log("CountersConnection: Step 2 - Creating temporary table");
+                Logger::getInstance()->info("CountersConnection: Step 2 - Creating temporary table");
                 $db->exec("CREATE TABLE view_counts_temp AS SELECT * FROM view_counts");
 
                 // データ件数を確認
                 $stmt = $db->query("SELECT COUNT(*) as count FROM view_counts_temp");
                 $count = $stmt->fetchColumn();
-                error_log("CountersConnection: Step 3 - Copied {$count} records to temporary table");
+                Logger::getInstance()->info("CountersConnection: Step 3 - Copied {$count} records to temporary table");
 
-                error_log("CountersConnection: Step 4 - Dropping old table");
+                Logger::getInstance()->info("CountersConnection: Step 4 - Dropping old table");
                 $db->exec("DROP TABLE view_counts");
 
-                error_log("CountersConnection: Step 5 - Creating new table with post_type");
+                Logger::getInstance()->info("CountersConnection: Step 5 - Creating new table with post_type");
                 $db->exec("
                     CREATE TABLE view_counts (
                         post_id INTEGER NOT NULL,
@@ -175,7 +176,7 @@ class CountersConnection
                     )
                 ");
 
-                error_log("CountersConnection: Step 6 - Migrating data");
+                Logger::getInstance()->info("CountersConnection: Step 6 - Migrating data");
                 $db->exec("
                     INSERT INTO view_counts (post_id, post_type, count, updated_at)
                     SELECT post_id, 0, count, updated_at FROM view_counts_temp
@@ -184,54 +185,54 @@ class CountersConnection
                 // 移行後のデータ件数を確認
                 $stmt = $db->query("SELECT COUNT(*) as count FROM view_counts");
                 $newCount = $stmt->fetchColumn();
-                error_log("CountersConnection: Step 7 - Migrated {$newCount} records to new table");
+                Logger::getInstance()->info("CountersConnection: Step 7 - Migrated {$newCount} records to new table");
 
-                error_log("CountersConnection: Step 8 - Dropping temporary table");
+                Logger::getInstance()->info("CountersConnection: Step 8 - Dropping temporary table");
                 $db->exec("DROP TABLE view_counts_temp");
 
-                error_log("CountersConnection: Step 9 - Creating index");
+                Logger::getInstance()->info("CountersConnection: Step 9 - Creating index");
                 $db->exec("CREATE INDEX IF NOT EXISTS idx_view_counts_updated ON view_counts(updated_at DESC)");
 
-                error_log("CountersConnection: Step 10 - Committing transaction");
+                Logger::getInstance()->info("CountersConnection: Step 10 - Committing transaction");
                 $db->exec("COMMIT");
 
-                error_log("CountersConnection: Successfully migrated view_counts table (migrated {$newCount}/{$count} records)");
+                Logger::getInstance()->info("CountersConnection: Successfully migrated view_counts table (migrated {$newCount}/{$count} records)");
 
             } catch (\Exception $e) {
-                error_log("CountersConnection: Migration failed at: " . $e->getMessage());
-                error_log("CountersConnection: Stack trace: " . $e->getTraceAsString());
+                Logger::getInstance()->error("CountersConnection: Migration failed at: " . $e->getMessage());
+                Logger::getInstance()->error("CountersConnection: Stack trace: " . $e->getTraceAsString());
 
                 // トランザクションをロールバック
                 try {
                     $db->exec("ROLLBACK");
-                    error_log("CountersConnection: Transaction rolled back");
+                    Logger::getInstance()->warning("CountersConnection: Transaction rolled back");
                 } catch (\Exception $rollbackError) {
-                    error_log("CountersConnection: Rollback also failed: " . $rollbackError->getMessage());
+                    Logger::getInstance()->error("CountersConnection: Rollback also failed: " . $rollbackError->getMessage());
                 }
 
                 // フォールバック：エラーが発生した場合は安全策として一時テーブルを確認
                 try {
                     $stmt = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='view_counts_temp'");
                     if ($stmt->fetch() !== false) {
-                        error_log("CountersConnection: Attempting to recover from view_counts_temp");
+                        Logger::getInstance()->info("CountersConnection: Attempting to recover from view_counts_temp");
 
                         // view_countsが存在しない場合、tempから戻す
                         $stmt = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='view_counts'");
                         if ($stmt->fetch() === false) {
-                            error_log("CountersConnection: Restoring view_counts from temp table");
+                            Logger::getInstance()->info("CountersConnection: Restoring view_counts from temp table");
                             $db->exec("ALTER TABLE view_counts_temp RENAME TO view_counts");
-                            error_log("CountersConnection: Restored original table, migration will retry on next access");
+                            Logger::getInstance()->info("CountersConnection: Restored original table, migration will retry on next access");
                             return;
                         }
                     }
                 } catch (\Exception $recoveryError) {
-                    error_log("CountersConnection: Recovery attempt failed: " . $recoveryError->getMessage());
+                    Logger::getInstance()->error("CountersConnection: Recovery attempt failed: " . $recoveryError->getMessage());
                 }
 
                 // 致命的エラー：マイグレーション失敗
-                error_log("CountersConnection: CRITICAL - Migration failed completely");
-                error_log("CountersConnection: The view_counts table may be in an inconsistent state");
-                error_log("CountersConnection: To fix manually, delete the counters.db file and it will be recreated");
+                Logger::getInstance()->error("CountersConnection: CRITICAL - Migration failed completely");
+                Logger::getInstance()->error("CountersConnection: The view_counts table may be in an inconsistent state");
+                Logger::getInstance()->error("CountersConnection: To fix manually, delete the counters.db file and it will be recreated");
 
                 throw new \Exception(
                     "Failed to migrate view_counts table. " .

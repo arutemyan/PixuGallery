@@ -5,11 +5,13 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
 
 use App\Cache\CacheManager;
 use App\Models\Post;
 use App\Security\CsrfProtection;
 use App\Utils\ImageUploader;
+use App\Utils\Logger;
 
 // セッション開始
 initSecureSession();
@@ -124,5 +126,5 @@ try {
         'error' => 'サーバーエラーが発生しました'
     ], JSON_UNESCAPED_UNICODE);
 
-    error_log('Upload Error: ' . $e->getMessage());
+    Logger::getInstance()->error('Upload Error: ' . $e->getMessage());
 }

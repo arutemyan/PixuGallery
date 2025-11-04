@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
 
 use App\Models\Setting;
 use App\Security\CsrfProtection;
@@ -73,7 +74,7 @@ if ($method === 'DELETE') {
             'error' => $e->getMessage()
         ], JSON_UNESCAPED_UNICODE);
 
-        error_log('OGP Image Delete Error: ' . $e->getMessage());
+        Logger::getInstance()->error('OGP Image Delete Error: ' . $e->getMessage());
     }
     exit;
 }
@@ -160,5 +161,5 @@ try {
         'error' => 'サーバーエラーが発生しました'
     ], JSON_UNESCAPED_UNICODE);
 
-    error_log('OGP Image Upload Error: ' . $e->getMessage());
+    Logger::getInstance()->error('OGP Image Upload Error: ' . $e->getMessage());
 }

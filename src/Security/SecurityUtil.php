@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../Utils/Logger.php';
+
 /**
  * セキュリティ関数ライブラリ
  *
@@ -335,7 +337,7 @@ function ensureSecureDirectory(string $dirPath, int $permissions = 0755, bool $r
     // ディレクトリが存在しない場合は作成
     if (!is_dir($dirPath)) {
         if (!mkdir($dirPath, $permissions, $recursive)) {
-            error_log("Failed to create directory: {$dirPath}");
+            Logger::getInstance()->error("Failed to create directory: {$dirPath}");
             return false;
         }
     }
@@ -360,7 +362,7 @@ function ensureSecureDirectory(string $dirPath, int $permissions = 0755, bool $r
 HTACCESS;
 
         if (file_put_contents($htaccessPath, $htaccessContent) === false) {
-            error_log("Failed to create .htaccess in: {$dirPath}");
+            Logger::getInstance()->error("Failed to create .htaccess in: {$dirPath}");
             return false;
         }
 

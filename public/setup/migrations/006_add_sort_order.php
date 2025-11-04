@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
+
 /**
  * マイグレーション 006: sort_orderカラムの追加
  *
@@ -22,27 +24,27 @@ return [
         $driver = DatabaseHelper::getDriver($db);
         $intType = DatabaseHelper::getIntegerType($db);
 
-        error_log("Migration 006: Starting migration for driver: {$driver}");
+        Logger::getInstance()->info("Migration 006: Starting migration for driver: {$driver}");
 
         // postsテーブルにsort_orderカラムを追加
         if ($helper->addColumnIfNotExists($db, 'posts', 'sort_order', "{$intType} DEFAULT 0 NOT NULL")) {
-            error_log("Migration 006: Added sort_order column to posts table");
+            Logger::getInstance()->info("Migration 006: Added sort_order column to posts table");
         }
 
         // group_postsテーブルにsort_orderカラムを追加
         if ($helper->addColumnIfNotExists($db, 'group_posts', 'sort_order', "{$intType} DEFAULT 0 NOT NULL")) {
-            error_log("Migration 006: Added sort_order column to group_posts table");
+            Logger::getInstance()->info("Migration 006: Added sort_order column to group_posts table");
         }
 
         // インデックスを追加（ソート性能向上）
         if ($helper->addIndexIfNotExists($db, 'posts', 'idx_posts_sort_order', 'sort_order DESC, created_at DESC')) {
-            error_log("Migration 006: Created index idx_posts_sort_order");
+            Logger::getInstance()->info("Migration 006: Created index idx_posts_sort_order");
         }
 
         if ($helper->addIndexIfNotExists($db, 'group_posts', 'idx_group_posts_sort_order', 'sort_order DESC, created_at DESC')) {
-            error_log("Migration 006: Created index idx_group_posts_sort_order");
+            Logger::getInstance()->info("Migration 006: Created index idx_group_posts_sort_order");
         }
 
-        error_log("Migration 006: Migration completed successfully");
+        Logger::getInstance()->info("Migration 006: Migration completed successfully");
     }
 ];

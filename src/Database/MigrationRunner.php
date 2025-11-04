@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Database;
 
+use App\Utils\Logger;
 use PDO;
 use Exception;
 
@@ -45,7 +46,7 @@ class MigrationRunner
             // Ensure WAL mode is used if possible to reduce writer/readers contention
             @ $this->db->exec('PRAGMA journal_mode = WAL');
         } catch (\Exception $e) {
-            error_log('MigrationRunner: Could not set PRAGMA options: ' . $e->getMessage());
+            Logger::getInstance()->warning('MigrationRunner: Could not set PRAGMA options: ' . $e->getMessage());
         }
 
         // 実行済みマイグレーションを取得
@@ -96,7 +97,7 @@ class MigrationRunner
                         if ($isLocked) {
                             $attempt++;
                             $delay = (int)($baseDelayUs * (1 + ($attempt / 4))); // 緩やかな増加
-                            error_log("Migration {$version}: database is locked, retrying ({$attempt}/{$maxRetries}) - msg: {$msg}, sleeping {$delay}us");
+                            Logger::getInstance()->warning("Migration {$version}: database is locked, retrying ({$attempt}/{$maxRetries}) - msg: {$msg}, sleeping {$delay}us");
                             usleep($delay);
                             continue;
                         }
@@ -120,7 +121,7 @@ class MigrationRunner
                     'status' => 'success'
                 ];
 
-                error_log("Migration {$version} ({$name}) executed successfully");
+                Logger::getInstance()->info("Migration {$version} ({$name}) executed successfully");
             } catch (Exception $e) {
                 $results[] = [
                     'version' => $version,
@@ -129,7 +130,7 @@ class MigrationRunner
                     'error' => $e->getMessage()
                 ];
 
-                error_log("Migration {$version} failed: " . $e->getMessage());
+                Logger::getInstance()->error("Migration {$version} failed: " . $e->getMessage());
                 throw $e;
             }
         }

@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
+
 /**
  * マイグレーション 007: postsテーブルの統合
  *
@@ -14,6 +16,7 @@
 
 use App\Database\DatabaseHelper;
 use App\Database\MigrationHelper;
+use App\Utils\Logger;
 
 return [
     'name' => 'unify_posts_table',
@@ -22,26 +25,26 @@ return [
         $driver = DatabaseHelper::getDriver($db);
         $intType = DatabaseHelper::getIntegerType($db);
 
-        error_log("Migration 007: Starting posts table unification for driver: {$driver}");
+        Logger::getInstance()->error("Migration 007: Starting posts table unification for driver: {$driver}");
 
         // ステップ1: posts.post_typeカラムを追加
         if ($helper->addColumnIfNotExists($db, 'posts', 'post_type', "{$intType} DEFAULT 0 NOT NULL")) {
-            error_log("Migration 007: Added post_type column to posts table");
+            Logger::getInstance()->error("Migration 007: Added post_type column to posts table");
         }
 
         // ステップ2: group_postsテーブルが存在するかチェック
         if (!$helper->tableExists($db, 'group_posts')) {
-            error_log("Migration 007: group_posts table does not exist, skipping migration");
+            Logger::getInstance()->error("Migration 007: group_posts table does not exist, skipping migration");
             return;
         }
 
         // ステップ3: group_postsのレコード数を確認
         $stmt = $db->query("SELECT COUNT(*) as count FROM group_posts");
         $groupPostsCount = $stmt->fetchColumn();
-        error_log("Migration 007: Found {$groupPostsCount} group_posts records to migrate");
+        Logger::getInstance()->error("Migration 007: Found {$groupPostsCount} group_posts records to migrate");
 
         if ($groupPostsCount === 0) {
-            error_log("Migration 007: No group_posts to migrate; skipping DROP to avoid locking issues");
+            Logger::getInstance()->error("Migration 007: No group_posts to migrate; skipping DROP to avoid locking issues");
             // If there are no group_posts rows, it's safe to skip DROP to avoid
             // causing transient locks in test/CI environments. The table may
             // remain, which is harmless.
@@ -49,12 +52,12 @@ return [
         }
 
         // ステップ4: トランザクション開始
-        error_log("Migration 007: Starting transaction");
+        Logger::getInstance()->error("Migration 007: Starting transaction");
         $db->exec("BEGIN TRANSACTION");
 
         try {
             // ステップ5: 一時マッピングテーブルを作成
-            error_log("Migration 007: Creating temporary mapping table");
+            Logger::getInstance()->error("Migration 007: Creating temporary mapping table");
 
             if ($driver === 'sqlite') {
                 $db->exec("CREATE TEMP TABLE group_posts_id_mapping (old_id INTEGER, new_id INTEGER)");
@@ -65,7 +68,7 @@ return [
             }
 
             // ステップ6: group_postsのデータを取得
-            error_log("Migration 007: Fetching group_posts data");
+            Logger::getInstance()->error("Migration 007: Fetching group_posts data");
             $stmt = $db->query("
                 SELECT id, title, detail, is_sensitive, is_visible, sort_order, created_at, updated_at,
                        tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10
@@ -74,7 +77,7 @@ return [
             $groupPosts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // ステップ7: group_postsのデータをpostsにINSERTし、マッピングを記録
-            error_log("Migration 007: Inserting group_posts into posts table");
+            Logger::getInstance()->error("Migration 007: Inserting group_posts into posts table");
             $insertStmt = $db->prepare("
                 INSERT INTO posts (post_type, title, tags, detail, is_sensitive, is_visible, sort_order, created_at, updated_at,
                                    tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10)
@@ -114,10 +117,10 @@ return [
                 $migratedCount++;
             }
 
-            error_log("Migration 007: Migrated {$migratedCount} posts from group_posts to posts");
+            Logger::getInstance()->error("Migration 007: Migrated {$migratedCount} posts from group_posts to posts");
 
             // ステップ8: group_post_imagesに新しいレコードをINSERT
-            error_log("Migration 007: Copying group_post_images with new post_ids");
+            Logger::getInstance()->error("Migration 007: Copying group_post_images with new post_ids");
 
             $stmt = $db->query("
                 SELECT
@@ -148,26 +151,26 @@ return [
                 $copiedImagesCount++;
             }
 
-            error_log("Migration 007: Copied {$copiedImagesCount} images to new post_ids");
+            Logger::getInstance()->error("Migration 007: Copied {$copiedImagesCount} images to new post_ids");
 
             // ステップ9: group_postsテーブルを削除（安全に試みる）
-            error_log("Migration 007: Dropping group_posts table (safe attempt)");
+            Logger::getInstance()->error("Migration 007: Dropping group_posts table (safe attempt)");
             $dropped = $helper->dropTableIfExistsSafe($db, 'group_posts');
             if (!$dropped) {
-                error_log('Migration 007: Could not drop group_posts due to persistent lock; committing transaction without drop');
+                Logger::getInstance()->error('Migration 007: Could not drop group_posts due to persistent lock; committing transaction without drop');
                 // 続行してコミット。テーブル削除ができない場合でもデータは移行済みなので致命的ではない。
             }
 
             // ステップ10: コミット
-            error_log("Migration 007: Committing transaction");
+            Logger::getInstance()->error("Migration 007: Committing transaction");
             $db->exec("COMMIT");
 
-            error_log("Migration 007: Migration completed successfully");
-            error_log("Migration 007: Summary - Migrated {$migratedCount} posts, copied {$copiedImagesCount} images");
+            Logger::getInstance()->error("Migration 007: Migration completed successfully");
+            Logger::getInstance()->error("Migration 007: Summary - Migrated {$migratedCount} posts, copied {$copiedImagesCount} images");
 
         } catch (Exception $e) {
-            error_log("Migration 007: Migration failed: " . $e->getMessage());
-            error_log("Migration 007: Rolling back transaction");
+            Logger::getInstance()->error("Migration 007: Migration failed: " . $e->getMessage());
+            Logger::getInstance()->error("Migration 007: Rolling back transaction");
             $db->exec("ROLLBACK");
             throw $e;
         }

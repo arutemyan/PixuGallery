@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Utils;
 
 use App\Database\AccessLogsConnection;
+use App\Utils\Logger;
 use PDO;
 
 /**
@@ -68,7 +69,7 @@ class AccessLogger
 
             return true;
         } catch (\Exception $e) {
-            error_log("AccessLogger::log error: " . $e->getMessage());
+            Logger::getInstance()->error("AccessLogger::log error: " . $e->getMessage());
             return false;
         }
     }
@@ -123,7 +124,7 @@ class AccessLogger
             $result = $stmt->fetch();
             return $result ? (int)$result['count'] : 0;
         } catch (\Exception $e) {
-            error_log("AccessLogger::getAccessCount error: " . $e->getMessage());
+            Logger::getInstance()->error("AccessLogger::getAccessCount error: " . $e->getMessage());
             return 0;
         }
     }
@@ -149,7 +150,7 @@ class AccessLogger
             $stmt->execute(['days' => $days]);
             return $stmt->rowCount();
         } catch (\Exception $e) {
-            error_log("AccessLogger::cleanupOldLogs error: " . $e->getMessage());
+            Logger::getInstance()->error("AccessLogger::cleanupOldLogs error: " . $e->getMessage());
             return 0;
         }
     }

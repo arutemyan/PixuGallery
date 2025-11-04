@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
 
 use App\Models\Theme;
 use App\Security\CsrfProtection;
@@ -199,5 +200,5 @@ try {
         'error' => 'サーバーエラーが発生しました'
     ], JSON_UNESCAPED_UNICODE);
 
-    error_log('Theme Update Error: ' . $e->getMessage());
+    Logger::getInstance()->error('Theme Update Error: ' . $e->getMessage());
 }

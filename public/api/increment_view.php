@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/../../src/Utils/Logger.php';
 
 use App\Models\Post;
 use App\Security\RateLimiter;
@@ -58,5 +59,5 @@ try {
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Internal server error']);
-    error_log('Increment View Error: ' . $e->getMessage());
+    Logger::getInstance()->error('Increment View Error: ' . $e->getMessage());
 }

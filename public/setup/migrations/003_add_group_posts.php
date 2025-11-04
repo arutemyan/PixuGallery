@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
+
 /**
  * マイグレーション 003: グループ投稿機能の追加
  *
@@ -71,7 +73,7 @@ return [
                 // 既に存在する場合はスキップ
                 if (strpos($e->getMessage(), 'already exists') === false &&
                     strpos($e->getMessage(), 'Duplicate') === false) {
-                    error_log("Migration 003 FK error: " . $e->getMessage());
+                    Logger::getInstance()->warning("Migration 003 FK error: " . $e->getMessage());
                 }
             }
         }
@@ -100,7 +102,7 @@ return [
             } catch (PDOException $e) {
                 if (strpos($e->getMessage(), 'already exists') === false &&
                     strpos($e->getMessage(), 'Duplicate') === false) {
-                    error_log("Migration 003 FK post_tags post_id error: " . $e->getMessage());
+                    Logger::getInstance()->warning("Migration 003 FK post_tags post_id error: " . $e->getMessage());
                 }
             }
 
@@ -113,7 +115,7 @@ return [
             } catch (PDOException $e) {
                 if (strpos($e->getMessage(), 'already exists') === false &&
                     strpos($e->getMessage(), 'Duplicate') === false) {
-                    error_log("Migration 003 FK post_tags tag_id error: " . $e->getMessage());
+                    Logger::getInstance()->warning("Migration 003 FK post_tags tag_id error: " . $e->getMessage());
                 }
             }
         }
@@ -128,7 +130,7 @@ return [
         } catch (PDOException $e) {
             if (strpos($e->getMessage(), 'Duplicate column') === false &&
                 strpos($e->getMessage(), 'already exists') === false) {
-                error_log("Migration 003 group_id error: " . $e->getMessage());
+                Logger::getInstance()->warning("Migration 003 group_id error: " . $e->getMessage());
             }
         }
 
@@ -137,13 +139,13 @@ return [
         } catch (PDOException $e) {
             if (strpos($e->getMessage(), 'Duplicate column') === false &&
                 strpos($e->getMessage(), 'already exists') === false) {
-                error_log("Migration 003 display_order error: " . $e->getMessage());
+                Logger::getInstance()->warning("Migration 003 display_order error: " . $e->getMessage());
             }
         }
 
         // group_idのインデックス
         $db->exec("CREATE INDEX IF NOT EXISTS idx_posts_group_id ON posts(group_id)");
 
-        error_log("Migration 003: Added group posts tables and columns");
+        Logger::getInstance()->info("Migration 003: Added group posts tables and columns");
     }
 ];

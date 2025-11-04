@@ -192,4 +192,18 @@ return [
 	'height' => 600,
 	'quality' => 70,
     ],
+
+    /**
+     * アプリケーションログ設定
+     */
+    'app_logging' => [
+        // ログ有効化
+        'enabled' => true,
+        // ログファイルパス
+        'log_file' => __DIR__ . '/../logs/app.log',
+        // ログレベル: 'debug', 'info', 'warning', 'error'
+        'level' => 'error',
+        // ログフォーマット
+        'format' => '%timestamp [%level] %file:%line %message',
+    ],
 ];

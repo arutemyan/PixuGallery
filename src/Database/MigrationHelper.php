@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Database;
 
+use App\Utils\Logger;
 use PDO;
 use PDOException;
 
@@ -50,7 +51,7 @@ class MigrationHelper
                 return $stmt->fetch() !== false;
             }
         } catch (PDOException $e) {
-            error_log("MigrationHelper: Error checking column {$table}.{$column}: " . $e->getMessage());
+            Logger::getInstance()->error("MigrationHelper: Error checking column {$table}.{$column}: " . $e->getMessage());
             return false;
         }
 
@@ -87,7 +88,7 @@ class MigrationHelper
                 return $stmt->fetch() !== false;
             }
         } catch (PDOException $e) {
-            error_log("MigrationHelper: Error checking table {$table}: " . $e->getMessage());
+            Logger::getInstance()->error("MigrationHelper: Error checking table {$table}: " . $e->getMessage());
             return false;
         }
 
@@ -125,7 +126,7 @@ class MigrationHelper
                 return $stmt->fetch() !== false;
             }
         } catch (PDOException $e) {
-            error_log("MigrationHelper: Error checking index {$index} on {$table}: " . $e->getMessage());
+            Logger::getInstance()->error("MigrationHelper: Error checking index {$index} on {$table}: " . $e->getMessage());
             return false;
         }
 
@@ -144,16 +145,16 @@ class MigrationHelper
     public function addColumnIfNotExists(PDO $db, string $table, string $column, string $definition): bool
     {
         if ($this->columnExists($db, $table, $column)) {
-            error_log("MigrationHelper: Column {$table}.{$column} already exists (skipped)");
+            Logger::getInstance()->info("MigrationHelper: Column {$table}.{$column} already exists (skipped)");
             return false;
         }
 
         try {
             $db->exec("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");
-            error_log("MigrationHelper: Added column {$table}.{$column}");
+            Logger::getInstance()->info("MigrationHelper: Added column {$table}.{$column}");
             return true;
         } catch (PDOException $e) {
-            error_log("MigrationHelper: Failed to add column {$table}.{$column}: " . $e->getMessage());
+            Logger::getInstance()->error("MigrationHelper: Failed to add column {$table}.{$column}: " . $e->getMessage());
             throw $e;
         }
     }
@@ -176,17 +177,17 @@ class MigrationHelper
         bool $unique = false
     ): bool {
         if ($this->indexExists($db, $table, $index)) {
-            error_log("MigrationHelper: Index {$index} on {$table} already exists (skipped)");
+            Logger::getInstance()->info("MigrationHelper: Index {$index} on {$table} already exists (skipped)");
             return false;
         }
 
         try {
             $uniqueKeyword = $unique ? 'UNIQUE' : '';
             $db->exec("CREATE {$uniqueKeyword} INDEX {$index} ON {$table}({$columns})");
-            error_log("MigrationHelper: Created index {$index} on {$table}");
+            Logger::getInstance()->info("MigrationHelper: Created index {$index} on {$table}");
             return true;
         } catch (PDOException $e) {
-            error_log("MigrationHelper: Failed to create index {$index} on {$table}: " . $e->getMessage());
+            Logger::getInstance()->error("MigrationHelper: Failed to create index {$index} on {$table}: " . $e->getMessage());
             throw $e;
         }
     }
@@ -202,16 +203,16 @@ class MigrationHelper
     public function createTableIfNotExists(PDO $db, string $table, string $definition): bool
     {
         if ($this->tableExists($db, $table)) {
-            error_log("MigrationHelper: Table {$table} already exists (skipped)");
+            Logger::getInstance()->info("MigrationHelper: Table {$table} already exists (skipped)");
             return false;
         }
 
         try {
             $db->exec("CREATE TABLE {$table} {$definition}");
-            error_log("MigrationHelper: Created table {$table}");
+            Logger::getInstance()->info("MigrationHelper: Created table {$table}");
             return true;
         } catch (PDOException $e) {
-            error_log("MigrationHelper: Failed to create table {$table}: " . $e->getMessage());
+            Logger::getInstance()->error("MigrationHelper: Failed to create table {$table}: " . $e->getMessage());
             throw $e;
         }
     }
@@ -228,7 +229,7 @@ class MigrationHelper
     public function dropTableIfExistsSafe(PDO $db, string $table, int $maxRetries = 40, int $delayUs = 200000): bool
     {
         if (!$this->tableExists($db, $table)) {
-            error_log("MigrationHelper: Table {$table} does not exist (nothing to drop)");
+            Logger::getInstance()->info("MigrationHelper: Table {$table} does not exist (nothing to drop)");
             return true;
         }
 
@@ -236,7 +237,7 @@ class MigrationHelper
         while ($attempt < $maxRetries) {
             try {
                 $db->exec("DROP TABLE {$table}");
-                error_log("MigrationHelper: Dropped table {$table} successfully");
+                Logger::getInstance()->info("MigrationHelper: Dropped table {$table} successfully");
                 return true;
             } catch (\Exception $e) {
                 $msg = $e->getMessage();
@@ -247,18 +248,18 @@ class MigrationHelper
                     $attempt++;
                     // 緩やかなバックオフ
                     $backoff = (int)($delayUs * (1 + ($attempt / 10)));
-                    error_log("MigrationHelper: DROP TABLE {$table} locked, retrying ({$attempt}/{$maxRetries}), sleeping {$backoff}us");
+                    Logger::getInstance()->warning("MigrationHelper: DROP TABLE {$table} locked, retrying ({$attempt}/{$maxRetries}), sleeping {$backoff}us");
                     usleep($backoff);
                     continue;
                 }
 
                 // その他の例外は再スロー
-                error_log("MigrationHelper: DROP TABLE {$table} failed: " . $msg);
+                Logger::getInstance()->error("MigrationHelper: DROP TABLE {$table} failed: " . $msg);
                 throw $e;
             }
         }
 
-        error_log("MigrationHelper: Failed to drop table {$table} after {$maxRetries} attempts");
+        Logger::getInstance()->error("MigrationHelper: Failed to drop table {$table} after {$maxRetries} attempts");
         return false;
     }
 }

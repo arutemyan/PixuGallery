@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__ . '/../auth_check.php';
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
 
 use App\Models\Post;
 use App\Models\GroupPostImage;
 use App\Security\CsrfProtection;
 use App\Cache\CacheManager;
+use App\Utils\Logger;
 
 initSecureSession();
 
@@ -140,5 +142,5 @@ try {
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'サーバーエラーが発生しました'], JSON_UNESCAPED_UNICODE);
-    error_log('Group Posts API Error: ' . $e->getMessage());
+    Logger::getInstance()->error('Group Posts API Error: ' . $e->getMessage());
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../src/Utils/Logger.php';
 
 use App\Models\Post;
 use App\Models\GroupPostImage;
@@ -67,7 +68,7 @@ try {
     $model->incrementViewCount($id);
 
 } catch (Exception $e) {
-    error_log('Post Detail Error (' . $type . '): ' . $e->getMessage());
+    Logger::getInstance()->error('Post Detail Error (' . $type . '): ' . $e->getMessage());
     header('Location: /index.php');
     exit;
 }

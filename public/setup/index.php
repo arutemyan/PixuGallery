@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../src/Utils/Logger.php';
 
 use App\Database\Connection;
 use App\Utils\PathHelper;
@@ -330,7 +331,7 @@ try {
     }
 
 } catch (Exception $e) {
-    error_log('Setup Error: ' . $e->getMessage());
+    Logger::getInstance()->error('Setup Error: ' . $e->getMessage());
     $error = 'データベースエラーが発生しました。';
 }
 
@@ -415,7 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $deleted = @unlink($setupFile);
 
         if (!$deleted) {
-            error_log("Warning: Failed to delete setup file: {$setupFile}");
+            Logger::getInstance()->warning("Warning: Failed to delete setup file: {$setupFile}");
         }
 
     } catch (Exception $e) {

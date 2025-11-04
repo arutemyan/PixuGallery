@@ -27,6 +27,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/../../src/Utils/Logger.php';
 
 use App\Models\Tag;
 
@@ -98,6 +99,6 @@ try {
         'success' => false,
         'error' => 'Internal server error'
     ], JSON_UNESCAPED_UNICODE);
-    error_log('Tags API Error: ' . $e->getMessage());
-    error_log($e->getTraceAsString());
+    Logger::getInstance()->error('Tags API Error: ' . $e->getMessage());
+    Logger::getInstance()->error($e->getTraceAsString());
 }

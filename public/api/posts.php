@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/../../src/Utils/Logger.php';
 
 use App\Cache\CacheManager;
 use App\Models\Post;
@@ -114,5 +115,5 @@ try {
     ], JSON_UNESCAPED_UNICODE);
 
     // エラーログに記録
-    error_log('API Error (posts.php): ' . $e->getMessage());
+    Logger::getInstance()->error('API Error (posts.php): ' . $e->getMessage());
 }

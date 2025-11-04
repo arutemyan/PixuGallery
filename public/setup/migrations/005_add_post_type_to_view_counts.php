@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
+
 /**
  * マイグレーション 005: view_countsテーブルにpost_typeカラムを追加
  *
@@ -15,6 +17,7 @@
 use App\Database\DatabaseHelper;
 use App\Database\MigrationHelper;
 use App\Database\CountersConnection;
+use App\Utils\Logger;
 
 return [
     'name' => 'add_post_type_to_view_counts',
@@ -23,19 +26,19 @@ return [
         $driver = DatabaseHelper::getDriver($db);
         $intType = DatabaseHelper::getIntegerType($db);
 
-        error_log("Migration 005: Starting migration for driver: {$driver}");
+        Logger::getInstance()->error("Migration 005: Starting migration for driver: {$driver}");
 
         // SQLiteの場合はCountersConnection::initializeSchema()が自動処理するためスキップ
         if ($driver === 'sqlite') {
-            error_log("Migration 005: SQLite detected - counters.db is managed by CountersConnection");
-            error_log("Migration 005: Triggering CountersConnection to ensure migration");
+            Logger::getInstance()->error("Migration 005: SQLite detected - counters.db is managed by CountersConnection");
+            Logger::getInstance()->error("Migration 005: Triggering CountersConnection to ensure migration");
 
             // CountersConnectionを呼び出して自動マイグレーションをトリガー
             try {
                 CountersConnection::getInstance();
-                error_log("Migration 005: CountersConnection initialized successfully");
+                Logger::getInstance()->error("Migration 005: CountersConnection initialized successfully");
             } catch (Exception $e) {
-                error_log("Migration 005: CountersConnection initialization failed: " . $e->getMessage());
+                Logger::getInstance()->error("Migration 005: CountersConnection initialization failed: " . $e->getMessage());
                 // CountersConnectionの初期化失敗は致命的ではない（次回アクセス時に再試行される）
             }
 
@@ -43,21 +46,21 @@ return [
         }
 
         // MySQL/PostgreSQLの場合: gallery.db内のview_countsテーブルを処理
-        error_log("Migration 005: Processing MySQL/PostgreSQL migration");
+        Logger::getInstance()->error("Migration 005: Processing MySQL/PostgreSQL migration");
 
         // post_typeカラムを追加
         if (!$helper->columnExists($db, 'view_counts', 'post_type')) {
-            error_log("Migration 005: Adding post_type column");
+            Logger::getInstance()->error("Migration 005: Adding post_type column");
             $helper->addColumnIfNotExists($db, 'view_counts', 'post_type', "{$intType} DEFAULT 0 NOT NULL");
         } else {
-            error_log("Migration 005: post_type column already exists (skipped)");
+            Logger::getInstance()->error("Migration 005: post_type column already exists (skipped)");
             return; // 既にマイグレーション済み
         }
 
         // 主キー制約の変更
         try {
             if ($driver === 'mysql') {
-                error_log("Migration 005: Updating MySQL primary key");
+                Logger::getInstance()->error("Migration 005: Updating MySQL primary key");
 
                 // 既存の主キーを確認
                 $stmt = $db->query("SHOW KEYS FROM view_counts WHERE Key_name = 'PRIMARY'");
@@ -69,19 +72,19 @@ return [
                     $keyColumns = array_column($primaryKeys, 'Column_name');
                     if (in_array('post_id', $keyColumns) && in_array('post_type', $keyColumns)) {
                         $needsUpdate = false;
-                        error_log("Migration 005: Primary key already set to (post_id, post_type)");
+                        Logger::getInstance()->error("Migration 005: Primary key already set to (post_id, post_type)");
                     }
                 }
 
                 if ($needsUpdate) {
                     $db->exec("ALTER TABLE view_counts DROP PRIMARY KEY");
-                    error_log("Migration 005: Dropped old primary key");
+                    Logger::getInstance()->error("Migration 005: Dropped old primary key");
                     $db->exec("ALTER TABLE view_counts ADD PRIMARY KEY (post_id, post_type)");
-                    error_log("Migration 005: Added new composite primary key");
+                    Logger::getInstance()->error("Migration 005: Added new composite primary key");
                 }
 
             } elseif ($driver === 'postgresql') {
-                error_log("Migration 005: Updating PostgreSQL primary key");
+                Logger::getInstance()->error("Migration 005: Updating PostgreSQL primary key");
 
                 // 既存の主キーを確認
                 $stmt = $db->query("
@@ -100,33 +103,33 @@ return [
                     $keyColumns = array_column($primaryKeys, 'column_name');
                     if (in_array('post_id', $keyColumns) && in_array('post_type', $keyColumns)) {
                         $needsUpdate = false;
-                        error_log("Migration 005: Primary key already set to (post_id, post_type)");
+                        Logger::getInstance()->error("Migration 005: Primary key already set to (post_id, post_type)");
                     }
                 }
 
                 if ($needsUpdate) {
                     $db->exec("ALTER TABLE view_counts DROP CONSTRAINT IF EXISTS view_counts_pkey");
-                    error_log("Migration 005: Dropped old primary key constraint");
+                    Logger::getInstance()->error("Migration 005: Dropped old primary key constraint");
                     $db->exec("ALTER TABLE view_counts ADD PRIMARY KEY (post_id, post_type)");
-                    error_log("Migration 005: Added new composite primary key");
+                    Logger::getInstance()->error("Migration 005: Added new composite primary key");
                 }
             }
 
-            error_log("Migration 005: Successfully updated primary key");
+            Logger::getInstance()->error("Migration 005: Successfully updated primary key");
 
         } catch (PDOException $e) {
-            error_log("Migration 005: Primary key update error: " . $e->getMessage());
+            Logger::getInstance()->error("Migration 005: Primary key update error: " . $e->getMessage());
 
             // 既に複合キーの場合はエラーを無視
             if (strpos($e->getMessage(), 'already exists') !== false ||
                 strpos($e->getMessage(), 'Duplicate') !== false ||
                 strpos($e->getMessage(), 'Multiple primary key') !== false) {
-                error_log("Migration 005: Primary key already exists (ignored)");
+                Logger::getInstance()->error("Migration 005: Primary key already exists (ignored)");
             } else {
                 throw $e;
             }
         }
 
-        error_log("Migration 005: Migration completed successfully");
+        Logger::getInstance()->error("Migration 005: Migration completed successfully");
     }
 ];

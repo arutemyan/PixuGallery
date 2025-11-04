@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
 
 use App\Models\Setting;
 use App\Security\CsrfProtection;
@@ -62,5 +63,5 @@ try {
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Internal server error']);
-    error_log('Settings API Error: ' . $e->getMessage());
+    Logger::getInstance()->error('Settings API Error: ' . $e->getMessage());
 }

@@ -5,12 +5,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__ . '/../auth_check.php';
 require_once __DIR__ . '/../../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../../src/Utils/Logger.php';
 
 use App\Models\Post;
 use App\Models\GroupPostImage;
 use App\Security\CsrfProtection;
 use App\Cache\CacheManager;
 use App\Utils\ImageUploader;
+use App\Utils\Logger;
 
 initSecureSession();
 
@@ -317,7 +319,7 @@ try {
             if ($imagePath && $uploadsDir && strpos($imagePath, $uploadsDir) === 0 && file_exists($imagePath)) {
                 unlink($imagePath);
             } elseif (!empty($post['image_path'])) {
-                error_log('Invalid image path attempted for deletion: ' . $post['image_path']);
+                Logger::getInstance()->error('Invalid image path attempted for deletion: ' . $post['image_path']);
             }
         }
 
@@ -328,7 +330,7 @@ try {
             if ($thumbPath && $uploadsDir && strpos($thumbPath, $uploadsDir) === 0 && file_exists($thumbPath)) {
                 unlink($thumbPath);
             } elseif (!empty($post['thumb_path'])) {
-                error_log('Invalid thumb path attempted for deletion: ' . $post['thumb_path']);
+                Logger::getInstance()->error('Invalid thumb path attempted for deletion: ' . $post['thumb_path']);
             }
         }
 
@@ -363,5 +365,5 @@ try {
     ], JSON_UNESCAPED_UNICODE);
 
     // 詳細なエラー情報はサーバーログのみに記録
-    error_log('Admin Posts API Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    Logger::getInstance()->error('Admin Posts API Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
 }

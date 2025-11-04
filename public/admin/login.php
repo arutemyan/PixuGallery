@@ -5,11 +5,13 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../../src/Utils/Logger.php';
 
 use App\Models\User;
 use App\Security\CsrfProtection;
 use App\Security\RateLimiter;
 use App\Utils\PathHelper;
+use App\Utils\Logger;
 
 // セッション開始
 initSecureSession();
@@ -85,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } catch (Exception $e) {
                 $error = 'ログインエラーが発生しました';
-                error_log('Login Error: ' . $e->getMessage());
+                Logger::getInstance()->error('Login Error: ' . $e->getMessage());
             }
         }
     }

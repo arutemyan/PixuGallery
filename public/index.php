@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../src/Security/SecurityUtil.php';
+require_once __DIR__ . '/../src/Utils/Logger.php';
 
 use App\Models\Post;
 use App\Models\Theme;
@@ -21,7 +22,7 @@ try {
         exit(0);
     }
 } catch (Exception $e) {
-    error_log('Setup check error: ' . $e->getMessage());
+    Logger::getInstance()->error('Setup check error: ' . $e->getMessage());
     // エラーが発生してもページは表示する
 }
 
@@ -69,7 +70,7 @@ try {
     $tags = $tagModel->getPopular(50); // 上位50件のタグ
 
 } catch (Exception $e) {
-    error_log('Index Error: ' . $e->getMessage());
+    Logger::getInstance()->error('Index Error: ' . $e->getMessage());
     $posts = [];
     $tags = [];
     $theme = ['header_html' => '', 'footer_html' => '', 'site_title' => 'イラストポートフォリオ', 'site_description' => 'イラストレーターのポートフォリオサイト'];
