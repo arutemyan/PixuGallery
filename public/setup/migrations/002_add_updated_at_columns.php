@@ -1,6 +1,7 @@
 <?php
 
-require_once __DIR__ . '/../../../src/Utils/Logger.php';
+
+use App\Utils\Logger;
 
 /**
  * マイグレーション 002: updated_atカラムの追加

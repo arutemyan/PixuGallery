@@ -7,7 +7,6 @@ namespace App\Database;
 use PDO;
 use PDOException;
 require_once __DIR__ . '/../Security/SecurityUtil.php';
-require_once __DIR__ . '/../Utils/Logger.php';
 
 /**
  * データベース接続クラス

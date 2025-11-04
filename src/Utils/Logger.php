@@ -27,7 +27,9 @@ class Logger
     private function __construct()
     {
         // 設定をロード
-        require_once __DIR__ . '/../../config/loader.php';
+        if (!function_exists('loadConfig')) {
+            require_once __DIR__ . '/../../config/loader.php';
+        }
         $this->config = loadConfig('config')['app_logging'] ?? [];
 
         // デフォルト設定

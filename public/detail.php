@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../src/Security/SecurityUtil.php';
-require_once __DIR__ . '/../src/Utils/Logger.php';
 
 use App\Models\Post;
 use App\Models\GroupPostImage;
 use App\Models\Theme;
 use App\Models\Setting;
+use App\Utils\Logger;
 
 // パラメータの検証
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
