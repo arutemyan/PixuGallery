@@ -38,7 +38,7 @@ class AdminPostsIntegrationTest extends IntegrationTestCase
         $this->assertTrue($ud2['success']);
 
         // Bulk visibility change via POST _method=PATCH (posts.php accepts _method override)
-        $patch = $this->curl('/admin/api/posts.php', ['form' => ['_method' => 'PATCH', 'post_ids' => [$postId], 'is_visible' => 0]]);
+        $patch = $this->curl('/admin/api/posts.php', ['form' => ['_method' => 'PATCH', 'post_ids' => [$postId], 'is_visible' => 0, 'csrf_token' => $csrf]]);
         $this->assertEquals(200, $patch['http_code']);
         $pd = json_decode($patch['output'], true);
         $this->assertTrue($pd['success']);
