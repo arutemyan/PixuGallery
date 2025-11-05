@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../../../src/Security/SecurityUtil.php';
 
 use App\Controllers\AdminControllerBase;
 use App\Database\Connection;
+use App\Utils\Logger;
 
 class IllustDataController extends AdminControllerBase
 {
@@ -54,7 +55,7 @@ class IllustDataController extends AdminControllerBase
         $abs = $publicRoot . $dataPath;
 
         if (!file_exists($abs)) {
-            error_log("Illust data file not found: $abs (from data_path: $dataPath)");
+            Logger::getInstance()->error("Illust data file not found: $abs (from data_path: $dataPath)");
             $this->sendError('Data file not found', 404);
         }
 

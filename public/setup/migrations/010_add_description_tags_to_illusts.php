@@ -3,6 +3,8 @@
  * Migration 010: Add description and tags columns to illusts table
  */
 
+use App\Utils\Logger;
+
 return [
     'name' => 'add_description_tags_to_illusts',
 
@@ -25,13 +27,13 @@ return [
         try {
             $db->exec("ALTER TABLE illusts DROP COLUMN description");
         } catch (Exception $e) {
-            error_log("Migration down: Could not drop description column: " . $e->getMessage());
+            Logger::getInstance()->error("Migration down: Could not drop description column: " . $e->getMessage());
         }
 
         try {
             $db->exec("ALTER TABLE illusts DROP COLUMN tags");
         } catch (Exception $e) {
-            error_log("Migration down: Could not drop tags column: " . $e->getMessage());
+            Logger::getInstance()->error("Migration down: Could not drop tags column: " . $e->getMessage());
         }
 
         return true;

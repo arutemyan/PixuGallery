@@ -9,6 +9,7 @@ require_once(__DIR__ . '/../../config/config.php');
 
 use App\Models\Theme;
 use App\Models\Setting;
+use App\Utils\Logger;
 
 try {
     // テーマ設定を取得
@@ -20,7 +21,7 @@ try {
     $siteTitle = $theme['site_title'] ?? 'ペイントギャラリー';
     $siteSubtitle = $theme['site_subtitle'] ?? 'キャンバスで描いたオリジナルイラスト作品集';
 } catch (Exception $e) {
-    error_log('Paint Gallery Error: ' . $e->getMessage());
+    Logger::getInstance()->error('Paint Gallery Error: ' . $e->getMessage());
     $theme = [];
     $siteTitle = 'ペイントギャラリー';
     $siteSubtitle = 'キャンバスで描いたオリジナルイラスト作品集';

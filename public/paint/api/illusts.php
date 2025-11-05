@@ -102,7 +102,7 @@ try {
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     
 } catch (Exception $e) {
-    error_log('Illusts API Error: ' . $e->getMessage());
+    \App\Utils\Logger::getInstance()->error('Illusts API Error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,

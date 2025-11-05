@@ -5,6 +5,7 @@ namespace App\Services;
 
 use App\Models\IllustFile;
 use App\Utils\EnvChecks;
+use App\Utils\Logger;
 use PDO;
 
 class IllustService
@@ -138,14 +139,14 @@ class IllustService
                             $thumb->clear();
                             $thumb->destroy();
                         } catch (\Throwable $e) {
-                            error_log('IllustService: imagick thumbnail failed: ' . $e->getMessage());
+                            Logger::getInstance()->error('IllustService: imagick thumbnail failed: ' . $e->getMessage());
                         }
 
                         $im->clear();
                         $im->destroy();
                     } catch (\Throwable $e) {
                         // fall through to GD
-                        error_log('IllustService: imagick conversion failed: ' . $e->getMessage());
+                        Logger::getInstance()->error('IllustService: imagick conversion failed: ' . $e->getMessage());
                     }
                 }
 
@@ -183,7 +184,7 @@ class IllustService
                         }
                         imagedestroy($gd);
                     } else {
-                        error_log('IllustService: GD failed to read uploaded image blob');
+                        Logger::getInstance()->error('IllustService: GD failed to read uploaded image blob');
                     }
                 }
 
@@ -194,7 +195,7 @@ class IllustService
                     throw new \RuntimeException('Failed to create master image from uploaded data');
                 }
                 if (!$thumbGenerated) {
-                    error_log(sprintf('IllustService: thumbnail not generated for illust id=%d src=%s dst=%s', $id, $imagePath, $thumbPath));
+                    Logger::getInstance()->error(sprintf('IllustService: thumbnail not generated for illust id=%d src=%s dst=%s', $id, $imagePath, $thumbPath));
                 }
             } elseif (!$isUpdate) {
                 // no image provided for new record -> leave image/timelapse empty

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Utils\EnvChecks;
+use App\Utils\Logger;
 
 class TimelapseService
 {
@@ -69,7 +70,7 @@ class TimelapseService
             $timelapseFile = $publicRoot . $illust['timelapse_path'];
             
             if (!file_exists($timelapseFile)) {
-                error_log("Timelapse file not found: {$timelapseFile} (from timelapse_path: {$illust['timelapse_path']})");
+                Logger::getInstance()->error("Timelapse file not found: {$timelapseFile} (from timelapse_path: {$illust['timelapse_path']})");
                 return [
                     'success' => false,
                     'error' => 'Timelapse file not found'
@@ -122,7 +123,7 @@ class TimelapseService
             }
             
         } catch (\Exception $e) {
-            error_log('TimelapseService::getTimelapseData Error: ' . $e->getMessage());
+            Logger::getInstance()->error('TimelapseService::getTimelapseData Error: ' . $e->getMessage());
             return [
                 'success' => false,
                 'error' => 'Server error'

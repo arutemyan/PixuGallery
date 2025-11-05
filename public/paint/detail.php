@@ -9,6 +9,7 @@ require_once(__DIR__ . '/../../config/config.php');
 
 use App\Models\Theme;
 use App\Models\Setting;
+use App\Utils\Logger;
 
 // テーマ設定を読み込む
 try {
@@ -109,7 +110,7 @@ try {
     $relatedIllusts = $relatedStmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (Exception $e) {
-    error_log('Illust Detail Error: ' . $e->getMessage());
+    Logger::getInstance()->error('Illust Detail Error: ' . $e->getMessage());
     header('Location: /paint/');
     exit;
 }
