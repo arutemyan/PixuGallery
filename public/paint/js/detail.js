@@ -149,12 +149,14 @@ class TimelapsePlayer {
     
     renderFrame(frameIndex) {
         if (frameIndex < 0 || frameIndex >= this.frames.length) return;
-        
+
         const frame = this.frames[frameIndex];
-        
+
         // ストロークを描画
         if (frame.type === 'stroke') {
             this.drawStroke(frame);
+        } else if (frame.type === 'fill') {
+            this.drawFill(frame);
         } else {
             console.warn('Unexpected frame type:', frame.type);
         }
@@ -162,29 +164,111 @@ class TimelapsePlayer {
     
     drawStroke(frame) {
         if (!frame.path || frame.path.length === 0) return;
-        
+
         this.ctx.save();
         this.ctx.strokeStyle = frame.color || '#000000';
         this.ctx.lineWidth = frame.size || 5;
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
         this.ctx.globalAlpha = frame.opacity !== undefined ? frame.opacity : 1;
-        
+
         if (frame.tool === 'eraser') {
             this.ctx.globalCompositeOperation = 'destination-out';
         } else {
             this.ctx.globalCompositeOperation = 'source-over';
         }
-        
+
         this.ctx.beginPath();
         this.ctx.moveTo(frame.path[0].x, frame.path[0].y);
-        
+
         for (let i = 1; i < frame.path.length; i++) {
             this.ctx.lineTo(frame.path[i].x, frame.path[i].y);
         }
-        
+
         this.ctx.stroke();
         this.ctx.restore();
+    }
+
+    drawFill(frame) {
+        if (frame.x === undefined || frame.y === undefined) return;
+
+        // Get image data for flood fill
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        const data = imageData.data;
+
+        const startX = Math.floor(frame.x);
+        const startY = Math.floor(frame.y);
+
+        // Check if coordinates are within bounds
+        if (startX < 0 || startX >= this.canvas.width || startY < 0 || startY >= this.canvas.height) {
+            return;
+        }
+
+        // Get target color
+        const startPos = (startY * this.canvas.width + startX) * 4;
+        const targetR = data[startPos];
+        const targetG = data[startPos + 1];
+        const targetB = data[startPos + 2];
+        const targetA = data[startPos + 3];
+
+        // Parse fill color
+        const fillColor = frame.color || '#000000';
+        let fillR, fillG, fillB;
+        if (fillColor.startsWith('#')) {
+            const hex = fillColor.substring(1);
+            fillR = parseInt(hex.substring(0, 2), 16);
+            fillG = parseInt(hex.substring(2, 4), 16);
+            fillB = parseInt(hex.substring(4, 6), 16);
+        } else {
+            fillR = fillG = fillB = 0;
+        }
+
+        // Check if target and fill colors are the same
+        if (targetR === fillR && targetG === fillG && targetB === fillB && targetA === 255) {
+            return; // Nothing to fill
+        }
+
+        // Flood fill using stack
+        const stack = [[startX, startY]];
+        const visited = new Set();
+
+        while (stack.length > 0) {
+            const [x, y] = stack.pop();
+
+            // Check bounds
+            if (x < 0 || x >= this.canvas.width || y < 0 || y >= this.canvas.height) {
+                continue;
+            }
+
+            // Check if already visited
+            const key = `${x},${y}`;
+            if (visited.has(key)) {
+                continue;
+            }
+            visited.add(key);
+
+            // Check if pixel matches target color
+            const pos = (y * this.canvas.width + x) * 4;
+            if (data[pos] !== targetR || data[pos + 1] !== targetG ||
+                data[pos + 2] !== targetB || data[pos + 3] !== targetA) {
+                continue;
+            }
+
+            // Fill pixel
+            data[pos] = fillR;
+            data[pos + 1] = fillG;
+            data[pos + 2] = fillB;
+            data[pos + 3] = 255;
+
+            // Add neighbors
+            stack.push([x + 1, y]);
+            stack.push([x - 1, y]);
+            stack.push([x, y + 1]);
+            stack.push([x, y - 1]);
+        }
+
+        // Put the modified image data back
+        this.ctx.putImageData(imageData, 0, 0);
     }
     
     seek(frameIndex) {
@@ -386,8 +470,17 @@ function convertEventsToStrokes(events) {
     const strokes = [];
     let currentStroke = null;
     let lastEventTime = null;
+    let canvasWidth = 800;
+    let canvasHeight = 600;
+
     for (const event of events) {
-        if (event.type === 'start') {
+        if (event.type === 'meta') {
+            // Extract canvas metadata
+            if (event.canvas_width) canvasWidth = parseInt(event.canvas_width);
+            if (event.canvas_height) canvasHeight = parseInt(event.canvas_height);
+            console.log('Canvas metadata found:', canvasWidth, 'x', canvasHeight);
+            continue; // Skip meta events in stroke generation
+        } else if (event.type === 'start') {
             // 新しいストロークを開始
             currentStroke = {
                 type: 'stroke',
@@ -411,17 +504,36 @@ function convertEventsToStrokes(events) {
                 currentStroke.path.push({ x: event.x, y: event.y });
             }
             currentStroke.endTime = event.t !== undefined ? event.t : lastEventTime;
-            
+
             strokes.push(currentStroke);
             currentStroke = null;
+        } else if (event.type === 'fill') {
+            // 塗りつぶしイベントを追加
+            strokes.push({
+                type: 'fill',
+                x: event.x,
+                y: event.y,
+                color: event.color || '#000000',
+                layer: event.layer || 0,
+                startTime: event.t !== undefined ? event.t : lastEventTime,
+                endTime: event.t !== undefined ? event.t : lastEventTime
+            });
+            if (event.t !== undefined) lastEventTime = event.t;
         }
     }
-    
+
     // 未完のストロークがあれば追加
     if (currentStroke && currentStroke.path.length > 0) {
         strokes.push(currentStroke);
     }
-    
+
+    // Add canvas size to the first stroke
+    if (strokes.length > 0) {
+        strokes[0].width = canvasWidth;
+        strokes[0].height = canvasHeight;
+        console.log('Canvas size added to first stroke:', canvasWidth, 'x', canvasHeight);
+    }
+
     // フレーム間のdurationを計算
     return calculateFrameDurations(strokes);
 }
