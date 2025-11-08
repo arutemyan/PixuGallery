@@ -5,7 +5,7 @@
             <directory>tests/Unit</directory>
         </testsuite>
         <testsuite name="Integration">
-            <directory>tests/Integration</directory>
+            <directory>tests/integration</directory>
         </testsuite>
         <testsuite name="Api">
             <directory>tests/Api</directory>
