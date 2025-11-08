@@ -43,15 +43,118 @@ export function savePersistedState() {
         return;
     }
 
+    // If local auto-save is disabled, only persist minimal metadata (or skip)
+    if (state.localAutoSave === false) {
+        try {
+            const minimal = {
+                canvasWidth: state.layers && state.layers[0] ? state.layers[0].width : null,
+                canvasHeight: state.layers && state.layers[0] ? state.layers[0].height : null,
+                currentIllustTitle: state.currentIllustTitle || '',
+                currentIllustDescription: state.currentIllustDescription || '',
+                currentIllustTags: state.currentIllustTags || '',
+                hasUnsavedChanges: !!state.hasUnsavedChanges,
+                timestamp: Date.now(),
+                minimalSave: true
+            };
+            localStorage.setItem('paint_canvas_state', JSON.stringify(minimal));
+        } catch (e) {
+            console.warn('Minimal local save failed:', e);
+        }
+        return;
+    }
+
     try {
         const canvasState = captureCanvasState();
-        const stateJson = JSON.stringify(canvasState);
+        let stateJson = JSON.stringify(canvasState);
+
+        // Estimate size and attempt graceful degradation when large
+        const estimateByteSize = (str) => {
+            if (typeof TextEncoder !== 'undefined') {
+                return new TextEncoder().encode(str).length;
+            }
+            // Fallback approximation: assume 1 char = 1 byte for ASCII-heavy data
+            return unescape(encodeURIComponent(str)).length;
+        };
+
+        const LIMIT_BYTES = 2.5 * 1024 * 1024; // 2.5 MB heuristic
+        const originalSize = estimateByteSize(stateJson);
+
+        if (originalSize > LIMIT_BYTES) {
+            console.warn('Persisted state is large:', originalSize, 'bytes. Attempting to prune before saving.');
+
+            // Create a pruned copy: remove timelapse data and layer images to reduce size
+            const pruned = Object.assign({}, canvasState);
+            pruned.timelapseEvents = [];
+            pruned.timelapseSnapshots = [];
+            pruned.layers = (pruned.layers || []).map(l => ({ index: l.index, visible: l.visible, opacity: l.opacity, dataUrl: null }));
+            pruned.prunedForLocalStorage = true;
+
+            stateJson = JSON.stringify(pruned);
+            const prunedSize = estimateByteSize(stateJson);
+
+            if (prunedSize > LIMIT_BYTES) {
+                console.warn('Pruned state still large:', prunedSize, 'bytes. Falling back to minimal metadata.');
+                // Last-resort: save only minimal metadata so the UI can at least restore a title/id
+                const minimal = {
+                    canvasWidth: pruned.canvasWidth,
+                    canvasHeight: pruned.canvasHeight,
+                    currentIllustTitle: pruned.currentIllustTitle || '',
+                    currentIllustDescription: pruned.currentIllustDescription || '',
+                    currentIllustTags: pruned.currentIllustTags || '',
+                    hasUnsavedChanges: !!pruned.hasUnsavedChanges,
+                    timestamp: Date.now(),
+                    prunedForLocalStorage: true
+                };
+                stateJson = JSON.stringify(minimal);
+            }
+
+            try {
+                localStorage.setItem('paint_canvas_state', stateJson);
+                if (elements && elements.statusText) {
+                    elements.statusText.textContent = 'ローカル保存: ストレージが大きいため一部データを省略して保存しました';
+                }
+                return;
+            } catch (e) {
+                // fall through to outer catch to handle quota
+                throw e;
+            }
+        }
+
+        // Normal save when size is within limits
         localStorage.setItem('paint_canvas_state', stateJson);
     } catch (e) {
         console.error('Failed to save persisted state:', e);
-        if (e.name === 'QuotaExceededError') {
-            console.error('LocalStorage quota exceeded! Canvas state is too large.');
-            alert('警告: キャンバス状態が大きすぎて保存できません。ブラウザのローカルストレージ制限を超えています。');
+        // QuotaExceededError handling and fallback to minimal metadata
+        if (e && (e.name === 'QuotaExceededError' || e.code === 22 || e.number === -2147024882)) {
+            console.error('LocalStorage quota exceeded! Attempting minimal save.');
+            try {
+                const minimal = {
+                    canvasWidth: state.layers && state.layers[0] ? state.layers[0].width : null,
+                    canvasHeight: state.layers && state.layers[0] ? state.layers[0].height : null,
+                    currentIllustTitle: state.currentIllustTitle || '',
+                    currentIllustDescription: state.currentIllustDescription || '',
+                    currentIllustTags: state.currentIllustTags || '',
+                    hasUnsavedChanges: !!state.hasUnsavedChanges,
+                    timestamp: Date.now(),
+                    prunedForLocalStorage: true
+                };
+                localStorage.setItem('paint_canvas_state', JSON.stringify(minimal));
+                if (elements && elements.statusText) {
+                    elements.statusText.textContent = 'ローカル保存: 容量不足のため最小データのみ保存されました';
+                } else {
+                    alert('警告: キャンバス状態が大きすぎて保存できませんでした。最小データのみ保存しています。');
+                }
+            } catch (e2) {
+                console.error('Even minimal save failed:', e2);
+                try {
+                    alert('警告: ローカルストレージに保存できませんでした。ブラウザの設定かストレージが不足しています。');
+                } catch (ignored) {}
+            }
+        } else {
+            // Generic fallback alert for other errors
+            try {
+                alert('警告: ローカルストレージへの保存中にエラーが発生しました。');
+            } catch (ignored) {}
         }
     }
 }
@@ -207,10 +310,46 @@ async function compressTimelapseData() {
             ...state.timelapseEvents
         ];
 
-        if (window.Worker) {
+        // If snapshots exist, produce a JSON package including events and snapshots so playback
+        // can render snapshots (which capture composite including layer order changes).
+        if (state.timelapseSnapshots && state.timelapseSnapshots.length > 0) {
+            const packageObj = {
+                version: '1.0',
+                canvasWidth: canvasWidth,
+                canvasHeight: canvasHeight,
+                events: state.timelapseEvents,
+                snapshots: state.timelapseSnapshots
+            };
+            const json = JSON.stringify(packageObj);
+            if (typeof pako !== 'undefined') {
+                const gz = pako.gzip(json);
+                let bin = '';
+                for (let i = 0; i < gz.length; i++) bin += String.fromCharCode(gz[i]);
+                return 'data:application/octet-stream;base64,' + btoa(bin);
+            } else {
+                const blob = new Blob([json], { type: 'application/json' });
+                const reader = new FileReader();
+                // synchronous fallback not available; return null to skip including timelapse
+                return null;
+            }
+        }
+
+        // Otherwise, fallback to existing CSV compression (worker or pako)
+        if (window.Worker && !state.timelapseSnapshots) {
             // Use Web Worker for compression
             if (!window._timelapseWorker) {
-                window._timelapseWorker = new Worker('../js/timelapse_worker.js');
+                // Resolve worker path using injected base URL when available
+                let workerPath = 'js/timelapse_worker.js';
+                try {
+                    if (typeof window !== 'undefined' && window.PAINT_BASE_URL) {
+                        // Ensure no double-slash
+                        const base = String(window.PAINT_BASE_URL).replace(/\/$/, '');
+                        workerPath = base + '/js/timelapse_worker.js';
+                    }
+                } catch (e) {
+                    // fall back to relative path
+                }
+                window._timelapseWorker = new Worker(workerPath);
             }
 
             return await new Promise((resolve, reject) => {
@@ -227,7 +366,7 @@ async function compressTimelapseData() {
                 worker.postMessage({ events: eventsWithMeta });
             });
         } else if (typeof pako !== 'undefined') {
-            // Fallback to main-thread compression
+            // Fallback to main-thread compression (CSV)
             const headers = [];
             eventsWithMeta.forEach(ev => {
                 Object.keys(ev).forEach(k => {
@@ -627,4 +766,108 @@ export async function loadIllustLayers(illustData, renderLayers) {
     if (renderLayers) {
         renderLayers();
     }
+}
+
+/**
+ * Export current working data as a compressed file (.json.gz)
+ * Uses pako.gzip if available, otherwise falls back to plain JSON download.
+ */
+export function exportWorkingData() {
+    try {
+        const canvasState = captureCanvasState();
+        const json = JSON.stringify({ version: '1.0', exportedAt: Date.now(), data: canvasState });
+
+        if (typeof pako !== 'undefined' && typeof pako.gzip === 'function') {
+            const gz = pako.gzip(json);
+            const u8 = new Uint8Array(gz);
+            const blob = new Blob([u8], { type: 'application/gzip' });
+            const name = `paint-export-${new Date().toISOString().replace(/[:.]/g,'')}.json.gz`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            if (elements && elements.statusText) elements.statusText.textContent = 'エクスポートしました';
+            return;
+        }
+
+        // Fallback: plain JSON
+        const blob = new Blob([json], { type: 'application/json' });
+        const name = `paint-export-${new Date().toISOString().replace(/[:.]/g,'')}.json`;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        if (elements && elements.statusText) elements.statusText.textContent = 'エクスポートしました';
+    } catch (err) {
+        console.error('Export failed:', err);
+        try { alert('エクスポートに失敗しました。コンソールを確認してください。'); } catch (ignored) {}
+    }
+}
+
+/**
+ * Import working data from a file (supports gzip-compressed JSON produced by exportWorkingData)
+ * @param {File} file
+ * @returns {Promise<void>}
+ */
+export async function importWorkingFile(file) {
+    try {
+        if (!file) throw new Error('No file provided');
+        const arrayBuffer = await file.arrayBuffer();
+
+        let text = null;
+        try {
+            // Try to decompress with pako if available
+            if (typeof pako !== 'undefined' && typeof pako.ungzip === 'function') {
+                const u8 = new Uint8Array(arrayBuffer);
+                const decomp = pako.ungzip(u8, { to: 'string' });
+                text = decomp;
+            }
+        } catch (e) {
+            console.warn('Decompression failed, will try treating as plain text:', e);
+        }
+
+        if (text === null) {
+            // Fallback: try interpret as UTF-8 text
+            try {
+                const decoder = new TextDecoder('utf-8');
+                text = decoder.decode(arrayBuffer);
+            } catch (e) {
+                throw new Error('ファイルの読み込みに失敗しました');
+            }
+        }
+
+        const parsed = JSON.parse(text);
+        // Support wrapped format { version, exportedAt, data }
+        const canvasState = parsed && parsed.data ? parsed.data : parsed;
+
+        // Use restoreCanvasState (exported in this module)
+        await restoreCanvasState(canvasState);
+
+        if (elements && elements.statusText) elements.statusText.textContent = 'インポート完了: 作業状態を復元しました';
+    } catch (err) {
+        console.error('Import failed:', err);
+        try { alert('インポートに失敗しました: ' + (err.message || err)); } catch (ignored) {}
+    }
+}
+
+// Setup beforeunload guard to prevent accidental close when there are unsaved changes
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', (e) => {
+        if (state.hasUnsavedChanges) {
+            const msg = '未保存の変更があります。ページを離れると失われます。よろしいですか？';
+            e.preventDefault();
+            // Modern browsers ignore custom strings, but setting returnValue is required
+            e.returnValue = msg;
+            return msg;
+        }
+        return undefined;
+    });
 }

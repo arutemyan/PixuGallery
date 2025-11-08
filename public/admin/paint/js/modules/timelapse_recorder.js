@@ -32,6 +32,17 @@ export function recordTimelapse(event) {
     }
 }
 
+// Expose snapshot creation so other modules (e.g., layers) can force a snapshot
+export function createTimelapseSnapshotPublic() {
+    try {
+        // createTimelapseSnapshot is defined below in this module
+        createTimelapseSnapshot(state.timelapseEvents.length - 1);
+        state.lastSnapshotTime = Date.now();
+    } catch (e) {
+        console.warn('Public snapshot creation failed:', e);
+    }
+}
+
 /**
  * Create a snapshot of current canvas state
  */

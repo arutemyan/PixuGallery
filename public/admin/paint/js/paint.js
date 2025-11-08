@@ -43,6 +43,8 @@ import {
     savePersistedState,
     setCurrentId,
     restoreCanvasState,
+    exportWorkingData,
+    importWorkingFile,
     saveIllust,
     newIllust,
     markAsChanged,
@@ -193,6 +195,31 @@ function initHeaderButtons() {
     }
     if (elements.btnResize) {
         elements.btnResize.addEventListener('click', openResizeModal);
+    }
+
+    // Export / Import
+    if (elements.btnExport) {
+        elements.btnExport.addEventListener('click', () => {
+            exportWorkingData();
+        });
+    }
+    if (elements.importFileInput) {
+        elements.importFileInput.addEventListener('change', async (ev) => {
+            const file = ev.target.files && ev.target.files[0];
+            if (!file) return;
+            // Confirm overwrite if unsaved changes
+            if (state.hasUnsavedChanges) {
+                if (!confirm('未保存の変更があります。インポートすると現在の作業は上書きされます。続行しますか？')) {
+                    elements.importFileInput.value = '';
+                    return;
+                }
+            }
+            await importWorkingFile(file);
+            elements.importFileInput.value = '';
+            // After import, update UI
+            updateIllustDisplay();
+            renderLayersWrapper();
+        });
     }
 
     // Open modal (load illustration)

@@ -5,6 +5,7 @@
 
 import { CONFIG } from './config.js';
 import { state, elements } from './state.js';
+import { recordTimelapse, createTimelapseSnapshotPublic } from './timelapse_recorder.js';
 
 // Context menu state
 let contextMenuTargetLayer = -1;
@@ -351,6 +352,19 @@ export function moveLayer(index, delta, updateStatusBar, setStatus) {
     state.layers.forEach((canvas, i) => {
         canvas.style.zIndex = i;
     });
+
+    // Record a timelapse reorder event and force a snapshot so playback can reflect stacking changes
+    try {
+        if (typeof recordTimelapse === 'function') {
+            recordTimelapse({ t: Date.now(), type: 'reorder', from: index, to: to });
+        }
+        if (typeof createTimelapseSnapshotPublic === 'function') {
+            createTimelapseSnapshotPublic();
+        }
+    } catch (err) {
+        // non-fatal
+        console.warn('Failed to record reorder snapshot/event:', err);
+    }
 
     renderLayers(updateStatusBar, setStatus);
 }

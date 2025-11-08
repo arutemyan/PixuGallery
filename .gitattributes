@@ -23,7 +23,6 @@ build.js export-ignore
 # ソースファイル（bundle版を使用するため除外）
 public/admin/paint/js/modules/ export-ignore
 public/admin/paint/js/paint.js export-ignore
-public/admin/paint/js/timelapse_worker.js export-ignore
 public/admin/js/admin.js export-ignore
 public/admin/js/sns-share.js export-ignore
 public/res/js/main.js export-ignore

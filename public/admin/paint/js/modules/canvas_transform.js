@@ -144,65 +144,65 @@ export function initTransformTools(setStatus, pushUndo) {
  * @param {Function} pushUndo - Callback to push undo state
  */
 export function rotateCanvas(degrees, setStatus, pushUndo) {
-    const layer = state.layers[state.activeLayer];
-    const ctx = state.contexts[state.activeLayer];
+    // Rotate the entire canvas (all layers) by `degrees`.
+    try {
+        const deg = Number(degrees) || 0;
+        const absDeg = Math.abs(deg) % 360;
+        const is90 = absDeg === 90 || absDeg === 270;
 
-    // Save for undo
-    pushUndo(state.activeLayer);
+        const oldW = state.layers[0].width;
+        const oldH = state.layers[0].height;
+        const newW = is90 ? oldH : oldW;
+        const newH = is90 ? oldW : oldH;
 
-    // Save current state
-    const imageData = layer.toDataURL();
-    const img = new Image();
+        // Push undo for all layers
+        state.layers.forEach((_, idx) => pushUndo(idx));
 
-    img.onload = () => {
-        const oldWidth = layer.width;
-        const oldHeight = layer.height;
+        // Prepare promises to transform each layer image
+        const transforms = state.layers.map((canvas) => new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const tmp = document.createElement('canvas');
+                tmp.width = newW;
+                tmp.height = newH;
+                const ctx = tmp.getContext('2d');
+                ctx.save();
+                ctx.translate(newW / 2, newH / 2);
+                ctx.rotate((deg * Math.PI) / 180);
+                ctx.drawImage(img, -oldW / 2, -oldH / 2);
+                ctx.restore();
+                resolve(tmp.toDataURL());
+            };
+            img.onerror = () => resolve(null);
+            img.src = canvas.toDataURL();
+        }));
 
-        // For 90/-90 degree rotation, swap width and height
-        if (Math.abs(degrees) === 90) {
-            layer.width = oldHeight;
-            layer.height = oldWidth;
-        }
-
-        // Clear and setup transformation
-        ctx.clearRect(0, 0, layer.width, layer.height);
-        ctx.save();
-
-        // Move to center, rotate, move back
-        ctx.translate(layer.width / 2, layer.height / 2);
-        ctx.rotate((degrees * Math.PI) / 180);
-        ctx.drawImage(img, -img.width / 2, -img.height / 2);
-
-        ctx.restore();
-
-        // Update canvas info if dimensions changed
-        if (Math.abs(degrees) === 90) {
-            const canvasInfo = document.querySelector('.canvas-info');
-            if (canvasInfo) {
-                canvasInfo.textContent = `${layer.width} x ${layer.height} px`;
-            }
-
-            // Resize all other layers to match
-            state.layers.forEach((canvas, idx) => {
-                if (idx !== state.activeLayer) {
-                    const tempData = canvas.toDataURL();
-                    canvas.width = layer.width;
-                    canvas.height = layer.height;
-                    canvas.style.width = `${layer.width}px`;
-                    canvas.style.height = `${layer.height}px`;
-                    const tempImg = new Image();
-                    tempImg.onload = () => {
-                        state.contexts[idx].drawImage(tempImg, 0, 0);
-                    };
-                    tempImg.src = tempData;
-                }
+        Promise.all(transforms).then((results) => {
+            results.forEach((dataUrl, idx) => {
+                if (!dataUrl) return;
+                const canvas = state.layers[idx];
+                const ctx = state.contexts[idx];
+                canvas.width = newW;
+                canvas.height = newH;
+                canvas.style.width = `${newW}px`;
+                canvas.style.height = `${newH}px`;
+                const img = new Image();
+                img.onload = () => { try { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); } catch (e) { console.warn('rotate draw failed', e); } };
+                img.src = dataUrl;
             });
-        }
 
-        setStatus(`${degrees}度回転しました`);
-    };
+            // Update wrapper sizes and UI
+            if (elements.canvasWrap) {
+                elements.canvasWrap.style.width = `${newW}px`;
+                elements.canvasWrap.style.height = `${newH}px`;
+            }
+            const canvasInfo = document.querySelector('.canvas-info');
+            if (canvasInfo) canvasInfo.textContent = `${newW} x ${newH} px`;
+            if (elements.timelapseCanvas) { elements.timelapseCanvas.width = newW; elements.timelapseCanvas.height = newH; }
 
-    img.src = imageData;
+            setStatus(`${deg}度回転しました`);
+        }).catch((err) => { console.error('rotateCanvas error', err); setStatus('回転に失敗しました'); });
+    } catch (err) { console.error('rotateCanvas exception', err); setStatus('回転に失敗しました'); }
 }
 
 /**
@@ -212,35 +212,50 @@ export function rotateCanvas(degrees, setStatus, pushUndo) {
  * @param {Function} pushUndo - Callback to push undo state
  */
 export function flipCanvas(direction, setStatus, pushUndo) {
-    const layer = state.layers[state.activeLayer];
-    const ctx = state.contexts[state.activeLayer];
+    // Flip all layers horizontally or vertically
+    try {
+        // Push undo for all layers
+        state.layers.forEach((_, idx) => pushUndo(idx));
 
-    // Save for undo
-    pushUndo(state.activeLayer);
+        const w = state.layers[0].width;
+        const h = state.layers[0].height;
 
-    // Save current state
-    const imageData = layer.toDataURL();
-    const img = new Image();
+        const ops = state.layers.map((canvas) => new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const tmp = document.createElement('canvas');
+                tmp.width = w;
+                tmp.height = h;
+                const ctx = tmp.getContext('2d');
+                ctx.save();
+                if (direction === 'horizontal') {
+                    ctx.translate(w, 0);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(img, 0, 0);
+                } else {
+                    ctx.translate(0, h);
+                    ctx.scale(1, -1);
+                    ctx.drawImage(img, 0, 0);
+                }
+                ctx.restore();
+                resolve(tmp.toDataURL());
+            };
+            img.onerror = () => resolve(null);
+            img.src = canvas.toDataURL();
+        }));
 
-    img.onload = () => {
-        ctx.clearRect(0, 0, layer.width, layer.height);
-        ctx.save();
-
-        if (direction === 'horizontal') {
-            ctx.translate(layer.width, 0);
-            ctx.scale(-1, 1);
-        } else {
-            ctx.translate(0, layer.height);
-            ctx.scale(1, -1);
-        }
-
-        ctx.drawImage(img, 0, 0);
-        ctx.restore();
-
-        setStatus(`${direction === 'horizontal' ? '左右' : '上下'}反転しました`);
-    };
-
-    img.src = imageData;
+        Promise.all(ops).then((results) => {
+            results.forEach((dataUrl, idx) => {
+                if (!dataUrl) return;
+                const canvas = state.layers[idx];
+                const ctx = state.contexts[idx];
+                const img = new Image();
+                img.onload = () => { try { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); } catch (e) { console.warn('flip draw failed', e); } };
+                img.src = dataUrl;
+            });
+            setStatus(`${direction === 'horizontal' ? '左右' : '上下'}反転しました`);
+        }).catch((err) => { console.error('flipCanvas error', err); setStatus('反転に失敗しました'); });
+    } catch (err) { console.error('flipCanvas exception', err); setStatus('反転に失敗しました'); }
 }
 
 /**

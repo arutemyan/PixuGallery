@@ -56,6 +56,11 @@ export const state = {
     isInitializing: true
 };
 
+// User preferences / feature flags
+// `localAutoSave` controls whether the app attempts to persist full canvas state
+// into localStorage automatically. Default: false (avoid filling localStorage).
+state.localAutoSave = false;
+
 // ===== DOM Elements =====
 export const elements = {
     // Canvas
@@ -70,6 +75,8 @@ export const elements = {
     btnOpen: null,
     btnClear: null,
     btnResize: null,
+    btnExport: null,
+    importFileInput: null,
     illustId: null,
     illustTitleDisplay: null,
 
@@ -189,6 +196,8 @@ export function initializeElements() {
     elements.btnOpen = document.getElementById('btn-open');
     elements.btnClear = document.getElementById('btn-clear');
     elements.btnResize = document.getElementById('btn-resize');
+    elements.btnExport = document.getElementById('btn-export');
+    elements.importFileInput = document.getElementById('import-file-input');
     elements.illustId = document.getElementById('illust-id');
     elements.illustTitleDisplay = document.getElementById('illust-title-display');
 

@@ -190,6 +190,20 @@ export class TimelapsePlayer {
             this.drawStroke(frame);
         } else if (frame.type === 'fill') {
             this.drawFill(frame);
+        } else if (frame.type === 'snapshot') {
+            // snapshot: flattened image data URL
+            try {
+                const img = new Image();
+                img.onload = () => {
+                    this.ctx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
+                };
+                img.onerror = (e) => {
+                    console.warn('Failed to load snapshot image for timelapse frame', e);
+                };
+                img.src = frame.data;
+            } catch (e) {
+                console.warn('Error rendering snapshot frame:', e);
+            }
         } else {
             console.warn('Unexpected frame type:', frame.type);
         }

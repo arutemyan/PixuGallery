@@ -6,7 +6,7 @@
  */
 
 import { state, elements } from './state.js';
-import { TimelapsePlayer, parseTimelapseCSV } from '../../../../paint/js/timelapse_player.js';
+import { TimelapsePlayer, parseTimelapseCSV, convertEventsToStrokes } from '../../../../paint/js/timelapse_player.js';
 
 let timelapsePlayer = null;
 
@@ -113,30 +113,98 @@ async function loadAndPlayTimelapse(id, setStatus) {
             return;
         }
 
-        const ab = await resp.arrayBuffer();
+        // The server currently returns a JSON wrapper describing the timelapse (format + data),
+        // but some deployments may return raw gzipped payloads. Handle both cases robustly.
+        const contentType = resp.headers.get('Content-Type') || '';
 
-        if (typeof pako !== 'undefined') {
-            const uint8 = new Uint8Array(ab);
-            const out = pako.ungzip(uint8, { to: 'string' });
+        let frames = null;
 
-            let frames = null;
-            try {
-                // Try JSON first
-                frames = JSON.parse(out);
-            } catch (jsonError) {
-                // Fallback: parse as CSV timelapse format
-                frames = parseTimelapseCSV(out);
+        if (contentType.indexOf('application/json') !== -1) {
+            // Server returned JSON describing the timelapse (TimelapseService::getTimelapseData)
+            const payload = await resp.json();
+            if (payload) {
+                if (payload.format === 'csv' && payload.csv) {
+                    frames = parseTimelapseCSV(payload.csv);
+                } else if ((payload.format === 'json' || payload.format === 'json') && payload.timelapse) {
+                    const data = payload.timelapse;
+                    if (data && data.snapshots && data.snapshots.length > 0) {
+                        frames = data.snapshots.map(s => ({ type: 'snapshot', data: s.data, width: data.canvasWidth || state.layers[0].width, height: data.canvasHeight || state.layers[0].height, durationMs: 500 }));
+                    } else if (Array.isArray(data)) {
+                        frames = data;
+                    } else if (data && data.events) {
+                        frames = convertEventsToStrokes(data.events);
+                    }
+                } else if (payload.success && payload.timelapse) {
+                    // Backwards-compat: controller might return { success:true, format:'csv'|'json', csv:..., timelapse:... }
+                    if (payload.format === 'csv' && payload.csv) {
+                        frames = parseTimelapseCSV(payload.csv);
+                    } else if (payload.format === 'json' && payload.timelapse) {
+                        const data = payload.timelapse;
+                        if (data.snapshots && data.snapshots.length > 0) {
+                            frames = data.snapshots.map(s => ({ type: 'snapshot', data: s.data, width: data.canvasWidth || state.layers[0].width, height: data.canvasHeight || state.layers[0].height, durationMs: 500 }));
+                        } else if (Array.isArray(data)) {
+                            frames = data;
+                        } else if (data.events) {
+                            frames = convertEventsToStrokes(data.events);
+                        }
+                    }
+                }
+            }
+        } else {
+            // Not JSON: try to treat response as binary gz or plain text
+            const ab = await resp.arrayBuffer();
+            let text = null;
+
+            // Try decompress with pako if available
+            if (typeof pako !== 'undefined') {
+                try {
+                    const uint8 = new Uint8Array(ab);
+                    text = pako.ungzip(uint8, { to: 'string' });
+                } catch (e) {
+                    // not gzipped data or decompression failed
+                    text = null;
+                }
             }
 
-            if (frames && frames.length > 0) {
-                playTimelapse(frames);
-                if (setStatus) {
-                    setStatus('タイムラプス再生中');
+            if (text === null) {
+                // Fallback: try to decode as UTF-8 text
+                try {
+                    text = new TextDecoder('utf-8').decode(ab);
+                } catch (e) {
+                    text = null;
                 }
-            } else {
-                if (setStatus) {
-                    setStatus('タイムラプスデータが空です');
+            }
+
+            if (text !== null) {
+                // Try JSON first
+                try {
+                    const parsed = JSON.parse(text);
+                    if (parsed && parsed.snapshots && parsed.snapshots.length > 0) {
+                        frames = parsed.snapshots.map(s => ({ type: 'snapshot', data: s.data, width: parsed.canvasWidth || state.layers[0].width, height: parsed.canvasHeight || state.layers[0].height, durationMs: 500 }));
+                    } else if (Array.isArray(parsed)) {
+                        frames = parsed;
+                    } else if (parsed && parsed.events) {
+                        frames = convertEventsToStrokes(parsed.events);
+                    }
+                } catch (jsonError) {
+                    // Not JSON; try CSV parser
+                    try {
+                        frames = parseTimelapseCSV(text);
+                    } catch (csvErr) {
+                        console.warn('Failed to parse timelapse payload as JSON or CSV', csvErr);
+                    }
                 }
+            }
+        }
+
+        if (frames && frames.length > 0) {
+            playTimelapse(frames);
+            if (setStatus) {
+                setStatus('タイムラプス再生中');
+            }
+        } else {
+            if (setStatus) {
+                setStatus('タイムラプスデータが空です');
             }
         }
     } catch (err) {
