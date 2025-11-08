@@ -9,17 +9,17 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/../../vendor/autoload.php';
-require_once __DIR__ . '/_feature_check.php';
-$config = \App\Config\ConfigManager::getInstance()->getConfig();
 require_once __DIR__ . '/../../src/Security/SecurityUtil.php';
+$config = \App\Config\ConfigManager::getInstance()->getConfig();
 
 use App\Security\CsrfProtection;
 
-// セッション開始
-initSecureSession();
+// セッション開始（Session サービスを必須とする - 無ければエラーにする）
+\App\Services\Session::start();
 
-// 認証チェック
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+// 認証チェック（Session を前提にする）
+$sess = \App\Services\Session::getInstance();
+if ($sess->get('admin_logged_in') !== true) {
     http_response_code(401);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([

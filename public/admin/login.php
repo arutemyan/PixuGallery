@@ -3,25 +3,26 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../vendor/autoload.php';
-require_once __DIR__ . '/_feature_check.php';
-$config = \App\Config\ConfigManager::getInstance()->getConfig();
 require_once __DIR__ . '/../../src/Security/SecurityUtil.php';
+$config = \App\Config\ConfigManager::getInstance()->getConfig();
 
 use App\Models\User;
 use App\Security\CsrfProtection;
 use App\Security\RateLimiter;
 use App\Utils\PathHelper;
 use App\Utils\Logger;
+use App\Services\Session;
 
 // セッション開始
-initSecureSession();
+Session::start();
 
 // レート制限の初期化（15分間で5回まで）
 $rateLimiter = new RateLimiter(__DIR__ . '/../../data/rate-limits', 5, 900);
 $clientIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
 // すでにログイン済みの場合はダッシュボードへリダイレクト
-if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+$alreadyLogged = Session::getInstance()->get('admin_logged_in', null);
+if ($alreadyLogged === true) {
     header('Location: ' . PathHelper::getAdminUrl('index.php'));
     exit;
 }
@@ -64,10 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // 認証成功 - レート制限をリセット
                     $rateLimiter->reset($clientIp, 'login');
 
-                    regenerateSessionId();
-                    $_SESSION['admin_logged_in'] = true;
-                    $_SESSION['admin_user_id'] = $user['id'];
-                    $_SESSION['admin_username'] = $user['username'];
+                    $sess = Session::getInstance();
+                    // regenerate id to prevent session fixation, then set values
+                    $sess->regenerate(true);
+                    $sess->set('admin_logged_in', true);
+                    $sess->set('admin_user_id', $user['id']);
+                    $sess->set('admin_username', $user['username']);
 
                     logSecurityEvent('Admin login successful', ['username' => $username]);
 

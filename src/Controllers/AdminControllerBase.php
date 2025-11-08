@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Security\CsrfProtection;
+use App\Security\FeatureDisabledException;
 use App\Utils\Logger;
+use App\Services\Session;
 use Exception;
 
 /**
@@ -16,6 +18,41 @@ use Exception;
  */
 abstract class AdminControllerBase
 {
+
+    /**
+     * 共通認証チェックユーティリティ
+     * ページ用にリダイレクトするか、API用にリダイレクトしないかを切り替え可能
+     *
+     * @param bool $redirect If true and not authenticated, redirect to login page and exit.
+     * @return int|null returns user id when authenticated, or null when not authenticated
+     */
+    public static function ensureAuthenticated(bool $redirect = true): ?int
+    {
+        \App\Services\Session::start();
+
+        $userId = null;
+        $sess = \App\Services\Session::getInstance();
+        if ($sess->get('admin_logged_in', null) === true) {
+            $userId = $sess->get('admin_user_id', null);
+        } elseif (is_array($sess->get('admin', null))) {
+            $admin = $sess->get('admin');
+            $userId = $admin['id'] ?? null;
+        }
+        if ($userId === null && $redirect) {
+            // redirect to login page
+            if (!headers_sent()) {
+                $protocol = $_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.1';
+                header($protocol . ' 302 Found');
+            }
+            $login = '/admin/login.php';
+            // PathHelper may not be available here in some includes; keep simple
+            header('Location: ' . $login);
+            exit;
+        }
+
+        return $userId;
+    }
+
     /**
      * エントリーポイント
      * 共通処理を実行してからonProcessを呼び出す
@@ -23,22 +60,14 @@ abstract class AdminControllerBase
     public function execute(): void
     {
         try {
-            // feature gate: ensure admin feature enabled
-            if (class_exists('\App\\Utils\\FeatureGate')) {
+            try {
                 \App\Utils\FeatureGate::ensureEnabled('admin');
-            } else {
-                // fallback: check config directly
-                $configPath = __DIR__ . '/../../config/config.php';
-                if (file_exists($configPath)) {
-                    $cfg = require $configPath;
-                    if (isset($cfg['admin']) && array_key_exists('enabled', $cfg['admin']) && !$cfg['admin']['enabled']) {
-                        if (!headers_sent()) {
-                            header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
-                        }
-                        echo '404 Not Found';
-                        exit;
-                    }
+            } catch (FeatureDisabledException $e) {
+                if (!headers_sent()) {
+                    header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
                 }
+                echo '404 Not Found';
+                exit;
             }
             // セッション開始
             $this->initSession();
@@ -77,10 +106,13 @@ abstract class AdminControllerBase
      */
     protected function initSession(): void
     {
-        if (function_exists('initSecureSession')) {
-            initSecureSession();
-        } elseif (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        try {
+            Session::start();
+        } catch (Exception $e) {
+            // fallback: start native session if wrapper fails
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
         }
     }
 
@@ -89,7 +121,14 @@ abstract class AdminControllerBase
      */
     protected function checkAuthentication(): void
     {
-        if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+        $loggedIn = Session::getInstance()->get('admin_logged_in', null);
+
+        // Fallback to raw $_SESSION
+        if ($loggedIn === null) {
+            $loggedIn = $_SESSION['admin_logged_in'] ?? null;
+        }
+
+        if ($loggedIn !== true) {
             $this->sendError('Unauthorized', 401);
         }
     }
@@ -122,6 +161,15 @@ abstract class AdminControllerBase
      */
     protected function validateCsrf(): void
     {
+        $session = Session::getInstance();
+        // check POST param first, then common header names
+        $token = $_POST['csrf_token'] ?? null;
+        if (empty($token)) {
+            $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_SERVER['HTTP_X_XSRF_TOKEN'] ?? null);
+        }
+        if (!empty($token) && $session->validateCsrf($token)) {
+            return;
+        }
         if (!CsrfProtection::validatePost() && !CsrfProtection::validateHeader()) {
             $this->logSecurityEvent('CSRF token validation failed');
             $this->sendError('CSRFトークンが無効です', 403);

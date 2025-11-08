@@ -11,8 +11,11 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../../vendor/autoload.php';
 $config = \App\Config\ConfigManager::getInstance()->getConfig();
 require_once __DIR__ . '/../../../src/Security/SecurityUtil.php';
-// feature gate (returns 404 if admin disabled)
-require_once(__DIR__ . '/../_feature_check.php');
+
+use App\Controllers\AdminApiControllerBase;
+
+// Initialize API common checks (session, feature gate)
+AdminApiControllerBase::init();
 
 use App\Http\Router;
 use App\Models\Post;
@@ -22,21 +25,14 @@ use App\Security\CsrfProtection;
 use App\Utils\ImageUploader;
 use App\Utils\Logger;
 
-// セッション開始
-initSecureSession();
-
+// Router を作成
 $router = new Router();
 
 /**
  * 認証ミドルウェア
  */
-$router->middleware(function ($method, $path) {
-    if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-        Router::error('認証が必要です。ログインしてください。', 401);
-        return false;
-    }
-    return true;
-});
+// 認証ミドルウェアを追加（Session wrapper を優先）
+AdminApiControllerBase::addAuthMiddleware($router);
 
 /**
  * GET /admin/api/posts

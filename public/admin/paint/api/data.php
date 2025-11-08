@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../../src/Security/SecurityUtil.php';
 use App\Controllers\AdminControllerBase;
 use App\Database\Connection;
 use App\Utils\Logger;
+use App\Services\Session;
 
 class IllustDataController extends AdminControllerBase
 {
@@ -14,11 +15,23 @@ class IllustDataController extends AdminControllerBase
 
     protected function checkAuthentication(): void
     {
-        // Support both session formats
-        if (!empty($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
-            $this->userId = $_SESSION['admin_user_id'] ?? null;
-        } elseif (!empty($_SESSION['admin']) && is_array($_SESSION['admin'])) {
-            $this->userId = $_SESSION['admin']['id'] ?? null;
+        // Prefer Session wrapper, fall back to raw $_SESSION for compatibility
+        $sess = Session::getInstance();
+        $logged = $sess->get('admin_logged_in', null);
+        if ($logged === true) {
+            $this->userId = $sess->get('admin_user_id', null);
+        } else {
+            $admin = $sess->get('admin', null);
+            if (is_array($admin)) {
+                $this->userId = $admin['id'] ?? null;
+            }
+        }
+        if ($this->userId === null) {
+            if (!empty($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+                $this->userId = $_SESSION['admin_user_id'] ?? null;
+            } elseif (!empty($_SESSION['admin']) && is_array($_SESSION['admin'])) {
+                $this->userId = $_SESSION['admin']['id'] ?? null;
+            }
         }
 
         if ($this->userId === null) {

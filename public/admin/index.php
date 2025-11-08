@@ -3,25 +3,28 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../vendor/autoload.php';
-require_once __DIR__ . '/_feature_check.php';
-$config = \App\Config\ConfigManager::getInstance()->getConfig();
 require_once __DIR__ . '/../../src/Security/SecurityUtil.php';
+$config = \App\Config\ConfigManager::getInstance()->getConfig();
 
 use App\Security\CsrfProtection;
 use App\Utils\PathHelper;
 
-// セッション開始
-initSecureSession();
-
-// 認証チェック
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-    header('Location: ' . PathHelper::getAdminUrl('login.php'));
-    exit;
-}
+// セッション開始 & 認証チェック（共通化）
+\App\Controllers\AdminControllerBase::ensureAuthenticated(true);
+// (ensureAuthenticated がリダイレクトまたは継続する)
 
 // CSRFトークンを生成
 $csrfToken = CsrfProtection::generateToken();
-$username = $_SESSION['admin_username'] ?? 'Admin';
+$username = 'Admin';
+try {
+    if (class_exists('\App\\Services\\Session')) {
+        $username = \App\Services\Session::getInstance()->get('admin_username', $username);
+    } else {
+        $username = $_SESSION['admin_username'] ?? $username;
+    }
+} catch (Throwable $e) {
+    $username = $_SESSION['admin_username'] ?? $username;
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">

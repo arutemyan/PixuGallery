@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../../src/Security/SecurityUtil.php';
 use App\Controllers\AdminControllerBase;
 use App\Database\Connection;
 use App\Models\Paint;
+use App\Services\Session;
 
 class PaintListController extends AdminControllerBase
 {
@@ -21,13 +22,23 @@ class PaintListController extends AdminControllerBase
 
     protected function checkAuthentication(): void
     {
-        // Support both session formats
-        if (!empty($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
-            $this->userId = $_SESSION['admin_user_id'] ?? null;
-        } elseif (!empty($_SESSION['admin']) && is_array($_SESSION['admin'])) {
-            $this->userId = $_SESSION['admin']['id'] ?? null;
+        $sess = Session::getInstance();
+        $logged = $sess->get('admin_logged_in', null);
+        if ($logged === true) {
+            $this->userId = $sess->get('admin_user_id', null);
+        } else {
+            $admin = $sess->get('admin', null);
+            if (is_array($admin)) {
+                $this->userId = $admin['id'] ?? null;
+            }
         }
-
+        if ($this->userId === null) {
+            if (!empty($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+                $this->userId = $_SESSION['admin_user_id'] ?? null;
+            } elseif (!empty($_SESSION['admin']) && is_array($_SESSION['admin'])) {
+                $this->userId = $_SESSION['admin']['id'] ?? null;
+            }
+        }
         if ($this->userId === null) {
             $this->sendError('Unauthorized', 403);
         }

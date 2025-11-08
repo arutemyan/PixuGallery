@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+require_once __DIR__. '/../Security/SecurityUtil.php';
+
 use Exception;
 
 /**
@@ -62,29 +64,7 @@ class Session
 
     private function initPhpSession(array $opts = []): void
     {
-        if (function_exists('initSecureSession')) {
-            initSecureSession();
-            return;
-        }
-
-        if (session_status() === PHP_SESSION_NONE) {
-            $cookieParams = session_get_cookie_params();
-            $cookieParams['httponly'] = $opts['httponly'] ?? true;
-            $cookieParams['secure'] = $opts['secure'] ?? (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-            $cookieParams['samesite'] = $opts['samesite'] ?? 'Lax';
-
-            // PHP < 7.3 doesn't support samesite via this API; keep simple
-            session_set_cookie_params([
-                'lifetime' => $cookieParams['lifetime'] ?? 0,
-                'path' => $cookieParams['path'] ?? '/',
-                'domain' => $cookieParams['domain'] ?? '',
-                'secure' => $cookieParams['secure'],
-                'httponly' => $cookieParams['httponly'],
-                'samesite' => $cookieParams['samesite'],
-            ]);
-
-            session_start();
-        }
+        \initSecureSession($opts);
     }
 
     private function ensureKeyDir(): void
@@ -238,17 +218,33 @@ class Session
 
     public function destroy(): void
     {
+        // clear session array first
         $_SESSION = [];
-        if (ini_get('session.use_cookies')) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000, $params['path'] ?? '/', $params['domain'] ?? '', $params['secure'] ?? false, $params['httponly'] ?? false);
+        // only attempt to clear cookie / destroy if a session is active
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            if (ini_get('session.use_cookies')) {
+                $params = session_get_cookie_params();
+                setcookie(session_name(), '', time() - 42000, $params['path'] ?? '/', $params['domain'] ?? '', $params['secure'] ?? false, $params['httponly'] ?? false);
+            }
+            @session_destroy();
         }
-        session_destroy();
     }
 
     public function regenerate(bool $deleteOld = true): void
     {
-        session_regenerate_id($deleteOld);
+        // Only regenerate if a session is active. If none is active, try to start one silently.
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            if (session_status() === PHP_SESSION_NONE) {
+                // suppress warnings if session cannot be started in this context
+                @session_start();
+            } else {
+                // sessions are disabled or in an unexpected state; skip regenerate
+                return;
+            }
+        }
+
+        // now safe to regenerate id
+        @session_regenerate_id($deleteOld);
     }
 
     /**

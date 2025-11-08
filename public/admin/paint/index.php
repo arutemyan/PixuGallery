@@ -2,32 +2,33 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../../vendor/autoload.php';
-$config = \App\Config\ConfigManager::getInstance()->getConfig();
 require_once __DIR__ . '/../../../src/Security/SecurityUtil.php';
-// feature gate (returns 404 if admin disabled)
-require_once(__DIR__ . '/../_feature_check.php');
+$config = \App\Config\ConfigManager::getInstance()->getConfig();
 
 use App\Security\CsrfProtection;
 use App\Utils\PathHelper;
 
 // 管理画面用お絵描き機能
-initSecureSession();
-
-// 必要なら管理画面へリダイレクト（未ログインは管理ログインへ）
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-    header('Location: ' . PathHelper::getAdminUrl('login.php'));
-    exit;
-}
+// 共通認証ヘルパで認証を統一
+\App\Controllers\AdminControllerBase::ensureAuthenticated(true);
 
 // Admin check - support both session formats (legacy compatibility)
 $isAdmin = false;
-if (!empty($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+$sess = \App\Services\Session::getInstance();
+if ($sess->get('admin_logged_in') === true) {
     $isAdmin = true;
-} elseif (!empty($_SESSION['admin']) && is_array($_SESSION['admin'])) {
+} elseif (is_array($sess->get('admin'))) {
     $isAdmin = true;
 }
 
-$csrf = CsrfProtection::getToken();
+$csrf = null;
+try {
+    $sess = \App\Services\Session::getInstance();
+    $csrf = $sess->getCsrfToken();
+} catch (Throwable $e) {
+    // fall back to legacy CsrfProtection
+    $csrf = CsrfProtection::getToken();
+}
 ?><!doctype html>
 <html lang="ja">
 <head>
@@ -66,12 +67,7 @@ $csrf = CsrfProtection::getToken();
     </div>
 </header>
 
-<?php if (!$isAdmin): ?>
-<div style="position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:10001;padding:16px;background:#ffe;border:2px solid #fcc;border-radius:6px;max-width:600px;box-shadow:0 4px 12px rgba(0,0,0,0.2);">
-    <strong style="color:#c00;">未ログイン</strong> — 管理セッションが必要です。管理者アカウントでログインしてください。
-    <small style="display:block;margin-top:8px;color:#666;">開発環境での自動テスト用ヘルパは本番からは削除されています。ローカルでテストする場合は <code>tests/helpers/session_setup.php</code> を参照してください。</small>
-</div>
-<?php endif; ?>
+<!-- 管理セッションがない場合は認証で弾かれるはずなので、公開 UI を表示しないようにしました -->
 
 <!-- Main Container -->
 <div class="main-container">

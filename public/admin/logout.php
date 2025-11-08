@@ -3,15 +3,14 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../vendor/autoload.php';
-require_once __DIR__ . '/_feature_check.php';
-$config = \App\Config\ConfigManager::getInstance()->getConfig();
 require_once __DIR__ . '/../../src/Security/SecurityUtil.php';
+$config = \App\Config\ConfigManager::getInstance()->getConfig();
 
 use App\Security\CsrfProtection;
 use App\Utils\PathHelper;
 
 // セッション開始
-initSecureSession();
+\App\Services\Session::start();
 
 // POSTリクエストのみ許可（CSRF対策）
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -28,24 +27,11 @@ if (!CsrfProtection::validatePost() && !CsrfProtection::validateHeader()) {
     exit;
 }
 
-// セッションデータを全てクリア
-$_SESSION = array();
-
-// セッションクッキーも削除
-if (ini_get("session.use_cookies")) {
-    $params = session_get_cookie_params();
-    setcookie(session_name(), '', time() - 42000,
-        $params["path"], $params["domain"],
-        $params["secure"], $params["httponly"]
-    );
-}
-
-// セッションを破棄
-session_destroy();
-
-// 新しいセッションを開始してセッションIDを再生成（セッション固定攻撃対策）
-session_start();
-session_regenerate_id(true);
+$sess = \App\Services\Session::getInstance();
+$sess->destroy();
+// start a fresh session and regenerate id
+\App\Services\Session::start();
+\App\Services\Session::getInstance()->regenerate(true);
 
 // セキュリティログを記録
 logSecurityEvent('Admin logout', ['ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);

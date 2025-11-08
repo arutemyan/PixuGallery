@@ -61,12 +61,21 @@ class CsrfProtection
             session_start();
         }
 
-        if (!isset($_SESSION[self::SESSION_KEY]) || $token === null) {
+        if ($token === null) {
             return false;
         }
 
-        // タイミング攻撃を防ぐためhash_equalsを使用
-        return hash_equals($_SESSION[self::SESSION_KEY], $token);
+        // First, check the legacy/global session key
+        if (isset($_SESSION[self::SESSION_KEY]) && hash_equals((string)$_SESSION[self::SESSION_KEY], (string)$token)) {
+            return true;
+        }
+
+        // Backwards-compat: check the namespaced app session key used by Session::getCsrfToken()
+        if (isset($_SESSION['_app_session']) && is_array($_SESSION['_app_session']) && isset($_SESSION['_app_session'][self::SESSION_KEY]) && hash_equals((string)$_SESSION['_app_session'][self::SESSION_KEY], (string)$token)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
