@@ -158,6 +158,20 @@ try {
                 </div>
 
                 <div class="setting-row">
+                    <label class="setting-label">
+                        筆圧を有効にする:
+                        <input type="checkbox" id="pen-pressure-enabled" checked>
+                    </label>
+                </div>
+
+                <div class="setting-row">
+                    <label class="setting-label">
+                        筆圧影響度: <span class="setting-value" id="pen-pressure-value">100%</span>
+                    </label>
+                    <input type="range" id="pen-pressure-influence" class="setting-slider" min="0" max="100" value="100">
+                </div>
+
+                <div class="setting-row">
                     <div class="checkbox-wrapper">
                         <input type="checkbox" id="pen-antialias" checked>
                         <label for="pen-antialias">アンチエイリアス</label>
@@ -171,6 +185,19 @@ try {
                         太さ: <span class="setting-value" id="eraser-size-value">10</span>px
                     </label>
                     <input type="range" id="eraser-size" class="setting-slider" min="1" max="100" value="10">
+                </div>
+                <div class="setting-row">
+                    <label class="setting-label">
+                        筆圧を有効にする（消しゴム）:
+                        <input type="checkbox" id="eraser-pressure-enabled" checked>
+                    </label>
+                </div>
+
+                <div class="setting-row">
+                    <label class="setting-label">
+                        筆圧影響度（消しゴム）: <span class="setting-value" id="eraser-pressure-value">100%</span>
+                    </label>
+                    <input type="range" id="eraser-pressure-influence" class="setting-slider" min="0" max="100" value="100">
                 </div>
             </div>
 

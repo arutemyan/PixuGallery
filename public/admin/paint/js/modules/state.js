@@ -36,6 +36,14 @@ export const state = {
     currentIllustTags: '',
     hasUnsavedChanges: false,
 
+    // Pressure smoothing (value 0..1)
+    lastPressure: 1.0,
+    // Pressure settings
+    penPressureEnabled: true,
+    penPressureInfluence: 1.0, // 0..1
+    eraserPressureEnabled: true,
+    eraserPressureInfluence: 1.0, // 0..1
+
     // View
     zoomLevel: CONFIG.ZOOM.DEFAULT_LEVEL,
     isPanning: false,
@@ -88,6 +96,9 @@ export const elements = {
     penSize: null,
     penSizeValue: null,
     penAntialias: null,
+    penPressureEnabled: null,
+    penPressureInfluence: null,
+    penPressureValue: null,
     eraserSize: null,
     eraserSizeValue: null,
     bucketTolerance: null,
@@ -204,8 +215,14 @@ export function initializeElements() {
     elements.penSize = document.getElementById('pen-size');
     elements.penSizeValue = document.getElementById('pen-size-value');
     elements.penAntialias = document.getElementById('pen-antialias');
+    elements.penPressureEnabled = document.getElementById('pen-pressure-enabled');
+    elements.penPressureInfluence = document.getElementById('pen-pressure-influence');
+    elements.penPressureValue = document.getElementById('pen-pressure-value');
     elements.eraserSize = document.getElementById('eraser-size');
     elements.eraserSizeValue = document.getElementById('eraser-size-value');
+    elements.eraserPressureEnabled = document.getElementById('eraser-pressure-enabled');
+    elements.eraserPressureInfluence = document.getElementById('eraser-pressure-influence');
+    elements.eraserPressureValue = document.getElementById('eraser-pressure-value');
     elements.bucketTolerance = document.getElementById('bucket-tolerance');
     elements.bucketToleranceValue = document.getElementById('bucket-tolerance-value');
     elements.penSettings = document.getElementById('pen-settings');

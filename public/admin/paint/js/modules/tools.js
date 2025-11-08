@@ -179,6 +179,20 @@ function initToolSettings() {
         });
     }
 
+    // Pen pressure controls
+    if (elements.penPressureEnabled) {
+        elements.penPressureEnabled.addEventListener('change', (e) => {
+            state.penPressureEnabled = !!e.target.checked;
+        });
+    }
+    if (elements.penPressureInfluence) {
+        elements.penPressureInfluence.addEventListener('input', (e) => {
+            const pct = parseInt(e.target.value, 10) || 0;
+            state.penPressureInfluence = Math.max(0, Math.min(1, pct / 100));
+            if (elements.penPressureValue) elements.penPressureValue.textContent = pct + '%';
+        });
+    }
+
     // Eraser settings
     if (elements.eraserSize) {
         elements.eraserSize.addEventListener('input', (e) => {
@@ -186,6 +200,20 @@ function initToolSettings() {
             if (elements.eraserSizeValue) {
                 elements.eraserSizeValue.textContent = state.eraserSize;
             }
+        });
+    }
+
+    // Eraser pressure controls
+    if (elements.eraserPressureEnabled) {
+        elements.eraserPressureEnabled.addEventListener('change', (e) => {
+            state.eraserPressureEnabled = !!e.target.checked;
+        });
+    }
+    if (elements.eraserPressureInfluence) {
+        elements.eraserPressureInfluence.addEventListener('input', (e) => {
+            const pct = parseInt(e.target.value, 10) || 0;
+            state.eraserPressureInfluence = Math.max(0, Math.min(1, pct / 100));
+            if (elements.eraserPressureValue) elements.eraserPressureValue.textContent = pct + '%';
         });
     }
 
@@ -209,23 +237,45 @@ function initToolSettings() {
  */
 export function initCanvasListeners(recordTimelapse, pushUndo, savePersistedState, markAsChanged, setColor) {
     state.layers.forEach((canvas, i) => {
-        canvas.addEventListener('mousedown', (e) => handleDrawStart(e, i, recordTimelapse, pushUndo, setColor));
-        canvas.addEventListener('mousemove', (e) => handleDrawMove(e, recordTimelapse));
-        canvas.addEventListener('mouseup', (e) => handleDrawEnd(e, recordTimelapse, savePersistedState, markAsChanged));
-        canvas.addEventListener('mouseleave', (e) => handleDrawEnd(e, recordTimelapse, savePersistedState, markAsChanged));
+        // Prefer Pointer Events when available (unified mouse/touch/pen with pressure)
+        if (window.PointerEvent) {
+            canvas.addEventListener('pointerdown', (e) => {
+                // capture pointer to continue receiving events outside canvas
+                try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+                e.preventDefault();
+                handleDrawStart(e, i, recordTimelapse, pushUndo, setColor);
+            });
+            canvas.addEventListener('pointermove', (e) => {
+                handleDrawMove(e, recordTimelapse);
+            });
+            canvas.addEventListener('pointerup', (e) => {
+                try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+                handleDrawEnd(e, recordTimelapse, savePersistedState, markAsChanged);
+            });
+            canvas.addEventListener('pointercancel', (e) => {
+                try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+                handleDrawEnd(e, recordTimelapse, savePersistedState, markAsChanged);
+            });
+        } else {
+            // Fallback for older browsers: mouse + touch
+            canvas.addEventListener('mousedown', (e) => handleDrawStart(e, i, recordTimelapse, pushUndo, setColor));
+            canvas.addEventListener('mousemove', (e) => handleDrawMove(e, recordTimelapse));
+            canvas.addEventListener('mouseup', (e) => handleDrawEnd(e, recordTimelapse, savePersistedState, markAsChanged));
+            canvas.addEventListener('mouseleave', (e) => handleDrawEnd(e, recordTimelapse, savePersistedState, markAsChanged));
 
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            handleDrawStart(e, i, recordTimelapse, pushUndo, setColor);
-        }, { passive: false });
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            handleDrawMove(e, recordTimelapse);
-        }, { passive: false });
-        canvas.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            handleDrawEnd(e, recordTimelapse, savePersistedState, markAsChanged);
-        }, { passive: false });
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleDrawStart(e, i, recordTimelapse, pushUndo, setColor);
+            }, { passive: false });
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                handleDrawMove(e, recordTimelapse);
+            }, { passive: false });
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                handleDrawEnd(e, recordTimelapse, savePersistedState, markAsChanged);
+            }, { passive: false });
+        }
     });
 }
 
@@ -264,11 +314,16 @@ function handleDrawStart(e, layerIndex, recordTimelapse, pushUndo, setColor) {
     ctx.lineJoin = 'round';
 
     if (state.currentTool === 'pen') {
-        ctx.lineWidth = state.penSize;
+        // apply pressure to line width if available
+        const pressure = getPressure(e);
+        state.lastPressure = pressure;
+        ctx.lineWidth = Math.max(1, state.penSize * (0.2 + 0.8 * pressure));
         ctx.strokeStyle = state.currentColor;
         ctx.globalCompositeOperation = 'source-over';
     } else if (state.currentTool === 'eraser') {
-        ctx.lineWidth = state.eraserSize;
+        const pressure = getPressure(e);
+        state.lastPressure = pressure;
+        ctx.lineWidth = Math.max(1, state.eraserSize * (0.2 + 0.8 * pressure));
         ctx.globalCompositeOperation = 'destination-out';
     }
 
@@ -283,7 +338,8 @@ function handleDrawStart(e, layerIndex, recordTimelapse, pushUndo, setColor) {
             x: pos.x,
             y: pos.y,
             color: state.currentColor,
-            size: state.currentTool === 'pen' ? state.penSize : state.eraserSize,
+            size: ctx.lineWidth,
+            pressure: state.lastPressure,
             tool: state.currentTool
         });
     }
@@ -298,6 +354,17 @@ function handleDrawMove(e, recordTimelapse) {
     const pos = getPointerPos(e, state.layers[state.activeLayer]);
     const ctx = state.contexts[state.activeLayer];
 
+    // apply dynamic pressure-based width
+    const pressure = getPressure(e);
+    // smoothing to avoid jitter
+    const smooth = (state.lastPressure * 0.6) + (pressure * 0.4);
+    state.lastPressure = smooth;
+    if (state.currentTool === 'pen') {
+        ctx.lineWidth = Math.max(1, state.penSize * (0.2 + 0.8 * smooth));
+    } else if (state.currentTool === 'eraser') {
+        ctx.lineWidth = Math.max(1, state.eraserSize * (0.2 + 0.8 * smooth));
+    }
+
     ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
 
@@ -308,6 +375,7 @@ function handleDrawMove(e, recordTimelapse) {
             layer: state.activeLayer,
             x: pos.x,
             y: pos.y
+            ,pressure: state.lastPressure
         });
     }
 }
@@ -364,6 +432,26 @@ function getPointerPos(e, canvas) {
         x: canvasX,
         y: canvasY
     };
+}
+
+/**
+ * Extract pressure from PointerEvent or TouchEvent
+ * Returns a normalized value between 0 and 1. Defaults to 1 for mouse.
+ */
+function getPressure(e) {
+    // PointerEvent (pen/mouse/touch) provides pressure
+    if (typeof e.pressure === 'number') {
+        // some mice report 0 when not pressed; ensure a minimum
+        return Math.max(0, Math.min(1, e.pressure));
+    }
+
+    // Touch events may include touches[0].force (0..1) on some devices
+    if (e.touches && e.touches[0] && typeof e.touches[0].force === 'number') {
+        return Math.max(0, Math.min(1, e.touches[0].force));
+    }
+
+    // Fallback: mouse (no pressure) assume full pressure
+    return 1.0;
 }
 
 /**
