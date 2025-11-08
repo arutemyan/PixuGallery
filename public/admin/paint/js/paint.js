@@ -76,7 +76,6 @@ import {
 
 // ===== Initialization =====
 async function init() {
-    console.log('🚀 Paint Application Initializing...');
 
     // Initialize DOM elements
     initializeElements();
@@ -97,12 +96,10 @@ async function init() {
 
     // Mark initialization as complete
     state.isInitializing = false;
-    console.log('✅ Initialization complete');
     setStatus('準備完了');
 }
 
 async function initCanvas() {
-    console.log('Initializing canvas...');
 
     // Initialize contexts
     state.layers = elements.layers;
@@ -117,8 +114,6 @@ async function initCanvas() {
 
     // Load persisted state
     await loadPersistedState(restoreCanvasStateWrapper, setStatus);
-
-    console.log('Canvas initialized');
 }
 
 function initUI() {

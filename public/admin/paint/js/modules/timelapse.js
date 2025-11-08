@@ -111,7 +111,7 @@ async function loadAndPlayTimelapse(id, setStatus) {
                 // Try JSON first
                 frames = JSON.parse(out);
             } catch (jsonError) {
-                console.log('Parsing timelapse as CSV format');
+                // Fallback: parse as CSV timelapse format
                 frames = parseTimelapseCSV(out);
             }
 

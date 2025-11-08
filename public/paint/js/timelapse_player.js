@@ -31,7 +31,7 @@ export class TimelapsePlayer {
         this.frameInterval = 50; // 基本フレーム間隔(ms)
         this.ignoreTimestamps = true; // デフォルトで等間隔再生（安定性重視）
 
-        console.log('TimelapsePlayer initialized with', timelapseData.length, 'frames');
+    // TimelapsePlayer initialized
 
         this.setupCanvas();
     }
@@ -70,7 +70,7 @@ export class TimelapsePlayer {
         this.canvas.width = firstFrame.width || 800;
         this.canvas.height = firstFrame.height || 600;
 
-        console.log('Canvas size:', this.canvas.width, 'x', this.canvas.height);
+    // Canvas size set
 
         // 白背景で初期化（何も描画しない）
         this.ctx.fillStyle = '#ffffff';
@@ -382,7 +382,7 @@ export function parseTimelapseCSV(csv) {
         events.push(event);
     }
 
-    console.log('Parsed', events.length, 'drawing events');
+    // Parsed drawing events
 
     // イベントをストロークに変換
     return convertEventsToStrokes(events);
@@ -428,7 +428,7 @@ export function convertEventsToStrokes(events) {
             // Extract canvas metadata
             if (event.canvas_width) canvasWidth = parseInt(event.canvas_width);
             if (event.canvas_height) canvasHeight = parseInt(event.canvas_height);
-            console.log('Canvas metadata found:', canvasWidth, 'x', canvasHeight);
+            // Canvas metadata found
             continue; // Skip meta events in stroke generation
         } else if (event.type === 'start') {
             // 新しいストロークを開始
@@ -481,7 +481,7 @@ export function convertEventsToStrokes(events) {
     if (strokes.length > 0) {
         strokes[0].width = canvasWidth;
         strokes[0].height = canvasHeight;
-        console.log('Canvas size added to first stroke:', canvasWidth, 'x', canvasHeight);
+    // Canvas size added to first stroke
     }
 
     // フレーム間のdurationを計算
