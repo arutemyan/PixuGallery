@@ -12,36 +12,11 @@ use App\Services\Session;
 class PaintListController extends AdminControllerBase
 {
     private Paint $paintModel;
-    private ?int $userId = null;
 
     public function __construct()
     {
         $db = Connection::getInstance();
         $this->paintModel = new Paint($db);
-    }
-
-    protected function checkAuthentication(): void
-    {
-        $sess = Session::getInstance();
-        $logged = $sess->get('admin_logged_in', null);
-        if ($logged === true) {
-            $this->userId = $sess->get('admin_user_id', null);
-        } else {
-            $admin = $sess->get('admin', null);
-            if (is_array($admin)) {
-                $this->userId = $admin['id'] ?? null;
-            }
-        }
-        if ($this->userId === null) {
-            if (!empty($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
-                $this->userId = $_SESSION['admin_user_id'] ?? null;
-            } elseif (!empty($_SESSION['admin']) && is_array($_SESSION['admin'])) {
-                $this->userId = $_SESSION['admin']['id'] ?? null;
-            }
-        }
-        if ($this->userId === null) {
-            $this->sendError('Unauthorized', 403);
-        }
     }
 
     protected function onProcess(string $method): void
@@ -53,7 +28,7 @@ class PaintListController extends AdminControllerBase
         $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 100;
         $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
 
-    $rows = $this->paintModel->listByUser((int)$this->userId, $limit, $offset);
+    $rows = $this->paintModel->listByUser((int)$this->getUserId(), $limit, $offset);
 
         // Format response with proper image paths
         $formatted = array_map(function($row) {

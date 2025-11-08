@@ -11,34 +11,6 @@ use App\Services\Session;
 
 class IllustDataController extends AdminControllerBase
 {
-    private ?int $userId = null;
-
-    protected function checkAuthentication(): void
-    {
-        // Prefer Session wrapper, fall back to raw $_SESSION for compatibility
-        $sess = Session::getInstance();
-        $logged = $sess->get('admin_logged_in', null);
-        if ($logged === true) {
-            $this->userId = $sess->get('admin_user_id', null);
-        } else {
-            $admin = $sess->get('admin', null);
-            if (is_array($admin)) {
-                $this->userId = $admin['id'] ?? null;
-            }
-        }
-        if ($this->userId === null) {
-            if (!empty($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
-                $this->userId = $_SESSION['admin_user_id'] ?? null;
-            } elseif (!empty($_SESSION['admin']) && is_array($_SESSION['admin'])) {
-                $this->userId = $_SESSION['admin']['id'] ?? null;
-            }
-        }
-
-        if ($this->userId === null) {
-            $this->sendError('Unauthorized', 403);
-        }
-    }
-
     protected function onProcess(string $method): void
     {
         if ($method !== 'GET') {
@@ -51,7 +23,7 @@ class IllustDataController extends AdminControllerBase
         }
 
         $db = Connection::getInstance();
-    $stmt = $db->prepare('SELECT * FROM paint WHERE id = :id');
+        $stmt = $db->prepare('SELECT * FROM paint WHERE id = :id');
         $stmt->execute([':id' => $id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) {

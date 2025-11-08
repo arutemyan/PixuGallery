@@ -18,6 +18,11 @@ use Exception;
  */
 abstract class AdminControllerBase
 {
+    private ?int $userId = null;
+
+    public function getUserId(): ?int {
+        return $this->userId;
+    }
 
     /**
      * 共通認証チェックユーティリティ
@@ -34,9 +39,6 @@ abstract class AdminControllerBase
         $sess = \App\Services\Session::getInstance();
         if ($sess->get('admin_logged_in', null) === true) {
             $userId = $sess->get('admin_user_id', null);
-        } elseif (is_array($sess->get('admin', null))) {
-            $admin = $sess->get('admin');
-            $userId = $admin['id'] ?? null;
         }
         if ($userId === null && $redirect) {
             // redirect to login page
@@ -121,7 +123,8 @@ abstract class AdminControllerBase
      */
     protected function checkAuthentication(): void
     {
-        $loggedIn = Session::getInstance()->get('admin_logged_in', null);
+        $sess = Session::getInstance();
+        $loggedIn = $sess->get('admin_logged_in', null);
 
         // Fallback to raw $_SESSION
         if ($loggedIn === null) {
@@ -129,7 +132,15 @@ abstract class AdminControllerBase
         }
 
         if ($loggedIn !== true) {
-            $this->sendError('Unauthorized', 401);
+            // For many admin APIs we want to return 403 for unauthenticated
+            // requests; controllers that require a 401 can override this
+            // behavior by implementing their own checkAuthentication().
+            $this->sendError('Unauthorized', 403);
+        }
+
+        $this->userId = $sess->get('admin_user_id', null);
+        if ($this->userId === null) {
+            $this->sendError('Unauthorized', 403);
         }
     }
 

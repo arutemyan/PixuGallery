@@ -80,19 +80,19 @@ class PaletteController extends AdminControllerBase
         if ($driver === 'sqlite') {
             $stmt = $db->prepare("
                 INSERT INTO color_palettes (user_id, slot_index, color, updated_at)
-                VALUES (NULL, ?, ?, datetime('now'))
+                VALUES (?, ?, ?, datetime('now'))
                 ON CONFLICT(user_id, slot_index) 
                 DO UPDATE SET color = ?, updated_at = datetime('now')
             ");
-            $stmt->execute([$slotIndex, $color, $color]);
+            $stmt->execute([$this->getUserId(), $slotIndex, $color, $color]);
         } else {
             // MySQL
             $stmt = $db->prepare("
                 INSERT INTO color_palettes (user_id, slot_index, color, updated_at)
-                VALUES (NULL, ?, ?, NOW())
+                VALUES (?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE color = ?, updated_at = NOW()
             ");
-            $stmt->execute([$slotIndex, $color, $color]);
+            $stmt->execute([$this->getUserId(), $slotIndex, $color, $color]);
         }
         
         $this->sendSuccess([]);
