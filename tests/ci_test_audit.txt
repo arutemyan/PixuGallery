@@ -1,0 +1,17 @@
+Quick CI test audit (generated)
+
+Found potentially slow or skipped tests patterns in `tests/`:
+
+1) tests/Api/IntegrationTestCase.php: uses usleep(100000) at line ~123 — brief sleep (0.1s). Consider removing or reducing or adding explanation why needed.
+
+2) tests/integration/test_api_save_http.php: uses usleep(100000) at line ~87 — similar short sleep. If these are to wait for server startup, prefer a polling loop with timeout instead of fixed sleep.
+
+3) tests/Cache/CacheSystemTest.php: has markTestSkipped('...') at line ~489 — test is intentionally skipped; consider moving to a separate suite or removing if obsolete.
+
+Recommendations:
+- Replace fixed sleeps with polling/wait loops that check a condition (e.g. HTTP health endpoint) to reduce flakiness and shorten CI run time.
+- Tag long-running or integration-only tests with @group slow or @group integration and run those only in nightly/merge pipelines if PR latency is a concern.
+- Remove or rewrite skipped tests (or document why they are skipped). If they are obsolete, delete them.
+- Add a README or CONTRIBUTING note describing how to run the full matrix locally (act / docker) and how to run only unit tests quickly.
+
+This is a quick automated scan; please review the listed files for context before making changes.

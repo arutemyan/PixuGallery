@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tests/bootstrap.php" colors="true">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+        <testsuite name="Api">
+            <directory>tests/Api</directory>
+        </testsuite>
+    </testsuites>
+
+    <php>
+        <!-- Environment variables used by CI; CI will override these via workflow -->
+        <env name="TEST_DB_DRIVER" value="sqlite" />
+        <env name="TEST_DB_DSN" value="sqlite::memory:" />
+        <env name="TEST_DB_HOST" value="" />
+        <env name="TEST_DB_PORT" value="" />
+        <env name="TEST_DB_NAME" value="" />
+        <env name="TEST_DB_USER" value="" />
+        <env name="TEST_DB_PASS" value="" />
+
+        <!-- Optional: increase memory/timeouts in CI if needed -->
+        <ini name="memory_limit" value="1024M" />
+        <ini name="max_execution_time" value="300" />
+    </php>
+</phpunit>

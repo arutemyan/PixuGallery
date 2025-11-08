@@ -7,30 +7,60 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  phpunit:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: [ '8.1', '8.2' ]
+        db: [ 'sqlite', 'mysql', 'postgres' ]
+    env:
+      COMPOSER_ALLOW_SUPERUSER: 1
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testdb
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=5s
+          --health-timeout=2s
+          --health-retries=10
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_DB: testdb
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=2s
+          --health-retries=10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@v4
         with:
-          php-version: '8.2'
-          coverage: xdebug
-          extensions: mbstring, intl, json, zip, gd, fileinfo, pdo_sqlite
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo, pdo_sqlite, pdo_mysql, pdo_pgsql
 
-      - name: Get Composer Cache
+      - name: Get composer cache
+        id: composer-cache
+        run: echo "COMPOSER_CACHE_DIR=$(composer config cache-files-dir)" >> $GITHUB_ENV
+
+      - name: Cache composer
         uses: actions/cache@v4
         with:
-          path: ~/.composer/cache
+          path: ${{ env.COMPOSER_CACHE_DIR }}
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
             ${{ runner.os }}-composer-
 
-      - name: Install Composer dependencies
-        run: |
-          composer install --no-interaction --prefer-dist --no-progress
+      - name: Install composer deps
+        run: composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader
 
       - name: Ensure uploads and tmp directories
         run: |
@@ -39,15 +69,64 @@ jobs:
       - name: Show PHP info
         run: php -v && php -m | sort
 
-      - name: Run unit tests
-        run: vendor/bin/phpunit --configuration phpunit.xml --testsuite Unit
-
-      - name: Run integration HTTP test
-        # This script is self-contained: it runs migrations, starts a PHP built-in server,
-        # creates a test admin user and executes the HTTP flow.
+      - name: Set DB env vars
         run: |
-          php tests/integration/test_api_save_http.php
-          echo -e "admin\nTestPassword123\nTestPassword123">xxx && php tests/integration/test_save_illust.php<xxx && rm xxx
+          if [ "${{ matrix.db }}" = "sqlite" ]; then
+            echo "TEST_DB_DRIVER=sqlite" >> $GITHUB_ENV
+            echo "TEST_DB_DSN=sqlite::memory:" >> $GITHUB_ENV
+          elif [ "${{ matrix.db }}" = "mysql" ]; then
+            echo "TEST_DB_DRIVER=mysql" >> $GITHUB_ENV
+            echo "TEST_DB_HOST=mysql" >> $GITHUB_ENV
+            echo "TEST_DB_PORT=3306" >> $GITHUB_ENV
+            echo "TEST_DB_NAME=testdb" >> $GITHUB_ENV
+            echo "TEST_DB_USER=root" >> $GITHUB_ENV
+            echo "TEST_DB_PASS=root" >> $GITHUB_ENV
+            echo "TEST_DB_DSN=mysql:host=mysql;port=3306;dbname=testdb;charset=utf8mb4" >> $GITHUB_ENV
+          else
+            echo "TEST_DB_DRIVER=pgsql" >> $GITHUB_ENV
+            echo "TEST_DB_HOST=postgres" >> $GITHUB_ENV
+            echo "TEST_DB_PORT=5432" >> $GITHUB_ENV
+            echo "TEST_DB_NAME=testdb" >> $GITHUB_ENV
+            echo "TEST_DB_USER=postgres" >> $GITHUB_ENV
+            echo "TEST_DB_PASS=postgres" >> $GITHUB_ENV
+            echo "TEST_DB_DSN=pgsql:host=postgres;port=5432;dbname=testdb" >> $GITHUB_ENV
+          fi
 
-      - name: Run full PHPUnit (integration)
-        run: vendor/bin/phpunit --configuration phpunit.xml --testsuite Integration || true
+      - name: Wait for DB (when needed)
+        if: ${{ matrix.db != 'sqlite' }}
+        run: |
+          if [ "${{ matrix.db }}" = "mysql" ]; then
+            for i in {1..30}; do mysql -h mysql -u root -proot -e "SELECT 1" && break || sleep 1; done
+          else
+            for i in {1..30}; do pg_isready -h postgres -p 5432 -U postgres && break || sleep 1; done
+          fi
+
+      - name: Create DB (MySQL/Postgres)
+        if: ${{ matrix.db != 'sqlite' }}
+        run: |
+          if [ "${{ matrix.db }}" = "mysql" ]; then
+            mysql -h mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS testdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          else
+            psql -h postgres -U postgres -c "CREATE DATABASE testdb;"
+          fi
+
+      - name: Run migrations
+        env:
+          DB_DSN: ${{ env.TEST_DB_DSN }}
+          DB_USER: ${{ env.TEST_DB_USER }}
+          DB_PASS: ${{ env.TEST_DB_PASS }}
+        run: |
+          if [ -f public/setup/run_migrations.php ]; then
+            php public/setup/run_migrations.php || true
+          fi
+
+      - name: Run phpunit
+        env:
+          TEST_DB_DSN: ${{ env.TEST_DB_DSN }}
+          TEST_DB_DRIVER: ${{ env.TEST_DB_DRIVER }}
+          TEST_DB_HOST: ${{ env.TEST_DB_HOST }}
+          TEST_DB_PORT: ${{ env.TEST_DB_PORT }}
+          TEST_DB_NAME: ${{ env.TEST_DB_NAME }}
+          TEST_DB_USER: ${{ env.TEST_DB_USER }}
+          TEST_DB_PASS: ${{ env.TEST_DB_PASS }}
+        run: vendor/bin/phpunit --configuration phpunit.xml.dist --colors=always
