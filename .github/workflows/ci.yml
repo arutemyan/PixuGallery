@@ -21,6 +21,8 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: testdb
+        ports:
+          - 3306:3306
         options: >-
           --health-cmd="mysqladmin ping --silent"
           --health-interval=5s
@@ -32,6 +34,8 @@ jobs:
           POSTGRES_DB: testdb
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd="pg_isready -U postgres"
           --health-interval=5s
@@ -76,29 +80,36 @@ jobs:
             echo "TEST_DB_DSN=sqlite::memory:" >> $GITHUB_ENV
           elif [ "${{ matrix.db }}" = "mysql" ]; then
             echo "TEST_DB_DRIVER=mysql" >> $GITHUB_ENV
-            echo "TEST_DB_HOST=mysql" >> $GITHUB_ENV
+            # connect via localhost: mapped port to avoid service DNS issues
+            echo "TEST_DB_HOST=127.0.0.1" >> $GITHUB_ENV
             echo "TEST_DB_PORT=3306" >> $GITHUB_ENV
             echo "TEST_DB_NAME=testdb" >> $GITHUB_ENV
             echo "TEST_DB_USER=root" >> $GITHUB_ENV
             echo "TEST_DB_PASS=root" >> $GITHUB_ENV
-            echo "TEST_DB_DSN=mysql:host=mysql;port=3306;dbname=testdb;charset=utf8mb4" >> $GITHUB_ENV
+            echo "TEST_DB_DSN=mysql:host=127.0.0.1;port=3306;dbname=testdb;charset=utf8mb4" >> $GITHUB_ENV
           else
             echo "TEST_DB_DRIVER=pgsql" >> $GITHUB_ENV
-            echo "TEST_DB_HOST=postgres" >> $GITHUB_ENV
+            # connect via localhost: mapped port to avoid service DNS issues
+            echo "TEST_DB_HOST=127.0.0.1" >> $GITHUB_ENV
             echo "TEST_DB_PORT=5432" >> $GITHUB_ENV
             echo "TEST_DB_NAME=testdb" >> $GITHUB_ENV
             echo "TEST_DB_USER=postgres" >> $GITHUB_ENV
             echo "TEST_DB_PASS=postgres" >> $GITHUB_ENV
-            echo "TEST_DB_DSN=pgsql:host=postgres;port=5432;dbname=testdb" >> $GITHUB_ENV
+            echo "TEST_DB_DSN=pgsql:host=127.0.0.1;port=5432;dbname=testdb" >> $GITHUB_ENV
           fi
 
       - name: Wait for DB (when needed)
         if: ${{ matrix.db != 'sqlite' }}
         run: |
+          # Use TEST_DB_HOST/PORT to wait for readiness (connect via localhost:mapped port)
+          host=${{ env.TEST_DB_HOST }}
+          port=${{ env.TEST_DB_PORT }}
+          user=${{ env.TEST_DB_USER }}
+          pass=${{ env.TEST_DB_PASS }}
           if [ "${{ matrix.db }}" = "mysql" ]; then
-            for i in {1..30}; do mysql -h mysql -u root -proot -e "SELECT 1" && break || sleep 1; done
+            for i in {1..60}; do mysql -h ${host} -P ${port} -u ${user} -p${pass} -e "SELECT 1" >/dev/null 2>&1 && break || sleep 1; done
           else
-            for i in {1..30}; do pg_isready -h postgres -p 5432 -U postgres && break || sleep 1; done
+            for i in {1..60}; do pg_isready -h ${host} -p ${port} -U ${user} >/dev/null 2>&1 && break || sleep 1; done
           fi
 
       - name: Create DB (MySQL/Postgres)
