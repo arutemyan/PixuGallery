@@ -144,6 +144,16 @@ header p {
                 0 0 0 3px rgba(139, 90, 250, 0.4);
 }
 
+/* 強制的にアンカー配下のテキスト装飾を無効化（フォーカス時にブラウザが下線を付ける場合に対処） */
+.back-link,
+.back-link *,
+.back-link:focus,
+.back-link:focus * {
+    text-decoration: none !important;
+    text-decoration-skip-ink: none !important;
+    -webkit-text-decoration-skip-ink: none !important;
+}
+
 /* アクティブ時の押し込みエフェクト */
 .header-back-button:active {
     text-decoration: none;
