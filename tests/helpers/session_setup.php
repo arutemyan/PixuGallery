@@ -12,7 +12,7 @@ use App\Security\CsrfProtection;
 // Start secure session and set a test admin user in session for integration tests
 // Start session via Session service when available
 \App\Services\Session::start();
-\App\Services\Session::set('admin', ['id' => 1, 'username' => 'testadmin']);
+\App\Services\Session::getInstance()->set('admin', ['id' => 1, 'username' => 'testadmin']);
 
 $token = CsrfProtection::getToken();
 

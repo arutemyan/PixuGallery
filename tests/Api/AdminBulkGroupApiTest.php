@@ -93,7 +93,7 @@ class AdminBulkGroupApiTest extends TestCase
 
     private function setAuthenticatedSession(): void
     {
-        \App\Services\Session::set('admin_authenticated', true);
+        \App\Services\Session::getInstance()->set('admin_authenticated', true);
     }
 
     private function createWhiteImage(string $path, int $w = 8, int $h = 8): void
@@ -110,7 +110,7 @@ class AdminBulkGroupApiTest extends TestCase
      */
     private function simulateBulkUploadApi(array $postData, array $files): array
     {
-        if (!\App\Services\Session::get('admin_authenticated')) {
+        if (!\App\Services\Session::getInstance()->get('admin_authenticated')) {
             return ['success' => false, 'error' => 'Unauthorized'];
         }
 
@@ -207,7 +207,7 @@ class AdminBulkGroupApiTest extends TestCase
      */
     private function simulateGroupUploadCreate(array $postData, array $files): array
     {
-        if (!\App\Services\Session::get('admin_authenticated')) {
+        if (!\App\Services\Session::getInstance()->get('admin_authenticated')) {
             return ['success' => false, 'error' => 'Unauthorized'];
         }
 

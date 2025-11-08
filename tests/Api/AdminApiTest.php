@@ -118,8 +118,8 @@ class AdminApiTest extends TestCase
      */
     private function setAuthenticatedSession(): void
     {
-        \App\Services\Session::set('admin_authenticated', true);
-        \App\Services\Session::set('admin_user', 'admin');
+        \App\Services\Session::getInstance()->set('admin_authenticated', true);
+        \App\Services\Session::getInstance()->set('admin_user', 'admin');
     }
 
     /**
@@ -163,7 +163,7 @@ class AdminApiTest extends TestCase
     private function simulateUploadApi(array $postData, array $files): array
     {
         // 認証チェック
-        if (!\App\Services\Session::get('admin_authenticated')) {
+        if (!\App\Services\Session::getInstance()->get('admin_authenticated')) {
             http_response_code(403);
             return ['error' => 'Unauthorized'];
         }
@@ -197,7 +197,7 @@ class AdminApiTest extends TestCase
         }
 
         // 認証チェック
-        if (!\App\Services\Session::get('admin_authenticated')) {
+        if (!\App\Services\Session::getInstance()->get('admin_authenticated')) {
             return ['error' => 'Unauthorized'];
         }
 
@@ -205,6 +205,12 @@ class AdminApiTest extends TestCase
         if (!\App\Security\CsrfProtection::validateToken($postData['csrf'] ?? null)) {
             return ['error' => 'CSRF token mismatch'];
         }
+
+        // 出力パスを決定
+        $filename = 'upload_' . uniqid();
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION)) ?: 'jpg';
+        $imagePath = 'images/' . $filename . '.' . $ext;
+        $thumbPath = 'thumbs/' . $filename . '.webp';
 
         $fullImagePath = $this->tempDir . '/' . $imagePath;
         $fullThumbPath = $this->tempDir . '/' . $thumbPath;
@@ -280,7 +286,7 @@ class AdminApiTest extends TestCase
     private function simulateDeleteApi(array $postData): array
     {
         // 認証チェック
-        if (!\App\Services\Session::get('admin_authenticated')) {
+        if (!\App\Services\Session::getInstance()->get('admin_authenticated')) {
             http_response_code(403);
             return ['error' => 'Unauthorized'];
         }
@@ -334,7 +340,7 @@ class AdminApiTest extends TestCase
     private function simulateThemeApi(array $postData): array
     {
         // 認証チェック
-        if (!\App\Services\Session::get('admin_authenticated')) {
+        if (!\App\Services\Session::getInstance()->get('admin_authenticated')) {
             http_response_code(403);
             return ['error' => 'Unauthorized'];
         }
