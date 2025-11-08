@@ -224,8 +224,8 @@ export function renderLayers(updateStatusBar, setStatus) {
 
             const upBtn = document.createElement('button');
             upBtn.className = 'layer-control-btn';
-            upBtn.textContent = '↑';
-            upBtn.title = '上へ';
+            upBtn.textContent = '↓';
+            upBtn.title = '下へ';
             upBtn.style.width = '32px';
             upBtn.style.height = '32px';
             upBtn.style.border = '1px solid var(--border-color)';
@@ -243,8 +243,8 @@ export function renderLayers(updateStatusBar, setStatus) {
 
             const downBtn = document.createElement('button');
             downBtn.className = 'layer-control-btn';
-            downBtn.textContent = '↓';
-            downBtn.title = '下へ';
+            downBtn.textContent = '↑';
+            downBtn.title = '上へ';
             downBtn.style.width = '32px';
             downBtn.style.height = '32px';
             downBtn.style.border = '1px solid var(--border-color)';

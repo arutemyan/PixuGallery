@@ -175,7 +175,7 @@ function renderPaints(paint) {
  */
 function createIllustCard(illust) {
     const card = document.createElement('div');
-    card.className = 'illust-card';
+    card.className = 'card illust-card';
     card.onclick = () => window.location.href = `/paint/detail.php?id=${illust.id}`;
     
     const thumbPath = illust.thumb_path || illust.image_path;

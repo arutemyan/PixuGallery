@@ -114,8 +114,12 @@ try {
     <div class="right-panel">
 
         <!-- Color Palette Section -->
-        <div class="panel-section color-palette">
-            <h3 class="panel-title">カラーパレット</h3>
+        <div class="panel-section color-palette" data-panel="color-palette">
+            <div class="panel-header">
+                <h3 class="panel-title">カラーパレット</h3>
+                <button class="panel-toggle" title="開閉">▼</button>
+            </div>
+            <div class="panel-content">
 
             <div class="color-current">
                 <div class="color-swatch" id="current-color" style="background:#000000;" title="現在の色"></div>
@@ -133,11 +137,17 @@ try {
             <div class="color-grid" id="color-palette-grid">
                 <!-- 16色パレット (動的生成) -->
             </div>
+            </div>
+            <div class="panel-resize-handle"></div>
         </div>
 
         <!-- Tool Settings Section -->
-        <div class="panel-section tool-settings">
-            <h3 class="panel-title">ツール設定</h3>
+        <div class="panel-section tool-settings" data-panel="tool-settings">
+            <div class="panel-header">
+                <h3 class="panel-title">ツール設定</h3>
+                <button class="panel-toggle" title="開閉">▼</button>
+            </div>
+            <div class="panel-content">
 
             <div id="pen-settings" class="tool-settings-group">
                 <div class="setting-row">
@@ -172,16 +182,23 @@ try {
                     <input type="range" id="bucket-tolerance" class="setting-slider" min="0" max="255" value="32">
                 </div>
             </div>
+            </div>
+            <div class="panel-resize-handle"></div>
         </div>
 
         <!-- Layers Panel Section -->
-        <div class="panel-section layers-panel">
-            <h3 class="panel-title">レイヤー</h3>
+        <div class="panel-section layers-panel" data-panel="layers">
+            <div class="panel-header">
+                <h3 class="panel-title">レイヤー</h3>
+                <button class="panel-toggle" title="開閉">▼</button>
+            </div>
+            <div class="panel-content">
             <div class="layer-actions">
                 <button class="layer-action-btn" id="btn-add-layer" title="新規レイヤー">➕</button>
             </div>
             <div id="layers-list">
                 <!-- レイヤー一覧 (動的生成) -->
+            </div>
             </div>
         </div>
 

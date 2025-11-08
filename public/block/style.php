@@ -42,3 +42,13 @@ header {
 .btn-detail:hover {
     background: var(--secondary-color);
 }
+
+/* 一覧に戻るボタンのテーマカラー反映 */
+.header-back-button {
+    background-color: <?= escapeHtml($theme['back_button_bg_color'] ?? '#8B5AFA') ?> !important;
+    color: <?= escapeHtml($theme['back_button_text_color'] ?? '#FFFFFF') ?> !important;
+}
+
+.paint-gallery-btn {
+    background: linear-gradient(135deg, <?= escapeHtml($theme['secondary_color'] ?? '#667eea') ?> 0%, <?= escapeHtml($theme['primary_color'] ?? '#8B5AFA') ?> 100%) !important;
+}

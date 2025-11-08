@@ -63,6 +63,7 @@ import {
     openSaveModal,
     openResizeModal
 } from './modules/modals.js';
+import { initPanels } from './modules/panels.js';
 
 // ===== Initialization =====
 async function init() {
@@ -107,6 +108,9 @@ async function initCanvas() {
 }
 
 function initUI() {
+    // Panel controls (collapse/expand, resize)
+    initPanels();
+
     // Color palette
     initColorPalette();
     initCurrentColorEdit();

@@ -41,8 +41,9 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- スタイルシート -->
+    <?php echo \App\Utils\AssetHelper::linkTag('/res/css/main.css'); ?>
     <?php echo \App\Utils\AssetHelper::linkTag('/paint/css/gallery.css'); ?>
-    
+
     <!-- テーマカラー -->
     <style>
         <?php require_once(__DIR__ . '/../block/style.php') ?>
@@ -50,14 +51,21 @@ try {
 </head>
 <body>
     <!-- ヘッダー -->
-    <header class="header">
-        <a href="/" class="back-link">← トップページ</a>
+    <header>
         <?php if (!empty($theme['logo_image'])): ?>
-            <img src="/<?= escapeHtml($theme['logo_image']) ?>" alt="<?= escapeHtml($siteTitle) ?>" style="max-height: 80px; margin-bottom: 10px;">
+            <img src="/<?= escapeHtml($theme['logo_image']) ?>" alt="<?= escapeHtml($theme['site_title'] ?? 'ロゴ') ?>" style="max-height: 80px; margin-bottom: 10px;">
         <?php endif; ?>
         <h1>🎨 <?= escapeHtml($siteTitle) ?></h1>
-        <p><?= escapeHtml($siteSubtitle) ?></p>
+
+        <?php if (!empty($siteSubtitle)): ?>
+            <p><?= escapeHtml($siteSubtitle) ?></p>
+        <?php endif; ?>
     </header>
+    <a href="/index.php" class="back-link">
+        <div class="header-back-button">
+            <?= escapeHtml($theme['back_button_text'] ?? '一覧に戻る') ?>
+        </div>
+    </a>
     
     <!-- メインコンテンツ -->
     <div class="container">

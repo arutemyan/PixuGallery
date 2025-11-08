@@ -148,9 +148,10 @@ $pageUrl = $protocol . $host . $_SERVER['REQUEST_URI'];
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- スタイルシート -->
+    <?php echo \App\Utils\AssetHelper::linkTag('/res/css/main.css'); ?>
     <?php echo \App\Utils\AssetHelper::linkTag('/paint/css/gallery.css'); ?>
     <?php echo \App\Utils\AssetHelper::linkTag('/paint/css/detail.css'); ?>
-    
+
     <!-- テーマカラー -->
     <style>
         <?php require_once(__DIR__ . '/../block/style.php') ?>
@@ -158,13 +159,17 @@ $pageUrl = $protocol . $host . $_SERVER['REQUEST_URI'];
 </head>
 <body>
     <!-- ヘッダー -->
-    <header class="header">
-        <a href="/paint/" class="back-link">← ギャラリー</a>
+    <header>
         <?php if (!empty($theme['logo_image'])): ?>
-            <img src="/<?= escapeHtml($theme['logo_image']) ?>" alt="<?= escapeHtml($siteTitle) ?>" style="max-height: 80px; margin-bottom: 10px;">
+            <img src="/<?= escapeHtml($theme['logo_image']) ?>" alt="<?= escapeHtml($theme['site_title'] ?? 'ロゴ') ?>" style="max-height: 80px; margin-bottom: 10px;">
         <?php endif; ?>
         <h1>🎨 <?= escapeHtml($siteTitle) ?></h1>
     </header>
+    <a href="/paint/" class="back-link">
+        <div class="header-back-button">
+            ペイントギャラリーに戻る
+        </div>
+    </a>
     
     <!-- メインコンテンツ -->
     <div class="detail-container">
@@ -220,14 +225,6 @@ $pageUrl = $protocol . $host . $_SERVER['REQUEST_URI'];
                 <?php endif; ?>
                 
                 <div class="detail-actions">
-                    <a href="<?= escapeHtml($illust['image_path']) ?>" download class="action-btn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                        画像をダウンロード
-                    </a>
                     <?php if (!empty($illust['timelapse_path'])): ?>
                     <button class="action-btn" onclick="openTimelapseOverlay()">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -236,13 +233,6 @@ $pageUrl = $protocol . $host . $_SERVER['REQUEST_URI'];
                         タイムラプスを再生
                     </button>
                     <?php endif; ?>
-                    <a href="/paint/" class="action-btn secondary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="19" y1="12" x2="5" y2="12"></line>
-                            <polyline points="12 19 5 12 12 5"></polyline>
-                        </svg>
-                        ギャラリーに戻る
-                    </a>
                 </div>
             </div>
         </div>

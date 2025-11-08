@@ -50,7 +50,7 @@ class AssetHelper
     
     /**
      * スクリプトタグを生成
-     * 
+     *
      * @param string $path JavaScriptファイルのパス
      * @param array $attributes 追加の属性
      * @return string scriptタグ
@@ -59,13 +59,20 @@ class AssetHelper
     {
         $src = self::js($path);
         $type = self::scriptType();
-        
+
+        // キャッシュバスティング: ファイルの更新時刻を取得
+        $fullPath = __DIR__ . '/../../public' . $src;
+        if (file_exists($fullPath)) {
+            $mtime = filemtime($fullPath);
+            $src .= '?v=' . $mtime;
+        }
+
         $attrs = [];
         if ($type) {
             $attrs[] = 'type="' . htmlspecialchars($type, ENT_QUOTES, 'UTF-8') . '"';
         }
         $attrs[] = 'src="' . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') . '"';
-        
+
         foreach ($attributes as $key => $value) {
             if (is_bool($value)) {
                 if ($value) {
@@ -75,7 +82,7 @@ class AssetHelper
                 $attrs[] = $key . '="' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '"';
             }
         }
-        
+
         return '<script ' . implode(' ', $attrs) . '></script>';
     }
 
@@ -110,6 +117,13 @@ class AssetHelper
     public static function linkTag(string $path, array $attributes = []): string
     {
         $href = self::css($path);
+
+        // キャッシュバスティング: ファイルの更新時刻を取得
+        $fullPath = __DIR__ . '/../../public' . $href;
+        if (file_exists($fullPath)) {
+            $mtime = filemtime($fullPath);
+            $href .= '?v=' . $mtime;
+        }
 
         $attrs = [];
         $attrs[] = 'rel="stylesheet"';

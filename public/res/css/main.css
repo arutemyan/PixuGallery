@@ -573,6 +573,25 @@ footer p {
     background: #666;
 }
 
+/* Paint Gallery Button */
+.paint-gallery-btn {
+    display: inline-block;
+    padding: 12px 30px;
+    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.paint-gallery-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(139, 90, 250, 0.4);
+    text-decoration: none;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
     .grid {
