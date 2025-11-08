@@ -1,3 +1,83 @@
+<!--
+  README for Photo Site
+  This file provides a concise project overview, quick start, and links to docs/design.
+-->
+
+# Photo Site
+
+簡潔なプロジェクト概要と開発者向けの最小限の手引きをこの README に記載します。
+
+## 概要
+
+Photo Site はブラウザ上でイラストを作成・保存できるシンプルな投稿・閲覧サイトです。
+管理画面にはペイントエディタ（レイヤー、タイムラプス記録など）を備え、作品はメタデータをデータベース（SQLite 等）に、描画データをファイルとして保存します。
+
+主な用途:
+
+- 管理者向けのペイントエディタ（public/admin/paint/）
+- 公開ギャラリーと作品詳細（public/paint/）
+- 管理 API と公開 API（保存／読み込み／一覧／タイムラプス）
+
+## 機能フラグ
+
+一部機能は設定で有効/無効を切り替えられます（`config/config.default.php` と `config/config.local.php`）。
+例えば Paint 機能を無効化したい場合、`config/config.local.php` に設定を追加します。
+
+例:
+
+```php
+<?php
+return [
+    'paint' => [ 'enabled' => false ],
+    'admin' => [ 'enabled' => true ],
+];
+```
+
+無効にした場合、該当ルートは 404 を返すなどアプリ側で判定されます。
+
+## ファイル・ディレクトリの構成（抜粋）
+
+- `public/` - ドキュメントルート（エントリポイント）
+- `src/` - アプリケーションソース
+- `tests/` - PHPUnit テスト
+- `docs/` - ユーザー向けドキュメント
+- `design/` - 設計・実装メモ
+
+詳しい説明は `docs/` と `design/` を参照してください。
+
+## クイックスタート（開発用）
+
+依存をインストールして簡易サーバーで起動します（開発用）。
+
+```bash
+composer install
+php -S localhost:8000 -t public/
+```
+
+注意: 実運用では `config/config.local.php` に適切な DB 設定・セキュリティ設定を行い、ウェブサーバ（nginx / Apache）で公開してください。
+
+## テスト
+
+ローカルで PHPUnit を実行してテストを回せます。テストは SQLite を使う構成になっているものがあります。
+
+```bash
+vendor/bin/phpunit
+```
+
+統合テストは一時的にビルトイン PHP サーバーを立ち上げるため、テスト実行中に一時ディレクトリが作成されます。
+
+## 開発者向けノート
+
+- `scripts/insert_admin_feature_check.php` : 管理 API の手続き的ファイルに自動で `_feature_check.php` を挿入するユーティリティ（利用時は注意して実行してください）。
+
+## ドキュメント
+
+- ユーザー向け: `docs/README.md`
+- 設計資料: `design/README.md`
+
+## ライセンス
+
+MIT
 ## 機能フラグの管理と確認
 
 このアプリケーションは `config/config.default.php` の設定で `paint.enabled` と `admin.enabled` により機能の ON/OFF を制御します。運用では `config/config.local.php` で上書きすることを推奨します。
