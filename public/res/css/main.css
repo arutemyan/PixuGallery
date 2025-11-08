@@ -137,15 +137,16 @@ header p {
 }
 
 .back-link:focus .header-back-button {
+    text-decoration: none;
     outline: 2px solid rgba(255, 255, 255, 0.8);
     outline-offset: 2px;
-    background: rgba(0, 0, 0, 0.4);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
                 0 0 0 3px rgba(139, 90, 250, 0.4);
 }
 
 /* アクティブ時の押し込みエフェクト */
 .header-back-button:active {
+    text-decoration: none;
     transform: translateX(0) scale(0.96);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -165,6 +166,7 @@ header p {
         transparent
     );
     transition: left 0.6s ease;
+    text-decoration: none;
 }
 
 .header-back-button:hover::after {

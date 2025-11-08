@@ -907,3 +907,33 @@ document.addEventListener('DOMContentLoaded', function() {
     // 無限スクロールのイベントリスナー
     window.addEventListener('scroll', handleScroll);
 });
+
+// Expose functions to global scope for inline HTML handlers when this file
+// is loaded as a module (type="module"). Inline onclick attributes expect
+// these functions on window.
+(function exposeGlobals() {
+    if (typeof window === 'undefined') return;
+    const exports = [
+        'openImageOverlay',
+        'closeImageOverlay',
+        'navigateOverlay',
+        'confirmAge',
+        'denyAge',
+        'acceptNsfwWarning',
+        'cancelNsfwWarning',
+        'setNSFWFilter',
+        'toggleTagsVisibility',
+        'toggleTitlesVisibility'
+    ];
+    exports.forEach(name => {
+        try {
+            if (typeof window[name] === 'undefined') {
+                // attempt to resolve the function from this scope
+                const fn = (typeof this[name] === 'function') ? this[name] : (typeof eval(name) === 'function' ? eval(name) : null);
+                if (fn) window[name] = fn;
+            }
+        } catch (e) {
+            // ignore resolution errors
+        }
+    });
+})();
