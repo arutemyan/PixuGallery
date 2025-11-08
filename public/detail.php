@@ -38,7 +38,7 @@ try {
     $showViewCount = $settingModel->get('show_view_count', '1') === '1';
 
     // 設定を読み込み
-    $config = require __DIR__ . '/../config/config.php';
+    $config = \App\Config\ConfigManager::getInstance()->getConfig();
     $nsfwConfig = $config['nsfw'];
     $ageVerificationMinutes = $nsfwConfig['age_verification_minutes'];
     $nsfwConfigVersion = $nsfwConfig['config_version'];
@@ -198,7 +198,7 @@ $imageUrl = !empty($shareImagePath) ? $protocol . ($_SERVER['HTTP_HOST'] ?? 'loc
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <!-- スタイルシート -->
-    <link rel="stylesheet" href="/res/css/main.css">
+    <?php echo \App\Utils\AssetHelper::linkTag('/res/css/main.css'); ?>
 
     <!-- テーマカラー -->
     <style>

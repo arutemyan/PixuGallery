@@ -14,10 +14,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v4
+        uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          coverage: none
+          coverage: xdebug
           extensions: mbstring, intl, json, zip, gd, fileinfo, pdo_sqlite
 
       - name: Get Composer Cache
@@ -47,7 +47,7 @@ jobs:
         # creates a test admin user and executes the HTTP flow.
         run: |
           php tests/integration/test_api_save_http.php
-          php tests/integration/test_timelapse_merge.php
+          echo -e "admin\nTestPassword123\nTestPassword123">xxx && php tests/integration/test_save_illust.php<xxx && rm xxx
 
       - name: Run full PHPUnit (integration)
         run: vendor/bin/phpunit --configuration phpunit.xml --testsuite Integration || true

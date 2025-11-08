@@ -34,10 +34,7 @@ class Connection
     private static function loadConfig(): void
     {
         if (self::$config === null) {
-            $configPath = __DIR__ . '/../../config/config.php';
-            if (file_exists($configPath)) {
-                self::$config = require $configPath;
-            }
+            self::$config = \App\Config\ConfigManager::getInstance()->getConfig();
         }
     }
 

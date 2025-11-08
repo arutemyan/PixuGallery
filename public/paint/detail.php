@@ -5,9 +5,7 @@
  */
 
 require_once(__DIR__ . '/../../vendor/autoload.php');
-require_once(__DIR__ . '/../../config/config.php');
-// feature gate (returns 404 if paint disabled)
-require_once(__DIR__ . '/_feature_check.php');
+$config = \App\Config\ConfigManager::getInstance()->getConfig();
 
 use App\Models\Theme;
 use App\Models\Setting;
@@ -150,8 +148,8 @@ $pageUrl = $protocol . $host . $_SERVER['REQUEST_URI'];
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- スタイルシート -->
-    <link rel="stylesheet" href="/paint/css/gallery.css">
-    <link rel="stylesheet" href="/paint/css/detail.css">
+    <?php echo \App\Utils\AssetHelper::linkTag('/paint/css/gallery.css'); ?>
+    <?php echo \App\Utils\AssetHelper::linkTag('/paint/css/detail.css'); ?>
     
     <!-- テーマカラー -->
     <style>

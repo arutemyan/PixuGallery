@@ -9,7 +9,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/../../../vendor/autoload.php';
-require_once __DIR__ . '/../../../config/config.php';
+$config = \App\Config\ConfigManager::getInstance()->getConfig();
 require_once __DIR__ . '/../../../src/Security/SecurityUtil.php';
 // feature gate (returns 404 if admin disabled)
 require_once(__DIR__ . '/../_feature_check.php');
@@ -200,7 +200,7 @@ $router->put('/admin/api/posts/:id', function (string $id) {
         }
 
         // NSFWフィルター設定を読み込み
-        $config = require __DIR__ . '/../../../config/config.php';
+        $config = \App\Config\ConfigManager::getInstance()->getConfig();
         $filterSettings = $config['nsfw']['filter_settings'];
 
         // is_sensitiveが変更された場合、NSFWフィルター画像を処理

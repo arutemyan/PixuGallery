@@ -51,7 +51,7 @@ try {
     }
 
     // 設定を読み込み
-    $config = require __DIR__ . '/../config/config.php';
+    $config = \App\Config\ConfigManager::getInstance()->getConfig();
     $nsfwConfig = $config['nsfw'];
     $ageVerificationMinutes = $nsfwConfig['age_verification_minutes'];
     $nsfwConfigVersion = $nsfwConfig['config_version'];
@@ -115,7 +115,7 @@ try {
 
     <!-- CSS -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
-    <link href="/res/css/main.css" rel="stylesheet">
+    <?php echo \App\Utils\AssetHelper::linkTag('/res/css/main.css'); ?>
 
     <!-- テーマカラー -->
     <style>

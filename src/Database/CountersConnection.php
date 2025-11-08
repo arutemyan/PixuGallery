@@ -36,11 +36,9 @@ class CountersConnection
     private static function loadConfig(): void
     {
         if (self::$config === null) {
-            $configPath = __DIR__ . '/../../config/config.php';
-            if (file_exists($configPath)) {
-                self::$config = require $configPath;
-            } else {
-                throw new PDOException('Database configuration file not found');
+            self::$config = \App\Config\ConfigManager::getInstance()->getConfig();
+            if (self::$config === null) {
+                throw new PDOException('Database configuration not available');
             }
         }
     }
