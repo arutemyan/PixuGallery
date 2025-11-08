@@ -15,15 +15,11 @@
 'use strict';
 
 // ===== Module Imports =====
-import { CONFIG } from './modules/config.js';
 import { state, elements, initializeElements } from './modules/state.js';
 import { initColorPalette, setColor, initCurrentColorEdit } from './modules/colors.js';
 import {
     renderLayers,
     setActiveLayer,
-    toggleLayerVisibility,
-    setLayerOpacity,
-    moveLayer,
     addLayer,
     removeLayer,
     duplicateLayer,
@@ -33,16 +29,11 @@ import {
 } from './modules/layers.js';
 import { pushUndo, undo, redo } from './modules/history.js';
 import {
-    zoom,
-    zoomFit,
     initCanvasPan,
     initTransformTools,
-    rotateCanvas,
-    flipCanvas,
     resizeCanvas
 } from './modules/canvas_transform.js';
 import {
-    ColorUtils,
     setTool,
     initToolListeners,
     initCanvasListeners
@@ -51,7 +42,6 @@ import {
     loadPersistedState,
     savePersistedState,
     setCurrentId,
-    captureCanvasState,
     restoreCanvasState,
     saveIllust,
     newIllust,

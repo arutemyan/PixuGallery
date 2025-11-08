@@ -139,10 +139,6 @@ function resizeCanvas() {
     
     if (!container) return;
     
-    // コンテナの幅に合わせてキャンバスを表示
-    const containerWidth = container.clientWidth;
-    const canvasAspect = canvas.width / canvas.height;
-    
     // CSSで表示サイズを設定（実際のキャンバスサイズは変更しない）
     canvas.style.width = '100%';
     canvas.style.height = 'auto';
