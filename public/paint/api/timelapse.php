@@ -5,7 +5,7 @@
  */
 
 require_once(__DIR__ . '/../../../vendor/autoload.php');
-require_once(__DIR__ . '/../../../config/config.php');
+$config = \App\Config\ConfigManager::getInstance()->getConfig();
 
 use App\Services\TimelapseService;
 

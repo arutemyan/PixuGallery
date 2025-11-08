@@ -27,9 +27,8 @@ class CacheManager
      */
     public function __construct(?string $cacheDir = null)
     {
-        // 設定ファイルを読み込み
-        $configPath = __DIR__ . '/../../config/cache.php';
-        $this->config = file_exists($configPath) ? require $configPath : [];
+        // 設定ファイルを読み込み（ConfigManager 経由）
+        $this->config = \App\Config\ConfigManager::getInstance()->get('cache', []);
 
         // キャッシュディレクトリのパスを決定
         if ($cacheDir !== null) {
