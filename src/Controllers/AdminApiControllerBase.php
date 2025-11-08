@@ -23,16 +23,7 @@ class AdminApiControllerBase
     public static function init(): void
     {
         // セッション開始（Session wrapper を優先）
-        try {
-            Session::start();
-        } catch (\Throwable $e) {
-            // fallback to initSecureSession if present
-            if (function_exists('\initSecureSession')) {
-                \initSecureSession();
-            } elseif (session_status() === PHP_SESSION_NONE) {
-                session_start();
-            }
-        }
+        Session::start();
 
         // feature check
         try {

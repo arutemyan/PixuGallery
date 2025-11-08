@@ -63,16 +63,14 @@ class AdminBulkGroupApiTest extends TestCase
             display_order INTEGER DEFAULT 0
         )");
 
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        \App\Services\Session::start();
     }
 
     protected function tearDown(): void
     {
         $this->db = null;
         // セッションクリア
-        $_SESSION = [];
+        \App\Services\Session::getInstance()->destroy();
         $this->removeDirectory($this->tempDir);
         parent::tearDown();
     }
@@ -90,14 +88,12 @@ class AdminBulkGroupApiTest extends TestCase
 
     private function generateCsrfToken(): string
     {
-        $token = bin2hex(random_bytes(16));
-        $_SESSION['csrf'] = $token;
-        return $token;
+        return \App\Security\CsrfProtection::getToken();
     }
 
     private function setAuthenticatedSession(): void
     {
-        $_SESSION['admin_authenticated'] = true;
+        \App\Services\Session::set('admin_authenticated', true);
     }
 
     private function createWhiteImage(string $path, int $w = 8, int $h = 8): void
@@ -114,11 +110,11 @@ class AdminBulkGroupApiTest extends TestCase
      */
     private function simulateBulkUploadApi(array $postData, array $files): array
     {
-        if (!isset($_SESSION['admin_authenticated']) || !$_SESSION['admin_authenticated']) {
+        if (!\App\Services\Session::get('admin_authenticated')) {
             return ['success' => false, 'error' => 'Unauthorized'];
         }
 
-        if (!isset($postData['csrf']) || !isset($_SESSION['csrf']) || !hash_equals($_SESSION['csrf'], $postData['csrf'])) {
+        if (!\App\Security\CsrfProtection::validateToken($postData['csrf'] ?? null)) {
             return ['success' => false, 'error' => 'CSRF token invalid'];
         }
 
@@ -211,10 +207,11 @@ class AdminBulkGroupApiTest extends TestCase
      */
     private function simulateGroupUploadCreate(array $postData, array $files): array
     {
-        if (!isset($_SESSION['admin_authenticated']) || !$_SESSION['admin_authenticated']) {
+        if (!\App\Services\Session::get('admin_authenticated')) {
             return ['success' => false, 'error' => 'Unauthorized'];
         }
-        if (!isset($postData['csrf']) || !isset($_SESSION['csrf']) || !hash_equals($_SESSION['csrf'], $postData['csrf'])) {
+
+        if (!\App\Security\CsrfProtection::validateToken($postData['csrf'] ?? null)) {
             return ['success' => false, 'error' => 'CSRF token invalid'];
         }
 

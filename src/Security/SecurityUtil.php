@@ -98,62 +98,6 @@ function sendSecurityHeaders(array $config = []): void
     header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
 }
 
-// セッション設定（安全な設定）
-function initSecureSession(?array $config = null): void
-{
-    if (session_status() === PHP_SESSION_NONE) {
-        // 設定がない場合は読み込む
-        if ($config === null) {
-            $config = \App\Config\ConfigManager::getInstance()->getConfig();
-        }
-
-        // HTTPS強制
-        if (!empty($config['https']['force'])) {
-            forceHttps();
-        }
-
-        // セキュリティヘッダー送信
-        sendSecurityHeaders($config);
-
-        ini_set('session.cookie_httponly', '1');
-        // HTTPS環境でのみsecure cookieを有効化
-        $isHttps = isHttps();
-        ini_set('session.cookie_secure', $isHttps ? '1' : '0');
-        ini_set('session.cookie_samesite', 'Strict');
-        ini_set('session.use_strict_mode', '1');
-        session_start();
-    }
-}
-
-/**
- * CSRFトークン生成
- *
- * @return string 32バイトのランダムトークン（16進数64文字）
- */
-function generateCsrfToken(): string
-{
-    $token = bin2hex(random_bytes(32));
-    $_SESSION['csrf'] = $token;
-    return $token;
-}
-
-/**
- * CSRFトークン検証
- *
- * タイミング攻撃対策としてhash_equals()を使用
- *
- * @param string|null $token 検証するトークン
- * @return bool トークンが一致する場合はtrue
- */
-function verifyCsrfToken(?string $token): bool
-{
-    if (empty($token) || empty($_SESSION['csrf'])) {
-        return false;
-    }
-
-    return hash_equals($_SESSION['csrf'], $token);
-}
-
 /**
  * XSS対策: HTMLエスケープ
  *
@@ -209,20 +153,6 @@ function hashPassword(string $password): string
 function verifyPassword(string $password, string $hash): bool
 {
     return password_verify($password, $hash);
-}
-
-/**
- * セッションID再生成（セッション固定攻撃対策）
- *
- * ログイン時に必ず実行すること
- *
- * @return void
- */
-function regenerateSessionId(): void
-{
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        session_regenerate_id(true);
-    }
 }
 
 /**

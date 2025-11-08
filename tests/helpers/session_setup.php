@@ -10,11 +10,9 @@ require_once __DIR__ . '/../../src/Security/CsrfProtection.php';
 use App\Security\CsrfProtection;
 
 // Start secure session and set a test admin user in session for integration tests
-initSecureSession();
-
-// Set minimal admin session data for integration testing
-// NOTE: This helper is intended to be used from the test suite only, not served by the web server.
-$_SESSION['admin'] = ['id' => 1, 'username' => 'testadmin'];
+// Start session via Session service when available
+\App\Services\Session::start();
+\App\Services\Session::set('admin', ['id' => 1, 'username' => 'testadmin']);
 
 $token = CsrfProtection::getToken();
 

@@ -21,14 +21,13 @@ class CsrfProtection
      */
     public static function generateToken(): string
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        // Delegate generation to Session service
+        if (!class_exists('\App\\Services\\Session')) {
+            throw new \RuntimeException('Session service is required for CSRF token generation');
         }
-
-        $token = bin2hex(random_bytes(self::TOKEN_LENGTH));
-        $_SESSION[self::SESSION_KEY] = $token;
-
-        return $token;
+        \App\Services\Session::start();
+        $sess = \App\Services\Session::getInstance();
+        return $sess->getCsrfToken();
     }
 
     /**
@@ -38,15 +37,12 @@ class CsrfProtection
      */
     public static function getToken(): string
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        if (!class_exists('\App\\Services\\Session')) {
+            throw new \RuntimeException('Session service is required for CSRF token retrieval');
         }
-
-        if (!isset($_SESSION[self::SESSION_KEY])) {
-            return self::generateToken();
-        }
-
-        return $_SESSION[self::SESSION_KEY];
+        \App\Services\Session::start();
+        $sess = \App\Services\Session::getInstance();
+        return $sess->getCsrfToken();
     }
 
     /**
@@ -57,25 +53,15 @@ class CsrfProtection
      */
     public static function validateToken(?string $token): bool
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
         if ($token === null) {
             return false;
         }
-
-        // First, check the legacy/global session key
-        if (isset($_SESSION[self::SESSION_KEY]) && hash_equals((string)$_SESSION[self::SESSION_KEY], (string)$token)) {
-            return true;
+        if (!class_exists('\App\\Services\\Session')) {
+            throw new \RuntimeException('Session service is required for CSRF token validation');
         }
-
-        // Backwards-compat: check the namespaced app session key used by Session::getCsrfToken()
-        if (isset($_SESSION['_app_session']) && is_array($_SESSION['_app_session']) && isset($_SESSION['_app_session'][self::SESSION_KEY]) && hash_equals((string)$_SESSION['_app_session'][self::SESSION_KEY], (string)$token)) {
-            return true;
-        }
-
-        return false;
+        \App\Services\Session::start();
+        $sess = \App\Services\Session::getInstance();
+        return $sess->validateCsrf($token);
     }
 
     /**
@@ -98,7 +84,7 @@ class CsrfProtection
      */
     public static function validateHeader(string $headerName = 'X-CSRF-Token'): bool
     {
-        $headers = getallheaders();
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
         $token = $headers[$headerName] ?? null;
         return self::validateToken($token);
     }
@@ -108,10 +94,11 @@ class CsrfProtection
      */
     public static function clearSession(): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        if (!class_exists('\App\\Services\\Session')) {
+            throw new \RuntimeException('Session service is required to clear CSRF token');
         }
-
-        unset($_SESSION[self::SESSION_KEY]);
+        \App\Services\Session::start();
+        $sess = \App\Services\Session::getInstance();
+        $sess->delete(self::SESSION_KEY);
     }
 }

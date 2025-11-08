@@ -67,10 +67,8 @@ class AdminApiTest extends TestCase
         mkdir($this->thumbsDir, 0777, true);
         mkdir($this->cacheDir, 0777, true);
 
-        // セッション初期化
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        // セッション初期化（Sessionサービスを使用）
+        \App\Services\Session::start();
     }
 
     /**
@@ -85,7 +83,7 @@ class AdminApiTest extends TestCase
         $this->removeDirectory($this->tempDir);
 
         // セッションクリア
-        $_SESSION = [];
+        \App\Services\Session::getInstance()->destroy();
 
         parent::tearDown();
     }
@@ -112,9 +110,7 @@ class AdminApiTest extends TestCase
      */
     private function generateCsrfToken(): string
     {
-        $token = bin2hex(random_bytes(32));
-        $_SESSION['csrf'] = $token;
-        return $token;
+        return \App\Security\CsrfProtection::getToken();
     }
 
     /**
@@ -122,8 +118,8 @@ class AdminApiTest extends TestCase
      */
     private function setAuthenticatedSession(): void
     {
-        $_SESSION['admin_authenticated'] = true;
-        $_SESSION['admin_user'] = 'admin';
+        \App\Services\Session::set('admin_authenticated', true);
+        \App\Services\Session::set('admin_user', 'admin');
     }
 
     /**
@@ -167,14 +163,13 @@ class AdminApiTest extends TestCase
     private function simulateUploadApi(array $postData, array $files): array
     {
         // 認証チェック
-        if (!isset($_SESSION['admin_authenticated']) || !$_SESSION['admin_authenticated']) {
+        if (!\App\Services\Session::get('admin_authenticated')) {
             http_response_code(403);
             return ['error' => 'Unauthorized'];
         }
 
         // CSRFトークンチェック
-        if (!isset($postData['csrf']) || !isset($_SESSION['csrf']) ||
-            !hash_equals($_SESSION['csrf'], $postData['csrf'])) {
+        if (!\App\Security\CsrfProtection::validateToken($postData['csrf'] ?? null)) {
             http_response_code(403);
             return ['error' => 'CSRF token mismatch'];
         }
@@ -201,16 +196,15 @@ class AdminApiTest extends TestCase
             return ['error' => 'Invalid file type'];
         }
 
-        // 拡張子チェック
-        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-            return ['error' => 'Invalid file extension'];
+        // 認証チェック
+        if (!\App\Services\Session::get('admin_authenticated')) {
+            return ['error' => 'Unauthorized'];
         }
 
-        // ファイル保存
-        $filename = date('Ymd_His') . '_' . uniqid();
-        $imagePath = 'images/' . $filename . '.' . $extension;
-        $thumbPath = 'thumbs/' . $filename . '.webp';
+        // CSRFトークンチェック
+        if (!\App\Security\CsrfProtection::validateToken($postData['csrf'] ?? null)) {
+            return ['error' => 'CSRF token mismatch'];
+        }
 
         $fullImagePath = $this->tempDir . '/' . $imagePath;
         $fullThumbPath = $this->tempDir . '/' . $thumbPath;
@@ -286,14 +280,13 @@ class AdminApiTest extends TestCase
     private function simulateDeleteApi(array $postData): array
     {
         // 認証チェック
-        if (!isset($_SESSION['admin_authenticated']) || !$_SESSION['admin_authenticated']) {
+        if (!\App\Services\Session::get('admin_authenticated')) {
             http_response_code(403);
             return ['error' => 'Unauthorized'];
         }
 
         // CSRFトークンチェック
-        if (!isset($postData['csrf']) || !isset($_SESSION['csrf']) ||
-            !hash_equals($_SESSION['csrf'], $postData['csrf'])) {
+        if (!\App\Security\CsrfProtection::validateToken($postData['csrf'] ?? null)) {
             http_response_code(403);
             return ['error' => 'CSRF token mismatch'];
         }
@@ -341,14 +334,13 @@ class AdminApiTest extends TestCase
     private function simulateThemeApi(array $postData): array
     {
         // 認証チェック
-        if (!isset($_SESSION['admin_authenticated']) || !$_SESSION['admin_authenticated']) {
+        if (!\App\Services\Session::get('admin_authenticated')) {
             http_response_code(403);
             return ['error' => 'Unauthorized'];
         }
 
         // CSRFトークンチェック
-        if (!isset($postData['csrf']) || !isset($_SESSION['csrf']) ||
-            !hash_equals($_SESSION['csrf'], $postData['csrf'])) {
+        if (!\App\Security\CsrfProtection::validateToken($postData['csrf'] ?? null)) {
             http_response_code(403);
             return ['error' => 'CSRF token mismatch'];
         }

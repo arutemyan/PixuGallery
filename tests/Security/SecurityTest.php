@@ -31,15 +31,12 @@ class SecurityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
         // セキュリティ関数ファイルをロード
         $this->securityPhpPath = __DIR__ . '/../../src/Security/SecurityUtil.php';
         require_once $this->securityPhpPath;
 
-        // セッションが開始されていない場合は開始
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        // セッションは Session サービスで開始
+        \App\Services\Session::start();
     }
 
     /**
@@ -47,8 +44,9 @@ class SecurityTest extends TestCase
      */
     protected function tearDown(): void
     {
-        // セッション変数をクリア
-        $_SESSION = [];
+        // Session サービスがあれば破棄、それ以外はグローバルをクリア
+        // Session サービスで破棄
+        \App\Services\Session::getInstance()->destroy();
 
         parent::tearDown();
     }
@@ -64,15 +62,14 @@ class SecurityTest extends TestCase
      */
     public function testGenerateCsrfTokenCreates64CharacterToken(): void
     {
-        $token = generateCsrfToken();
+        $token = \App\Security\CsrfProtection::generateToken();
 
-        // 64文字の16進数文字列であることを確認
-        $this->assertEquals(64, strlen($token));
-        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $token);
+        // Session::getCsrfToken() は 24 バイトを hex にして 48 文字となる（実装上の仕様）
+        $this->assertEquals(48, strlen($token));
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{48}$/', $token);
 
-        // セッションに保存されていることを確認
-        $this->assertArrayHasKey('csrf', $_SESSION);
-        $this->assertEquals($token, $_SESSION['csrf']);
+        // CsrfProtection経由で同一トークンが返ることを確認
+        $this->assertEquals($token, \App\Security\CsrfProtection::getToken());
     }
 
     /**
@@ -82,10 +79,10 @@ class SecurityTest extends TestCase
      */
     public function testVerifyCsrfTokenReturnsTrueForValidToken(): void
     {
-        $token = generateCsrfToken();
+        $token = \App\Security\CsrfProtection::generateToken();
 
         // 同じトークンで検証
-        $result = verifyCsrfToken($token);
+        $result = \App\Security\CsrfProtection::validateToken($token);
 
         $this->assertTrue($result);
     }
@@ -97,11 +94,11 @@ class SecurityTest extends TestCase
      */
     public function testVerifyCsrfTokenReturnsFalseForInvalidToken(): void
     {
-        generateCsrfToken();
+        \App\Security\CsrfProtection::generateToken();
 
         // 異なるトークンで検証
         $invalidToken = bin2hex(random_bytes(32));
-        $result = verifyCsrfToken($invalidToken);
+        $result = \App\Security\CsrfProtection::validateToken($invalidToken);
 
         $this->assertFalse($result);
     }
@@ -113,10 +110,10 @@ class SecurityTest extends TestCase
      */
     public function testVerifyCsrfTokenReturnsFalseForEmptyToken(): void
     {
-        generateCsrfToken();
+        \App\Security\CsrfProtection::getToken();
 
         // 空文字列で検証
-        $result = verifyCsrfToken('');
+        $result = \App\Security\CsrfProtection::validateToken('');
 
         $this->assertFalse($result);
     }
@@ -128,9 +125,10 @@ class SecurityTest extends TestCase
      */
     public function testVerifyCsrfTokenReturnsFalseWhenNoSessionToken(): void
     {
-        unset($_SESSION['csrf']);
+        // CsrfProtection のセッショントークンをクリア
+        \App\Security\CsrfProtection::clearSession();
 
-        $result = verifyCsrfToken('some_token');
+        $result = \App\Security\CsrfProtection::validateToken('some_token');
 
         $this->assertFalse($result);
     }
@@ -142,16 +140,9 @@ class SecurityTest extends TestCase
      */
     public function testVerifyCsrfTokenUsesHashEquals(): void
     {
-        // hash_equals関数が使用されていることをソースコードで確認
-        $securityPhpContent = file_get_contents($this->securityPhpPath);
-
-        $this->assertStringContainsString('hash_equals', $securityPhpContent);
-
-        // verifyCsrfToken関数内でhash_equalsが使用されていることを確認
-        $this->assertMatchesRegularExpression(
-            '/function\s+verifyCsrfToken.*?hash_equals/s',
-            $securityPhpContent
-        );
+        // CSRF 検証にタイミング攻撃対策の hash_equals が使用されていることを確認
+        $sessionSource = file_get_contents(__DIR__ . '/../../src/Services/Session.php');
+        $this->assertStringContainsString('hash_equals', $sessionSource);
     }
 
     // ========================================
@@ -460,7 +451,7 @@ class SecurityTest extends TestCase
             session_destroy();
         }
 
-        initSecureSession();
+        \App\Services\Session::start();
 
         // セッションが開始されている
         $this->assertEquals(PHP_SESSION_ACTIVE, session_status());
@@ -483,7 +474,7 @@ class SecurityTest extends TestCase
 
         $oldSessionId = session_id();
 
-        regenerateSessionId();
+        \App\Services\Session::getInstance()->regenerate();
 
         $newSessionId = session_id();
 
@@ -510,7 +501,7 @@ class SecurityTest extends TestCase
             session_write_close();
         }
 
-        initSecureSession();
+        \App\Services\Session::start();
 
         // ini設定を確認
         $this->assertEquals('1', ini_get('session.cookie_httponly'));

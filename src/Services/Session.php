@@ -37,6 +37,14 @@ class Session
     {
         if (self::$instance === null) {
             self::$instance = new self($opts);
+        } else {
+            // If instance already exists ensure PHP session is active; this
+            // handles tests that destroy the PHP session but keep the
+            // Session singleton around.
+            if (session_status() !== PHP_SESSION_ACTIVE) {
+                // attempt to initialize PHP session settings and start it
+                self::$instance->initPhpSession($opts);
+            }
         }
         return self::$instance;
     }
@@ -62,9 +70,30 @@ class Session
         $this->rotateIfNeeded();
     }
 
-    private function initPhpSession(array $opts = []): void
+    private function initPhpSession(array $config = null): void
     {
-        \initSecureSession($opts);
+        if (session_status() === PHP_SESSION_NONE) {
+            // 設定がない場合は読み込む
+            if ($config === null) {
+                $config = \App\Config\ConfigManager::getInstance()->getConfig();
+            }
+
+            // HTTPS強制
+            if (!empty($config['https']['force'])) {
+                forceHttps();
+            }
+
+            // セキュリティヘッダー送信
+            sendSecurityHeaders($config);
+
+            ini_set('session.cookie_httponly', '1');
+            // HTTPS環境でのみsecure cookieを有効化
+            $isHttps = isHttps();
+            ini_set('session.cookie_secure', $isHttps ? '1' : '0');
+            ini_set('session.cookie_samesite', 'Strict');
+            ini_set('session.use_strict_mode', '1');
+            session_start();
+        }
     }
 
     private function ensureKeyDir(): void

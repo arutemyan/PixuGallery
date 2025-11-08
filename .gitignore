@@ -5,6 +5,7 @@ composer.lock
 # データベース（実行時に自動作成されるため全体を除外）
 /data/
 /config/tests/
+config/session_keys/
 
 # 旧データベース場所（非推奨、実行時に自動作成）
 /public/data/

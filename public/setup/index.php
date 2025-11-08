@@ -17,7 +17,7 @@ use App\Database\Connection;
 use App\Utils\PathHelper;
 use App\Utils\Logger;
 
-session_start();
+\App\Services\Session::start();
 
 // エラーメッセージ
 $error = null;
@@ -62,11 +62,7 @@ try {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
             try {
                 // CSRF検証
-                if (!isset($_POST['csrf_token']) || !isset($_SESSION['delete_csrf_token'])) {
-                    throw new Exception('不正なリクエストです。');
-                }
-
-                if (!hash_equals($_SESSION['delete_csrf_token'], $_POST['csrf_token'])) {
+                if (!\App\Security\CsrfProtection::validatePost()) {
                     throw new Exception('不正なリクエストです。');
                 }
 
@@ -94,13 +90,7 @@ try {
             }
         }
 
-        // CSRFトークン生成
-        if (!isset($_SESSION['delete_csrf_token'])) {
-            $_SESSION['delete_csrf_token'] = bin2hex(random_bytes(32));
-        }
-        if (!isset($_SESSION['migrate_csrf_token'])) {
-            $_SESSION['migrate_csrf_token'] = bin2hex(random_bytes(32));
-        }
+        // CSRF token is provided via CsrfProtection (delegated to Session)
 
         // マイグレーション状態を取得
         $executedMigrations = Connection::getExecutedMigrations();
@@ -268,7 +258,7 @@ try {
                         </div>
                         <form method="POST">
                             <input type="hidden" name="action" value="migrate">
-                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['migrate_csrf_token']) ?>">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(\App\Security\CsrfProtection::getToken()) ?>">
                             <button type="submit" class="btn" style="background: #667eea;">マイグレーションを実行</button>
                         </form>
                     <?php else: ?>
@@ -293,7 +283,7 @@ try {
 
                         <form method="POST" style="margin-top: 15px;" id="migrationForm">
                             <input type="hidden" name="action" value="migrate">
-                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['migrate_csrf_token']) ?>">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(\App\Security\CsrfProtection::getToken()) ?>">
 
                             <div style="margin-bottom: 15px;">
                                 <label style="display: flex; align-items: center; cursor: pointer; color: #666;">
@@ -319,7 +309,7 @@ try {
                     </p>
                     <form method="POST" onsubmit="return confirm('本当にこのファイルを削除しますか？');">
                         <input type="hidden" name="action" value="delete">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['delete_csrf_token']) ?>">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(\App\Security\CsrfProtection::getToken()) ?>">
                         <button type="submit" class="btn btn-danger">このファイルを削除する</button>
                     </form>
                 </div>
@@ -339,11 +329,8 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         // CSRF検証
-        if (!isset($_POST['csrf_token']) || !isset($_SESSION['setup_csrf_token'])) {
-            throw new Exception('不正なリクエストです。');
-        }
-
-        if (!hash_equals($_SESSION['setup_csrf_token'], $_POST['csrf_token'])) {
+        // CSRF検証
+        if (!\App\Security\CsrfProtection::validatePost()) {
             throw new Exception('不正なリクエストです。');
         }
 
@@ -406,7 +393,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$username, $passwordHash]);
 
         // CSRFトークンをクリア
-        unset($_SESSION['setup_csrf_token']);
+        \App\Security\CsrfProtection::clearSession();
 
         // 成功メッセージ
         $success = true;
@@ -424,10 +411,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// CSRFトークン生成
-if (!isset($_SESSION['setup_csrf_token'])) {
-    $_SESSION['setup_csrf_token'] = bin2hex(random_bytes(32));
-}
+// CSRF token provisioned by CsrfProtection (delegates to Session service)
 
 ?>
 <!DOCTYPE html>
@@ -630,8 +614,8 @@ if (!isset($_SESSION['setup_csrf_token'])) {
                 </div>
             <?php endif; ?>
 
-            <form method="POST" action="">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['setup_csrf_token']) ?>">
+                <form method="POST" action="">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(\App\Security\CsrfProtection::getToken()) ?>">
 
                 <div class="form-group">
                     <label for="username">ユーザー名</label>
