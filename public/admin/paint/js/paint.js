@@ -434,8 +434,10 @@ function redoWrapper() {
     redo(renderLayersWrapper, setStatus);
 }
 
-async function saveIllustWrapper(title, description, tags) {
-    await saveIllust(title, description, tags, setStatus, setCurrentId, updateIllustDisplay);
+// Wrapper used by UI wiring. Accept and forward optional callbacks and options so
+// callers (modals) can pass NSFW/visibility/forceNew flags as the last argument.
+async function saveIllustWrapper(title, description, tags, setStatusCb, setCurrentIdCb, updateIllustDisplayCb, options) {
+    await saveIllust(title, description, tags, setStatusCb || setStatus, setCurrentIdCb || setCurrentId, updateIllustDisplayCb || updateIllustDisplay, options || {});
 }
 
 function resizeCanvasWrapper(width, height) {

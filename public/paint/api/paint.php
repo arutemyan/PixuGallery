@@ -17,12 +17,17 @@ try {
     $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
     $tag = isset($_GET['tag']) ? trim($_GET['tag']) : null;
     $search = isset($_GET['search']) ? trim($_GET['search']) : null;
-    
+    $nsfwFilter = isset($_GET['nsfw_filter']) ? $_GET['nsfw_filter'] : 'all'; // all, safe, nsfw
+
     $limit = max(1, min($limit, 100)); // 1-100の範囲
     $offset = max(0, $offset);
-    
+
+    // 管理者権限チェック（非表示投稿を見るため）
+    session_start();
+    $isAdmin = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+
     // ベースクエリ
-    $sql = "SELECT 
+    $sql = "SELECT
                 i.id,
                 i.title,
                 '' as detail,
@@ -30,15 +35,29 @@ try {
                 i.thumbnail_path as thumb_path,
                 i.data_path,
                 i.timelapse_path,
+                i.nsfw,
+                i.is_visible,
                 i.canvas_width as width,
                 i.canvas_height as height,
                 i.created_at,
                 i.updated_at,
                 '' as tags
             FROM paint i";
-    
+
     $where = [];
     $params = [];
+
+    // 非表示フィルター（管理者以外は非表示を除外）
+    if (!$isAdmin) {
+        $where[] = "i.is_visible = 1";
+    }
+
+    // NSFWフィルター
+    if ($nsfwFilter === 'safe') {
+        $where[] = "(i.nsfw = 0 OR i.nsfw IS NULL)";
+    } elseif ($nsfwFilter === 'nsfw') {
+        $where[] = "i.nsfw = 1";
+    }
     
     // タグフィルター（現在はタグテーブルがないのでスキップ）
     /*

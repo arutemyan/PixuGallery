@@ -33,9 +33,13 @@ if ($id <= 0) {
 
 try {
     $db = \App\Database\Connection::getInstance();
-    
+
+    // 管理者権限チェック
+    session_start();
+    $isAdmin = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+
     // イラスト情報取得
-    $sql = "SELECT 
+    $sql = "SELECT
                 i.id,
                 i.title,
                 '' as detail,
@@ -52,14 +56,20 @@ try {
                 '' as tags
             FROM paint i
             WHERE i.id = :id";
-    
+
     $stmt = $db->prepare($sql);
     $stmt->bindValue(':id', $id, PDO::PARAM_INT);
     $stmt->execute();
-    
+
     $illust = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$illust) {
+        header('Location: /paint/');
+        exit;
+    }
+
+    // 非表示チェック（管理者以外は非表示を見れない）
+    if (!$isAdmin && isset($illust['is_visible']) && $illust['is_visible'] == 0) {
         header('Location: /paint/');
         exit;
     }
@@ -117,6 +127,11 @@ try {
     exit;
 }
 
+// NSFW設定を取得
+$nsfwConfig = $config['nsfw'];
+$ageVerificationMinutes = $nsfwConfig['age_verification_minutes'];
+$nsfwConfigVersion = $nsfwConfig['config_version'];
+
 // OGP用の画像URL
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
@@ -159,7 +174,44 @@ $pageUrl = $protocol . $host . $_SERVER['REQUEST_URI'];
         <?php require_once(__DIR__ . '/../block/style.php') ?>
     </style>
 </head>
-<body>
+<body data-age-verification-minutes="<?= $ageVerificationMinutes ?>" data-nsfw-config-version="<?= $nsfwConfigVersion ?>" data-is-nsfw="<?= !empty($illust['nsfw']) ? '1' : '0' ?>">
+    <script>
+        // 設定値をdata属性から読み込み（const定義で改ざん防止）
+        const AGE_VERIFICATION_MINUTES = parseFloat(document.body.dataset.ageVerificationMinutes) || 10080;
+        const NSFW_CONFIG_VERSION = parseInt(document.body.dataset.nsfwConfigVersion) || 1;
+    </script>
+
+    <!-- 年齢確認モーダル -->
+    <div id="ageVerificationModal" class="modal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h2 class="modal-title">年齢確認</h2>
+                <button type="button" class="modal-close" onclick="denyAge()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>このコンテンツは18歳未満の閲覧に適さない可能性があります。</p>
+                <p><strong>あなたは18歳以上ですか？</strong></p>
+                <p style="font-size: 0.9em; color: #999; margin-top: 20px;">
+                    <?php
+                    if ($ageVerificationMinutes < 60) {
+                        $displayTime = $ageVerificationMinutes . '分間';
+                    } elseif ($ageVerificationMinutes < 1440) {
+                        $displayTime = round($ageVerificationMinutes / 60, 1) . '時間';
+                    } else {
+                        $displayTime = round($ageVerificationMinutes / 1440, 1) . '日間';
+                    }
+                    ?>
+                    ※一度確認すると、ブラウザに記録され一定期間（<?= $displayTime ?>）は再度確認されません。<br>
+                    記録を削除したい場合はブラウザのCookieを削除してください。
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="denyAge()">いいえ</button>
+                <button type="button" class="btn btn-primary" onclick="confirmAge()">はい、18歳以上です</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ヘッダー -->
     <header>
         <?php if (!empty($theme['logo_image'])): ?>
@@ -212,22 +264,12 @@ $pageUrl = $protocol . $host . $_SERVER['REQUEST_URI'];
                 </div>
                 
                 <?php
-                // NSFW handling: if the illust is marked nsfw, show a warning box and hide the image/timelapse
+                // NSFW handling: if the illust is marked nsfw, show age verification
                 $isNsfw = !empty($illust['nsfw']);
-                $isVisible = isset($illust['is_visible']) ? (int)$illust['is_visible'] : 1;
                 ?>
 
                 <?php if ($isNsfw): ?>
-                <div id="nsfwWarning" class="nsfw-warning" style="margin:16px 0;padding:12px;border-radius:8px;background:#fff3f3;border:1px solid #ffcccc;color:#800;">
-                    <strong>警告: NSFW コンテンツ</strong>
-                    <div style="margin-top:8px;color:#333;">この作品は成人向け（NSFW）にマークされています。表示する場合は下の「表示する」ボタンを押してください。</div>
-                    <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
-                        <button id="btnShowNsfw" class="action-btn primary">表示する</button>
-                        <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.9em;color:#444;">
-                            <input type="checkbox" id="rememberShowNsfw"> 今後この設定を記憶する
-                        </label>
-                    </div>
-                </div>
+                <div class="detail-nsfw-badge" style="display: inline-block; padding: 6px 12px; background: #ff6b6b; color: white; border-radius: 4px; font-size: 0.9em; margin-bottom: 10px;">NSFW / 18+</div>
                 <?php endif; ?>
 
                 <?php if (!empty($illust['detail'])): ?>
@@ -323,55 +365,64 @@ $pageUrl = $protocol . $host . $_SERVER['REQUEST_URI'];
     
     <!-- JavaScript -->
     <?php echo \App\Utils\AssetHelper::scriptTag('/paint/js/detail.js'); ?>
-    <?php if (!empty($illust['timelapse_path']) || $isNsfw): ?>
     <script>
+        // 年齢確認関数
+        function checkAgeVerification() {
+            const verified = localStorage.getItem('age_verified');
+            const storedVersion = localStorage.getItem('age_verified_version');
+            const currentVersion = String(NSFW_CONFIG_VERSION);
+
+            if (!storedVersion || storedVersion !== currentVersion) {
+                localStorage.removeItem('age_verified');
+                localStorage.removeItem('age_verified_version');
+                return false;
+            }
+
+            if (!verified) return false;
+
+            const verifiedTime = parseInt(verified);
+            const now = Date.now();
+            const expiryMs = AGE_VERIFICATION_MINUTES * 60 * 1000;
+            return (now - verifiedTime) < expiryMs;
+        }
+
+        function setAgeVerification() {
+            localStorage.setItem('age_verified', Date.now().toString());
+            localStorage.setItem('age_verified_version', String(NSFW_CONFIG_VERSION));
+        }
+
+        function showAgeVerificationModal() {
+            const modal = document.getElementById('ageVerificationModal');
+            if (modal) modal.classList.add('show');
+        }
+
+        function hideAgeVerificationModal() {
+            const modal = document.getElementById('ageVerificationModal');
+            if (modal) modal.classList.remove('show');
+        }
+
+        function confirmAge() {
+            setAgeVerification();
+            hideAgeVerificationModal();
+            // ページをリロードして画像を表示
+            window.location.reload();
+        }
+
+        function denyAge() {
+            hideAgeVerificationModal();
+            // ギャラリーに戻る
+            window.location.href = '/paint/';
+        }
+
+        // ページ読み込み時の処理
         document.addEventListener('DOMContentLoaded', () => {
-            // NSFW handling: hide image and timelapse controls unless user permits
-            const isNsfw = <?= $isNsfw ? 'true' : 'false' ?>;
-            const btnShow = document.getElementById('btnShowNsfw');
-            const img = document.getElementById('detailImage');
-            const imageContainer = document.getElementById('detailImageContainer');
-            const timelapseBtn = document.getElementById('btnOpenTimelapse');
+            const isNsfw = document.body.dataset.isNsfw === '1';
 
-            function revealNsfw(savePref) {
-                if (imageContainer) imageContainer.style.display = '';
-                if (timelapseBtn) timelapseBtn.style.display = '';
-                const warning = document.getElementById('nsfwWarning');
-                if (warning) warning.style.display = 'none';
-                if (savePref) {
-                    try { localStorage.setItem('show_nsfw', '1'); } catch (e) {}
-                }
-            }
-
-            // If not NSFW, nothing to do
-            if (!isNsfw) return;
-
-            // If user has saved preference to show NSFW, reveal immediately
-            try {
-                if (localStorage.getItem('show_nsfw') === '1') {
-                    revealNsfw(false);
-                    return;
-                }
-            } catch (e) { /* ignore */ }
-
-            // Otherwise hide image and timelapse button until user confirms
-            if (imageContainer) imageContainer.style.display = 'none';
-            if (timelapseBtn) timelapseBtn.style.display = 'none';
-
-            if (btnShow) {
-                btnShow.addEventListener('click', () => {
-                    const remember = document.getElementById('rememberShowNsfw');
-                    revealNsfw(remember && remember.checked);
-                });
-            }
-
-            // Replace openTimelapseOverlay usage so it lazily loads timelapse only on button click
-            if (timelapseBtn) {
-                // ensure the button will call the global function with the id (button already has inline onclick as fallback)
-                // nothing else required here
+            if (isNsfw && !checkAgeVerification()) {
+                // NSFW画像で年齢確認が済んでいない場合、モーダルを表示
+                showAgeVerificationModal();
             }
         });
     </script>
-    <?php endif; ?>
 </body>
 </html>

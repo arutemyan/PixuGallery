@@ -6,9 +6,11 @@
 let currentOffset = 0;
 let currentTag = null;
 let currentSearch = '';
+let currentNSFWFilter = 'all'; // all, safe, nsfw
 let isLoading = false;
 let hasMore = true;
 const LIMIT = 20;
+let pendingNsfwIllustId = null; // 年齢確認待ちのイラストID
 
 // ページ読み込み時
 document.addEventListener('DOMContentLoaded', () => {
@@ -102,6 +104,26 @@ function showAllPaints() {
 }
 
 /**
+ * NSFWフィルター設定
+ */
+function setNSFWFilter(filter) {
+    // NSFWフィルターを選択した場合、年齢確認をチェック
+    if (filter === 'nsfw' && !checkAgeVerification()) {
+        // 年齢確認モーダルを表示
+        pendingNsfwIllustId = 'filter'; // フィルター変更のマーク
+        showAgeVerificationModal();
+        return;
+    }
+
+    currentNSFWFilter = filter;
+    // ボタンのアクティブ状態を更新
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.nsfwFilter === filter);
+    });
+    resetAndLoad();
+}
+
+/**
  * リセットして再読み込み
  */
 function resetAndLoad() {
@@ -125,9 +147,10 @@ async function loadPaints() {
             limit: LIMIT,
             offset: currentOffset
         });
-        
+
         if (currentTag) params.append('tag', currentTag);
         if (currentSearch) params.append('search', currentSearch);
+        if (currentNSFWFilter) params.append('nsfw_filter', currentNSFWFilter);
         
         const response = await fetch(`/paint/api/paint.php?${params}`);
         const data = await response.json();
@@ -175,17 +198,32 @@ function renderPaints(paint) {
  */
 function createIllustCard(illust) {
     const card = document.createElement('div');
-    card.className = 'card illust-card';
-    card.onclick = () => window.location.href = `/paint/detail.php?id=${illust.id}`;
-    
+    const isNsfw = illust.nsfw == 1;
+    card.className = 'card illust-card' + (isNsfw ? ' nsfw-card' : '');
+
+    // NSFWの場合、年齢確認が必要
+    if (isNsfw) {
+        card.onclick = () => {
+            if (!checkAgeVerification()) {
+                pendingNsfwIllustId = illust.id;
+                showAgeVerificationModal();
+            } else {
+                window.location.href = `/paint/detail.php?id=${illust.id}`;
+            }
+        };
+    } else {
+        card.onclick = () => window.location.href = `/paint/detail.php?id=${illust.id}`;
+    }
+
     const thumbPath = illust.thumb_path || illust.image_path;
     const tags = illust.tags ? illust.tags.split(',') : [];
     const date = new Date(illust.created_at);
     const dateStr = date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    
+
     card.innerHTML = `
-        <div class="illust-image-wrapper">
+        <div class="illust-image-wrapper${isNsfw ? ' nsfw-wrapper' : ''}">
             <img src="${escapeHtml(thumbPath)}" alt="${escapeHtml(illust.title)}" class="illust-image" loading="lazy">
+            ${isNsfw ? '<div class="nsfw-overlay"><div class="nsfw-text">センシティブな内容</div></div>' : ''}
         </div>
         <div class="illust-info">
             <h3 class="illust-title">${escapeHtml(illust.title)}</h3>
@@ -215,7 +253,7 @@ function createIllustCard(illust) {
             ` : ''}
         </div>
     `;
-    
+
     return card;
 }
 
@@ -264,4 +302,93 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * 年齢確認済みかチェック
+ */
+function checkAgeVerification() {
+    const verified = localStorage.getItem('age_verified');
+    const storedVersion = localStorage.getItem('age_verified_version');
+    const currentVersion = String(NSFW_CONFIG_VERSION);
+
+    if (!storedVersion || storedVersion !== currentVersion) {
+        localStorage.removeItem('age_verified');
+        localStorage.removeItem('age_verified_version');
+        return false;
+    }
+
+    if (!verified) return false;
+
+    const verifiedTime = parseInt(verified);
+    const now = Date.now();
+    const expiryMs = AGE_VERIFICATION_MINUTES * 60 * 1000;
+    return (now - verifiedTime) < expiryMs;
+}
+
+/**
+ * 年齢確認を記録
+ */
+function setAgeVerification() {
+    localStorage.setItem('age_verified', Date.now().toString());
+    localStorage.setItem('age_verified_version', String(NSFW_CONFIG_VERSION));
+}
+
+/**
+ * 年齢確認モーダルを表示
+ */
+function showAgeVerificationModal() {
+    const modal = document.getElementById('ageVerificationModal');
+    if (modal) modal.classList.add('show');
+}
+
+/**
+ * 年齢確認モーダルを非表示
+ */
+function hideAgeVerificationModal() {
+    const modal = document.getElementById('ageVerificationModal');
+    if (modal) modal.classList.remove('show');
+}
+
+/**
+ * 年齢確認「はい」ボタン処理
+ */
+function confirmAge() {
+    setAgeVerification();
+    hideAgeVerificationModal();
+
+    if (pendingNsfwIllustId === 'filter') {
+        // NSFWフィルター変更を続行
+        pendingNsfwIllustId = null;
+        currentNSFWFilter = 'nsfw';
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.nsfwFilter === 'nsfw');
+        });
+        resetAndLoad();
+    } else if (pendingNsfwIllustId) {
+        // 詳細ページへ遷移
+        window.location.href = `/paint/detail.php?id=${pendingNsfwIllustId}`;
+    }
+}
+
+/**
+ * 年齢確認「いいえ」ボタン処理
+ */
+function denyAge() {
+    hideAgeVerificationModal();
+    pendingNsfwIllustId = null;
+}
+
+// Expose functions to global scope for pages that use inline onclick handlers.
+// When scripts are loaded with type="module", function declarations are module-scoped
+// so inline handlers (e.g. onclick="setNSFWFilter('nsfw')") would fail. Attach
+// the handlers we expect the templates to call to window for backwards compatibility.
+/* istanbul ignore next */
+if (typeof window !== 'undefined') {
+    window.setNSFWFilter = setNSFWFilter;
+    window.showAllPaints = showAllPaints;
+    window.denyAge = denyAge;
+    window.confirmAge = confirmAge;
+    window.showAgeVerificationModal = showAgeVerificationModal;
+    window.hideAgeVerificationModal = hideAgeVerificationModal;
 }

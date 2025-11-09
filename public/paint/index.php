@@ -20,11 +20,18 @@ try {
     $settingModel = new Setting();
     $siteTitle = $theme['site_title'] ?? 'ペイントギャラリー';
     $siteSubtitle = $theme['site_subtitle'] ?? 'キャンバスで描いたオリジナルイラスト作品集';
+
+    // NSFW設定を取得
+    $nsfwConfig = $config['nsfw'];
+    $ageVerificationMinutes = $nsfwConfig['age_verification_minutes'];
+    $nsfwConfigVersion = $nsfwConfig['config_version'];
 } catch (Exception $e) {
     Logger::getInstance()->error('Paint Gallery Error: ' . $e->getMessage());
     $theme = [];
     $siteTitle = 'ペイントギャラリー';
     $siteSubtitle = 'キャンバスで描いたオリジナルイラスト作品集';
+    $ageVerificationMinutes = 10080;
+    $nsfwConfigVersion = 1;
 }
 ?>
 <!DOCTYPE html>
@@ -49,7 +56,44 @@ try {
         <?php require_once(__DIR__ . '/../block/style.php') ?>
     </style>
 </head>
-<body>
+<body data-age-verification-minutes="<?= $ageVerificationMinutes ?>" data-nsfw-config-version="<?= $nsfwConfigVersion ?>">
+    <script>
+        // 設定値をdata属性から読み込み（const定義で改ざん防止）
+        const AGE_VERIFICATION_MINUTES = parseFloat(document.body.dataset.ageVerificationMinutes) || 10080;
+        const NSFW_CONFIG_VERSION = parseInt(document.body.dataset.nsfwConfigVersion) || 1;
+    </script>
+
+    <!-- 年齢確認モーダル -->
+    <div id="ageVerificationModal" class="modal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h2 class="modal-title">年齢確認</h2>
+                <button type="button" class="modal-close" onclick="denyAge()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>このコンテンツは18歳未満の閲覧に適さない可能性があります。</p>
+                <p><strong>あなたは18歳以上ですか？</strong></p>
+                <p style="font-size: 0.9em; color: #999; margin-top: 20px;">
+                    <?php
+                    if ($ageVerificationMinutes < 60) {
+                        $displayTime = $ageVerificationMinutes . '分間';
+                    } elseif ($ageVerificationMinutes < 1440) {
+                        $displayTime = round($ageVerificationMinutes / 60, 1) . '時間';
+                    } else {
+                        $displayTime = round($ageVerificationMinutes / 1440, 1) . '日間';
+                    }
+                    ?>
+                    ※一度確認すると、ブラウザに記録され一定期間（<?= $displayTime ?>）は再度確認されません。<br>
+                    記録を削除したい場合はブラウザのCookieを削除してください。
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="denyAge()">いいえ</button>
+                <button type="button" class="btn btn-primary" onclick="confirmAge()">はい、18歳以上です</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ヘッダー -->
     <header>
         <?php if (!empty($theme['logo_image'])): ?>
@@ -72,17 +116,23 @@ try {
         <!-- フィルターセクション -->
         <div class="filter-section">
             <div class="filter-row">
+                <span class="filter-label">表示:</span>
+                <button class="filter-btn active" data-nsfw-filter="all" onclick="setNSFWFilter('all')">すべて</button>
+                <button class="filter-btn" data-nsfw-filter="safe" onclick="setNSFWFilter('safe')">一般</button>
+                <button class="filter-btn" data-nsfw-filter="nsfw" onclick="setNSFWFilter('nsfw')">NSFW</button>
+            </div>
+            <div class="filter-row" style="margin-top: 15px;">
                 <span class="filter-label">タグ:</span>
-                <button class="tag-btn active" data-tag="" onclick="showAllIllusts()">すべて</button>
+                <button class="tag-btn active" data-tag="" onclick="showAllPaints()">すべて</button>
                 <div id="tagList"></div>
             </div>
             <div class="filter-row" style="margin-top: 15px;">
                 <span class="filter-label">検索:</span>
                 <div class="search-box">
-                    <input 
-                        type="text" 
-                        id="searchInput" 
-                        class="search-input" 
+                    <input
+                        type="text"
+                        id="searchInput"
+                        class="search-input"
                         placeholder="タイトルや説明で検索..."
                     >
                 </div>
