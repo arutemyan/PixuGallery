@@ -41,9 +41,10 @@ return [
             ")"
         );
 
-    // インデックス作成
-    $db->exec("CREATE INDEX IF NOT EXISTS idx_paint_user_id ON paint(user_id)");
-    $db->exec("CREATE INDEX IF NOT EXISTS idx_paint_status ON paint(status)");
-    $db->exec("CREATE INDEX IF NOT EXISTS idx_paint_created_at ON paint(created_at)");
+    // インデックス作成 (use MigrationHelper for cross-DB compatibility)
+    $mhelper = new \App\Database\MigrationHelper();
+    $mhelper->addIndexIfNotExists($db, 'paint', 'idx_paint_user_id', 'user_id');
+    $mhelper->addIndexIfNotExists($db, 'paint', 'idx_paint_status', 'status');
+    $mhelper->addIndexIfNotExists($db, 'paint', 'idx_paint_created_at', 'created_at');
     }
 ];

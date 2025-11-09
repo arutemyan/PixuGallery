@@ -183,6 +183,13 @@ class MigrationHelper
 
         try {
             $uniqueKeyword = $unique ? 'UNIQUE' : '';
+            // Sanitize columns for MySQL which historically doesn't support ASC/DESC in index definitions
+            $driver = \App\Database\DatabaseHelper::getDriver($db);
+            if ($driver === 'mysql') {
+                // remove ASC/DESC tokens and extra whitespace
+                $columns = preg_replace('/\b(ASC|DESC)\b/i', '', $columns);
+                $columns = preg_replace('/\s+,\s+/', ', ', trim($columns));
+            }
             $db->exec("CREATE {$uniqueKeyword} INDEX {$index} ON {$table}({$columns})");
             Logger::getInstance()->info("MigrationHelper: Created index {$index} on {$table}");
             return true;

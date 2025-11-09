@@ -31,8 +31,9 @@ return [
         }
 
         // tag1～tag10にインデックスを追加（整数なので高速）
+        $mhelper = new \App\Database\MigrationHelper();
         for ($i = 1; $i <= 10; $i++) {
-            $db->exec("CREATE INDEX IF NOT EXISTS idx_posts_tag{$i} ON posts(tag{$i})");
+            $mhelper->addIndexIfNotExists($db, 'posts', "idx_posts_tag{$i}", "tag{$i}");
         }
 
         // 既存のtagsカラムからtag1～tag10にデータを移行

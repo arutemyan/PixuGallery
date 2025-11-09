@@ -48,8 +48,9 @@ return [
             )
         ");
 
-        // group_postsのインデックス
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_group_posts_visible ON group_posts(is_visible, created_at DESC)");
+    // group_postsのインデックス
+    $mhelper = new \App\Database\MigrationHelper();
+    $mhelper->addIndexIfNotExists($db, 'group_posts', 'idx_group_posts_visible', 'is_visible, created_at DESC');
 
         // group_post_imagesテーブルを作成
         $db->exec("
@@ -80,9 +81,9 @@ return [
             }
         }
 
-        // group_post_imagesのインデックス
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_group_post_images_group_id ON group_post_images(group_post_id)");
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_group_post_images_order ON group_post_images(group_post_id, display_order)");
+    // group_post_imagesのインデックス
+    $mhelper->addIndexIfNotExists($db, 'group_post_images', 'idx_group_post_images_group_id', 'group_post_id');
+    $mhelper->addIndexIfNotExists($db, 'group_post_images', 'idx_group_post_images_order', 'group_post_id, display_order');
 
         // post_tagsテーブルを作成（投稿とタグの中間テーブル）
         $db->exec("
@@ -122,9 +123,9 @@ return [
             }
         }
 
-        // post_tagsのインデックス
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_post_tags_post_id ON post_tags(post_id)");
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_post_tags_tag_id ON post_tags(tag_id)");
+    // post_tagsのインデックス
+    $mhelper->addIndexIfNotExists($db, 'post_tags', 'idx_post_tags_post_id', 'post_id');
+    $mhelper->addIndexIfNotExists($db, 'post_tags', 'idx_post_tags_tag_id', 'tag_id');
 
         // postsテーブルにgroup_idとdisplay_orderカラムを追加
         try {
@@ -145,8 +146,8 @@ return [
             }
         }
 
-        // group_idのインデックス
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_posts_group_id ON posts(group_id)");
+    // group_idのインデックス
+    $mhelper->addIndexIfNotExists($db, 'posts', 'idx_posts_group_id', 'group_id');
 
         Logger::getInstance()->info("Migration 003: Added group posts tables and columns");
     }
