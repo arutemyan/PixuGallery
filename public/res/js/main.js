@@ -911,29 +911,16 @@ document.addEventListener('DOMContentLoaded', function() {
 // Expose functions to global scope for inline HTML handlers when this file
 // is loaded as a module (type="module"). Inline onclick attributes expect
 // these functions on window.
-(function exposeGlobals() {
-    if (typeof window === 'undefined') return;
-    const exports = [
-        'openImageOverlay',
-        'closeImageOverlay',
-        'navigateOverlay',
-        'confirmAge',
-        'denyAge',
-        'acceptNsfwWarning',
-        'cancelNsfwWarning',
-        'setNSFWFilter',
-        'toggleTagsVisibility',
-        'toggleTitlesVisibility'
-    ];
-    exports.forEach(name => {
-        try {
-            if (typeof window[name] === 'undefined') {
-                // attempt to resolve the function from this scope
-                const fn = (typeof this[name] === 'function') ? this[name] : (typeof eval(name) === 'function' ? eval(name) : null);
-                if (fn) window[name] = fn;
-            }
-        } catch (e) {
-            // ignore resolution errors
-        }
-    });
-})();
+window.openImageOverlay = openImageOverlay;
+window.closeImageOverlay = closeImageOverlay;
+window.navigateOverlay = navigateOverlay;
+window.confirmAge = confirmAge;
+window.denyAge = denyAge;
+window.acceptNsfwWarning = acceptNsfwWarning;
+window.cancelNsfwWarning = cancelNsfwWarning;
+window.setNSFWFilter = setNSFWFilter;
+window.toggleTagsVisibility = toggleTagsVisibility;
+window.toggleTitlesVisibility = toggleTitlesVisibility;
+window.clearTagFilter = clearTagFilter;
+window.setActiveTagButton = setActiveTagButton;
+window.filterByTag = filterByTag;

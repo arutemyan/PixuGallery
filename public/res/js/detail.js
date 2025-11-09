@@ -74,11 +74,13 @@ function confirmAge() {
     // モーダルを閉じる
     hideAgeVerificationModal();
 
-    // モザイク画像を通常画像に置き換え
-    const img = document.getElementById('detailImage');
-    if (img && img.dataset.original) {
-        img.src = img.dataset.original;
-    }
+    // すべてのNSFW画像を通常画像に置き換え
+    const nsfwImages = document.querySelectorAll('.nsfw-image');
+    nsfwImages.forEach(function(img) {
+        if (img.dataset.original) {
+            img.src = img.dataset.original;
+        }
+    });
 }
 
 /**
@@ -89,20 +91,28 @@ function denyAge() {
     window.location.href = '/';
 }
 
+// HTML属性（onclick等）からアクセスできるようにグローバルスコープに公開
+window.confirmAge = confirmAge;
+window.denyAge = denyAge;
+window.initDetailPage = initDetailPage;
+
 /**
  * ページロード時の処理
  */
-function initDetailPage(isSensitive, $viewType) {
+function initDetailPage(isSensitive, _viewType) {
     // センシティブでない場合は何もしない
     if (!isSensitive) {
         return;
     }
     // 年齢確認済みなら画像を表示
     if (checkAgeVerification()) {
-        const img = document.getElementById('detailImage');
-        if (img && img.dataset.original) {
-            img.src = img.dataset.original;
-        }
+        // すべてのNSFW画像を通常画像に置き換え
+        const nsfwImages = document.querySelectorAll('.nsfw-image');
+        nsfwImages.forEach(function(img) {
+            if (img.dataset.original) {
+                img.src = img.dataset.original;
+            }
+        });
         return;
     }
 

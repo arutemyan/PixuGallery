@@ -257,16 +257,15 @@ $imageUrl = !empty($shareImagePath) ? $protocol . ($_SERVER['HTTP_HOST'] ?? 'loc
                         <?php foreach ($data['images'] as $index => $image):
                             $isSensitive = isset($data['is_sensitive']) && $data['is_sensitive'] == 1;
                             $imagePath = '/' . escapeHtml($image['image_path']);
-                            // センシティブ画像の場合、最初はNSFWフィルター版を表示
-                            if ($index === 0 && $isSensitive) {
-                                $displayPath = createNsfwThumb($image);
+                            // センシティブ画像の場合、すべての画像でNSFWフィルター版を表示
+                            if ($isSensitive) {
+                                $displayPath = '/' . createNsfwThumb($image);
                             } else {
                                 $displayPath = $imagePath;
                             }
                         ?>
                             <img
-                                id="detailImage"
-                                class="gallery-image<?= $index === 0 ? ' active' : '' ?>"
+                                class="gallery-image nsfw-image<?= $index === 0 ? ' active' : '' ?>"
                                 src="<?= $displayPath ?>"
                                 <?= $isSensitive ? 'data-original="' . $imagePath . '"' : '' ?>
                                 alt="<?= escapeHtml($data['title']) ?> - <?= $index + 1 ?>"
@@ -293,17 +292,16 @@ $imageUrl = !empty($shareImagePath) ? $protocol . ($_SERVER['HTTP_HOST'] ?? 'loc
                 $imagePath = '/' . escapeHtml($data['image_path'] ?? $data['thumb_path'] ?? '');
                 // センシティブ画像の場合、最初はNSFWフィルター版を表示
                 if ($isSensitive) {
-                    $displayPath = createNsfwThumb($data);
+                    $displayPath = '/' . createNsfwThumb($data);
                 } else {
                     $displayPath = $imagePath;
                 }
                 ?>
                 <img
-                    id="detailImage"
                     src="<?= $displayPath ?>"
                     <?= $isSensitive ? 'data-original="' . $imagePath . '"' : '' ?>
                     alt="<?= escapeHtml($data['title']) ?>"
-                    class="detail-image"
+                    class="detail-image<?= $isSensitive ? ' nsfw-image' : '' ?>"
                 >
             <?php endif; ?>
 
