@@ -100,13 +100,22 @@ class Tag
      */
     public function searchByName(string $name, bool $includePostCount = true): array
     {
+        // 入力検証: 空文字列または長すぎる検索クエリを拒否
+        $trimmedName = trim($name);
+        if (empty($trimmedName) || mb_strlen($trimmedName) > 100) {
+            return [];
+        }
+        
+        // SQLインジェクション対策: LIKE のワイルドカードをエスケープ
+        $escapedName = str_replace(['%', '_'], ['\\%', '\\_'], $trimmedName);
+        
         $stmt = $this->db->prepare("
             SELECT t.id, t.name, t.created_at
             FROM tags t
             WHERE t.name LIKE ?
             ORDER BY t.name ASC
         ");
-        $stmt->execute(['%' . $name . '%']);
+        $stmt->execute(['%' . $escapedName . '%']);
         $tags = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if ($includePostCount) {
