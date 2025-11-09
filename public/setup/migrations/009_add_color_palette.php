@@ -16,14 +16,14 @@ return [
 
         // color_palettesテーブル作成
         $db->exec("
-            CREATE TABLE IF NOT EXISTS color_palettes (
+                CREATE TABLE IF NOT EXISTS color_palettes (
                 id {$auto},
                 user_id {$intType} DEFAULT NULL,
                 slot_index {$intType} NOT NULL,
                 color {$textType} NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" .
-                ($driver === 'sqlite' ? '' : ' ON UPDATE CURRENT_TIMESTAMP') . ",
+                ($driver === 'mysql' ? ' ON UPDATE CURRENT_TIMESTAMP' : '') . ",
                 UNIQUE(user_id, slot_index)
             )
         ");
