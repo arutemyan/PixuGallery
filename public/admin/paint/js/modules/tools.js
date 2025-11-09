@@ -492,11 +492,17 @@ function floodFill(layerIndex, pos, pushUndo, recordTimelapse) {
         a: pixels[startIndex + 3]
     };
 
-    // Parse fill color
+    // Parse fill color (normalize and validate)
     const fillColor = ColorUtils.hexToRgb(state.currentColor);
+    if (!fillColor) {
+        // Invalid current color, nothing to do
+        return;
+    }
 
-    // Check if already same color
-    if (colorMatch(targetColor, fillColor, 0)) {
+    // Only skip filling when the target pixel is fully opaque and rgb matches exactly.
+    // If the target pixel is transparent (alpha !== 255) we should still fill.
+    const fillAlpha = 255;
+    if (targetColor.a === fillAlpha && colorMatch(targetColor, fillColor, 0)) {
         return;
     }
 
@@ -554,6 +560,7 @@ function floodFill(layerIndex, pos, pushUndo, recordTimelapse) {
  * Check if two colors match within tolerance
  */
 function colorMatch(c1, c2, tolerance) {
+    if (!c2) return false;
     return Math.abs(c1.r - c2.r) <= tolerance &&
         Math.abs(c1.g - c2.g) <= tolerance &&
         Math.abs(c1.b - c2.b) <= tolerance;
