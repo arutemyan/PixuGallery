@@ -202,7 +202,7 @@ function applyFilters(reset = true) {
         hasMorePosts = true;
     }
 
-    let url = '/api/posts?';
+    let url = '/api/posts.php?';
 
     // NSFWフィルタをクエリに追加
     url += `nsfw_filter=${encodeURIComponent(currentNSFWFilter)}`;
@@ -829,7 +829,7 @@ function handleScroll() {
  */
 function incrementViewCount(postId, viewType) {
     viewType = viewType || 0; // デフォルトは0（single）
-    fetch('/api/increment_view', {
+    fetch('/api/increment_view.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
