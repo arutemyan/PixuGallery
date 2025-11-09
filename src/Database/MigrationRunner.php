@@ -64,6 +64,11 @@ class MigrationRunner
             }
 
             try {
+                // Log start of migration for visibility
+                Logger::getInstance()->info("Starting migration {$version}: {$file}");
+                echo "Starting migration {$version}: " . basename($file) . "\n";
+
+                $migrationStart = microtime(true);
                 // マイグレーション実行（トランジェントなロックに備えてリトライ）
                 $maxRetries = 20; // より多くのリトライを許容
                 $attempt = 0;
@@ -111,17 +116,19 @@ class MigrationRunner
                     // 最後までロックが解除されなかった場合は例外を投げる
                     throw $lastException;
                 }
-
                 // 実行済みとして記録
                 $this->recordMigration($version, $name);
+                $migrationDuration = microtime(true) - $migrationStart;
 
                 $results[] = [
                     'version' => $version,
                     'name' => $name,
-                    'status' => 'success'
+                    'status' => 'success',
+                    'duration_ms' => (int)($migrationDuration * 1000)
                 ];
 
-                Logger::getInstance()->info("Migration {$version} ({$name}) executed successfully");
+                Logger::getInstance()->info("Migration {$version} ({$name}) executed successfully in " . round($migrationDuration, 3) . "s");
+                echo "Finished migration {$version}: " . basename($file) . " (" . round($migrationDuration, 3) . "s)\n";
             } catch (Exception $e) {
                 $results[] = [
                     'version' => $version,
