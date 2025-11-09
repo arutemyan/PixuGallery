@@ -102,23 +102,30 @@ jobs:
         if: ${{ matrix.db != 'sqlite' }}
         run: |
           # Use TEST_DB_HOST/PORT to wait for readiness (connect via localhost:mapped port)
-          host=${{ env.TEST_DB_HOST }}
-          port=${{ env.TEST_DB_PORT }}
-          user=${{ env.TEST_DB_USER }}
-          pass=${{ env.TEST_DB_PASS }}
+          host="$TEST_DB_HOST"
+          port="$TEST_DB_PORT"
+          user="$TEST_DB_USER"
+          pass="$TEST_DB_PASS"
           if [ "${{ matrix.db }}" = "mysql" ]; then
-            for i in {1..60}; do mysql -h ${host} -P ${port} -u ${user} -p${pass} -e "SELECT 1" >/dev/null 2>&1 && break || sleep 1; done
+            for i in {1..60}; do mysql -h "$host" -P "$port" -u "$user" -p"$pass" -e "SELECT 1" >/dev/null 2>&1 && break || sleep 1; done
           else
-            for i in {1..60}; do pg_isready -h ${host} -p ${port} -U ${user} >/dev/null 2>&1 && break || sleep 1; done
+            # Use PGPASSWORD for non-interactive password passing
+            export PGPASSWORD="$pass"
+            for i in {1..60}; do pg_isready -h "$host" -p "$port" -U "$user" >/dev/null 2>&1 && break || sleep 1; done
           fi
 
       - name: Create DB (MySQL/Postgres)
         if: ${{ matrix.db != 'sqlite' }}
         run: |
+          host="$TEST_DB_HOST"
+          port="$TEST_DB_PORT"
+          user="$TEST_DB_USER"
+          pass="$TEST_DB_PASS"
           if [ "${{ matrix.db }}" = "mysql" ]; then
-            mysql -h mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS testdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+            mysql -h "$host" -P "$port" -u "$user" -p"$pass" -e "CREATE DATABASE IF NOT EXISTS testdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
           else
-            psql -h postgres -U postgres -c "CREATE DATABASE testdb;"
+            export PGPASSWORD="$pass"
+            psql -h "$host" -p "$port" -U "$user" -c "CREATE DATABASE IF NOT EXISTS testdb;" || psql -h "$host" -p "$port" -U "$user" -c "CREATE DATABASE testdb;"
           fi
 
       - name: Run migrations
