@@ -26,4 +26,11 @@
         <ini name="memory_limit" value="1024M" />
         <ini name="max_execution_time" value="300" />
     </php>
+
+    <!-- Code coverage filter: include application source files for coverage runs -->
+    <coverage processUncoveredFiles="false">
+        <include>
+            <directory>src</directory>
+        </include>
+    </coverage>
 </phpunit>

@@ -262,6 +262,25 @@ jobs:
           echo "- ✅ Code Quality: ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Security: ${{ needs.security.result }}" >> $GITHUB_STEP_SUMMARY
 
+      - name: Download all artifacts for debugging
+        if: always()
+        uses: actions/download-artifact@v3
+        with:
+          # download all artifacts produced by the workflow run
+          path: artifacts
+
+      - name: Show junit / xml reports (debug)
+        if: always()
+        run: |
+          echo "=== Artifact files under $(pwd)/artifacts ==="
+          find artifacts -type f -maxdepth 5 -print || true
+          echo "=== Searching for junit/clover/xml files and printing first 200 lines each ==="
+          while IFS= read -r -d '' file; do
+            echo "----- $file -----"
+            sed -n '1,200p' "$file" || true
+          done < <(find artifacts -type f \( -iname 'junit.xml' -o -iname 'clover.xml' -o -iname '*.xml' \) -print0)
+        shell: bash
+
       - name: Final status check
         if: needs.tests.result != 'success'
         run: |
