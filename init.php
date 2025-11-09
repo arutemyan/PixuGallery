@@ -31,11 +31,10 @@ echo "  データベース初期化ツール (CLI版)\n";
 echo "========================================\n\n";
 
 try {
+    require_once __DIR__."/public/setup/run_migrations.php";
+
     // データベース接続を取得（自動的にスキーマが初期化される）
     $db = Connection::getInstance();
-
-    echo "✓ データベースファイル作成完了\n";
-    echo "✓ テーブル作成完了: posts, users, themes\n\n";
 
     // 既に管理者が存在するかチェック
     $stmt = $db->prepare("SELECT COUNT(*) as count FROM users");
