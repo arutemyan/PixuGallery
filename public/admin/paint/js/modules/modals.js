@@ -246,6 +246,7 @@ function initSaveModal(saveIllust) {
             const title = elements.saveTitle.value.trim();
             const description = elements.saveDescription.value.trim();
             const tags = elements.saveTags.value.trim();
+            const artistName = elements.saveArtistName.value.trim();
 
             if (!title) {
                 alert('タイトルを入力してください');
@@ -271,7 +272,7 @@ function initSaveModal(saveIllust) {
             closeSaveModal();
             if (saveIllust) {
                 // pass options as last param
-                saveIllust(title, description, tags, undefined, undefined, undefined, { nsfw, is_visible: isVisible, forceNew });
+                saveIllust(title, description, tags, undefined, undefined, undefined, { nsfw, is_visible: isVisible, forceNew, artist_name: artistName });
             }
         });
     }

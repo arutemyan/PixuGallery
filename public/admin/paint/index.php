@@ -498,6 +498,10 @@ try {
                 <input type="text" id="save-tags" placeholder="タグをカンマ区切りで入力 (例: 風景, 人物, イラスト)" maxlength="200">
             </div>
             <div class="form-group">
+                <label for="save-artist-name">作成者名 (オプション・英数字のみ)</label>
+                <input type="text" id="save-artist-name" placeholder="Artist Name (English only)" maxlength="50" pattern="[A-Za-z0-9\s\-_\.]*" title="英数字、スペース、ハイフン、アンダースコア、ドットのみ使用可能">
+            </div>
+            <div class="form-group">
                 <label><input type="checkbox" id="save-nsfw"> NSFW（成人向け）</label>
             </div>
             <div class="form-group">

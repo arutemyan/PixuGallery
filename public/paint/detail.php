@@ -11,6 +11,20 @@ use App\Models\Theme;
 use App\Models\Setting;
 use App\Utils\Logger;
 
+/**
+ * ファイルサイズをわかりやすい形式にフォーマット
+ */
+function formatFileSize($bytes) {
+    if ($bytes == 0) return '0 B';
+    $units = ['B', 'KB', 'MB', 'GB'];
+    $i = 0;
+    while ($bytes >= 1024 && $i < count($units) - 1) {
+        $bytes /= 1024;
+        $i++;
+    }
+    return round($bytes, 1) . ' ' . $units[$i];
+}
+
 // テーマ設定を読み込む
 try {
     $themeModel = new Theme();
@@ -47,6 +61,7 @@ try {
                 i.thumbnail_path as thumb_path,
                 i.data_path,
                 i.timelapse_path,
+                i.timelapse_size,
                 i.nsfw,
                 i.is_visible,
                 i.canvas_width as width,
@@ -290,11 +305,24 @@ $pageUrl = $protocol . $host . $_SERVER['REQUEST_URI'];
                 
                 <div class="detail-actions">
                     <?php if (!empty($illust['timelapse_path'])): ?>
+                    <?php
+                    // Calculate timelapse file size
+                    $timelapseSize = 0;
+                    if (!empty($illust['timelapse_size'])) {
+                        $timelapseSize = $illust['timelapse_size'];
+                    } elseif (!empty($illust['timelapse_path'])) {
+                        // Fallback: get size from file if not in DB
+                        $filePath = $_SERVER['DOCUMENT_ROOT'] . $illust['timelapse_path'];
+                        if (file_exists($filePath)) {
+                            $timelapseSize = filesize($filePath);
+                        }
+                    }
+                    ?>
                     <button class="action-btn" id="btnOpenTimelapse" onclick="openTimelapseOverlay(<?= $id ?>)">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polygon points="5 3 19 12 5 21 5 3"></polygon>
                         </svg>
-                        タイムラプスを再生
+                        タイムラプスを再生<?php if ($timelapseSize > 0): ?><span style="font-size: 0.85em; opacity: 0.8; margin-left: 5px;">(<?= formatFileSize($timelapseSize) ?>)</span><?php endif; ?>
                     </button>
                     <?php endif; ?>
                 </div>

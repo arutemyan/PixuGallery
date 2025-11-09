@@ -33,6 +33,19 @@ class IllustService
     $nsfw = isset($payload['nsfw']) ? (int)$payload['nsfw'] : 0;
     $isVisible = isset($payload['is_visible']) ? (int)$payload['is_visible'] : 1;
 
+    // Sanitize and validate artist name (ASCII only)
+    $artistName = $payload['artist_name'] ?? null;
+    if ($artistName !== null) {
+        $artistName = trim($artistName);
+        // Only allow ASCII alphanumeric, space, hyphen, underscore, dot
+        if (!preg_match('/^[A-Za-z0-9\s\-_\.]*$/', $artistName)) {
+            $artistName = null; // Invalid characters, ignore
+        }
+        if ($artistName === '') {
+            $artistName = null;
+        }
+    }
+
         // Determine if this is an update (id provided) or create
         $isUpdate = !empty($payload['id']);
         $id = $isUpdate ? (int)$payload['id'] : null;
@@ -55,12 +68,13 @@ class IllustService
                 }
             } else {
                 // generate id by inserting DB record placeholder; include nsfw/visibility
-                $stmt = $this->db->prepare('INSERT INTO paint (user_id, title, nsfw, is_visible) VALUES (:user_id, :title, :nsfw, :is_visible)');
+                $stmt = $this->db->prepare('INSERT INTO paint (user_id, title, nsfw, is_visible, artist_name) VALUES (:user_id, :title, :nsfw, :is_visible, :artist_name)');
                 $stmt->execute([
                     ':user_id' => $userId,
                     ':title' => $payload['title'] ?? '',
                     ':nsfw' => $nsfw,
-                    ':is_visible' => $isVisible
+                    ':is_visible' => $isVisible,
+                    ':artist_name' => $artistName
                 ]);
                 $id = (int)$this->db->lastInsertId();
             }
@@ -121,6 +135,12 @@ class IllustService
                     try {
                         $im = new \Imagick();
                         $im->readImageBlob($bin);
+
+                        // Add signature footer if artist_name is provided
+                        if (!empty($artistName)) {
+                            $this->addSignatureFooterImagick($im, $artistName);
+                        }
+
                         $im->setImageFormat('jpeg');
                         $im->setImageCompressionQuality(95);
                         // write main image
@@ -161,6 +181,11 @@ class IllustService
                 if (!$imageCreated && extension_loaded('gd') && function_exists('imagecreatefromstring')) {
                     $gd = @imagecreatefromstring($bin);
                     if ($gd !== false) {
+                        // Add signature footer if artist_name is provided
+                        if (!empty($artistName)) {
+                            $gd = $this->addSignatureFooterGD($gd, $artistName);
+                        }
+
                         $tmpJpeg = $imagePath . '.tmp';
                         // write high-quality JPEG
                         if (function_exists('imagejpeg')) {
@@ -243,7 +268,7 @@ class IllustService
                         $createdFiles[] = $timelapsePath;
 
                         // Update DB and finish saving other files; skip CSV merge below
-                        $update = $this->db->prepare('UPDATE paint SET title = :title, description = :description, tags = :tags, data_path = :data_path, image_path = :image_path, thumbnail_path = :thumbnail_path, timelapse_path = :timelapse_path, file_size = :file_size, nsfw = :nsfw, is_visible = :is_visible WHERE id = :id');
+                        $update = $this->db->prepare('UPDATE paint SET title = :title, description = :description, tags = :tags, data_path = :data_path, image_path = :image_path, thumbnail_path = :thumbnail_path, timelapse_path = :timelapse_path, timelapse_size = :timelapse_size, file_size = :file_size, nsfw = :nsfw, is_visible = :is_visible, artist_name = :artist_name WHERE id = :id');
                         $update->execute([
                             ':title' => $payload['title'] ?? '',
                             ':description' => $payload['description'] ?? '',
@@ -252,9 +277,11 @@ class IllustService
                             ':image_path' => file_exists($imagePath) ? $this->toPublicPath($imagePath) : null,
                             ':thumbnail_path' => (file_exists($thumbPath) ? $this->toPublicPath($thumbPath) : null),
                             ':timelapse_path' => file_exists($timelapsePath) ? $this->toPublicPath($timelapsePath) : null,
+                            ':timelapse_size' => file_exists($timelapsePath) ? filesize($timelapsePath) : 0,
                             ':file_size' => filesize($dataPath) ?: 0,
                             ':nsfw' => $nsfw,
                             ':is_visible' => $isVisible,
+                            ':artist_name' => $artistName,
                             ':id' => $id,
                         ]);
 
@@ -406,7 +433,7 @@ class IllustService
             }
 
             // update DB row with paths and sizes
-            $update = $this->db->prepare('UPDATE paint SET title = :title, description = :description, tags = :tags, data_path = :data_path, image_path = :image_path, thumbnail_path = :thumbnail_path, timelapse_path = :timelapse_path, file_size = :file_size, nsfw = :nsfw, is_visible = :is_visible WHERE id = :id');
+            $update = $this->db->prepare('UPDATE paint SET title = :title, description = :description, tags = :tags, data_path = :data_path, image_path = :image_path, thumbnail_path = :thumbnail_path, timelapse_path = :timelapse_path, timelapse_size = :timelapse_size, file_size = :file_size, nsfw = :nsfw, is_visible = :is_visible, artist_name = :artist_name WHERE id = :id');
             $update->execute([
                 ':title' => $payload['title'] ?? '',
                 ':description' => $payload['description'] ?? '',
@@ -415,9 +442,11 @@ class IllustService
                 ':image_path' => file_exists($imagePath) ? $this->toPublicPath($imagePath) : null,
                 ':thumbnail_path' => (file_exists($thumbPath) ? $this->toPublicPath($thumbPath) : null),
                 ':timelapse_path' => file_exists($timelapsePath) ? $this->toPublicPath($timelapsePath) : null,
+                ':timelapse_size' => file_exists($timelapsePath) ? filesize($timelapsePath) : 0,
                 ':file_size' => filesize($dataPath) ?: 0,
                 ':nsfw' => $nsfw,
                 ':is_visible' => $isVisible,
+                ':artist_name' => $artistName,
                 ':id' => $id,
             ]);
 
@@ -558,5 +587,162 @@ class IllustService
         }
 
         return false;
+    }
+
+    /**
+     * Add signature footer to image using Imagick
+     */
+    private function addSignatureFooterImagick(\Imagick $image, string $artistName): void
+    {
+        $width = $image->getImageWidth();
+        $height = $image->getImageHeight();
+        $footerHeight = 40;
+
+        // Create new canvas with extra space for footer
+        $newHeight = $height + $footerHeight;
+        $newImage = new \Imagick();
+        $newImage->newImage($width, $newHeight, new \ImagickPixel('black'));
+        $newImage->setImageFormat($image->getImageFormat());
+
+        // Composite original image on top
+        $newImage->compositeImage($image, \Imagick::COMPOSITE_OVER, 0, 0);
+
+        // Add text with Japanese font support
+        $draw = new \ImagickDraw();
+        $draw->setFillColor(new \ImagickPixel('white'));
+        $draw->setFontSize(14);
+
+        // Try to use basic fonts (ASCII only, no Japanese needed)
+        $fontCandidates = [
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+            'DejaVu-Sans',
+            'Arial'
+        ];
+
+        $fontSet = false;
+        foreach ($fontCandidates as $font) {
+            try {
+                if (file_exists($font) || strpos($font, '/') === false) {
+                    $draw->setFont($font);
+                    $fontSet = true;
+                    break;
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+
+        // If no font found, use Imagick default
+        if (!$fontSet) {
+            try {
+                $draw->setFont('Courier'); // Fallback to basic font
+            } catch (\Throwable $e) {
+                // Continue without setting font, Imagick will use default
+            }
+        }
+
+        // Artist name on the left
+        $newImage->annotateImage($draw, 10, $height + 25, 0, $artistName);
+
+        // Timestamp on the right
+        $timestamp = date('Y-m-d H:i');
+        try {
+            $metrics = $newImage->queryFontMetrics($draw, $timestamp);
+            $textWidth = $metrics['textWidth'];
+        } catch (\Throwable $e) {
+            // Fallback width calculation
+            $textWidth = strlen($timestamp) * 8;
+        }
+        $newImage->annotateImage($draw, $width - $textWidth - 10, $height + 25, 0, $timestamp);
+
+        // Replace original image with new one
+        $image->clear();
+        $image->addImage($newImage);
+        $newImage->clear();
+        $newImage->destroy();
+    }
+
+    /**
+     * Add signature footer to image using GD
+     */
+    private function addSignatureFooterGD($gdImage, string $artistName)
+    {
+        $width = imagesx($gdImage);
+        $height = imagesy($gdImage);
+        $footerHeight = 40;
+        $newHeight = $height + $footerHeight;
+
+        // Create new image with extra space
+        $newImage = imagecreatetruecolor($width, $newHeight);
+        if ($newImage === false) {
+            return $gdImage; // Return original if creation fails
+        }
+
+        // Fill footer area with black
+        $black = imagecolorallocate($newImage, 0, 0, 0);
+        $white = imagecolorallocate($newImage, 255, 255, 255);
+
+        // Copy original image
+        imagecopy($newImage, $gdImage, 0, 0, 0, 0, $width, $height);
+
+        // Fill footer with black
+        imagefilledrectangle($newImage, 0, $height, $width, $newHeight, $black);
+
+        // Try to find basic TrueType font (ASCII only, no Japanese needed)
+        $fontCandidates = [
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+            '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf',
+            '/System/Library/Fonts/Helvetica.ttc', // macOS
+            'C:\\Windows\\Fonts\\arial.ttf' // Windows
+        ];
+
+        $fontPath = null;
+        foreach ($fontCandidates as $candidate) {
+            if (file_exists($candidate)) {
+                $fontPath = $candidate;
+                break;
+            }
+        }
+
+        // Try PHP's bundled GD font locations
+        if (!$fontPath) {
+            $commonPaths = [
+                '/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf',
+                '/usr/share/fonts/TTF/DejaVuSans.ttf'
+            ];
+            foreach ($commonPaths as $path) {
+                if (file_exists($path)) {
+                    $fontPath = $path;
+                    break;
+                }
+            }
+        }
+
+        $fontSize = 14;
+        $textY = $height + 25;
+
+        if ($fontPath && function_exists('imagettftext')) {
+            // Use TrueType font for proper Japanese rendering
+            // Artist name on the left
+            imagettftext($newImage, $fontSize, 0, 10, $textY, $white, $fontPath, $artistName);
+
+            // Timestamp on the right
+            $timestamp = date('Y-m-d H:i');
+            $bbox = imagettfbbox($fontSize, 0, $fontPath, $timestamp);
+            $textWidth = $bbox[2] - $bbox[0];
+            imagettftext($newImage, $fontSize, 0, $width - $textWidth - 10, $textY, $white, $fontPath, $timestamp);
+        } else {
+            // Fallback to imagestring (ASCII only)
+            imagestring($newImage, 3, 10, $height + 15, $artistName, $white);
+            $timestamp = date('Y-m-d H:i');
+            $textWidth = strlen($timestamp) * 7;
+            imagestring($newImage, 3, $width - $textWidth - 10, $height + 15, $timestamp, $white);
+        }
+
+        // Destroy original and return new
+        imagedestroy($gdImage);
+        return $newImage;
     }
 }

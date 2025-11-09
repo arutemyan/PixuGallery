@@ -152,6 +152,7 @@ export const elements = {
     saveTitle: null,
     saveDescription: null,
     saveTags: null,
+    saveArtistName: null,
 
     // Resize modal
     resizeModalOverlay: null,
@@ -283,6 +284,7 @@ export function initializeElements() {
     elements.saveTitle = document.getElementById('save-title');
     elements.saveDescription = document.getElementById('save-description');
     elements.saveTags = document.getElementById('save-tags');
+    elements.saveArtistName = document.getElementById('save-artist-name');
     elements.saveNsfw = document.getElementById('save-nsfw');
     elements.saveVisible = document.getElementById('save-visible');
     elements.saveModeGroup = document.getElementById('save-mode-group');

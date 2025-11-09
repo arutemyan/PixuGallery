@@ -448,6 +448,7 @@ async function sendSaveRequest(title, description, tags, compositeImage, illustD
             if (options) {
             if (typeof options.nsfw !== 'undefined') payload.nsfw = options.nsfw ? 1 : 0;
             if (typeof options.is_visible !== 'undefined') payload.is_visible = options.is_visible ? 1 : 0;
+            if (typeof options.artist_name !== 'undefined') payload.artist_name = options.artist_name;
             // forceNew: if true, ensure we clear id so server creates new record
             if (options.forceNew) payload.id = null;
         }

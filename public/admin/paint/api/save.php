@@ -75,6 +75,7 @@ class IllustSaveController extends AdminControllerBase
                 // new flags (defaults applied server-side if omitted)
                 'nsfw' => isset($raw['nsfw']) ? (int)$raw['nsfw'] : null,
                 'is_visible' => isset($raw['is_visible']) ? (int)$raw['is_visible'] : null,
+                'artist_name' => $raw['artist_name'] ?? null,
             ]);
 
             $this->sendSuccess(['data' => $result]);
