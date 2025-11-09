@@ -48,12 +48,49 @@ abstract class PublicControllerBase extends ControllerBase
         try {
             // CORS handling and session/json configuration based on instance properties
             if (property_exists($this, 'allowCors') && $this->allowCors) {
-                $origin = $this->corsOrigin ?? '*';
-                $methods = $this->allowMethods ?? 'GET, POST, OPTIONS';
-                $headers = $this->allowHeaders ?? 'Content-Type, X-CSRF-Token';
-                header('Access-Control-Allow-Origin: ' . $origin);
-                header('Access-Control-Allow-Methods: ' . $methods);
-                header('Access-Control-Allow-Headers: ' . $headers);
+                // CORS設定を読み込み
+                $config = \App\Config\ConfigManager::getInstance()->getConfig();
+                $corsConfig = $config['security']['cors'] ?? [];
+                
+                if (!empty($corsConfig['enabled'])) {
+                    $allowedOrigins = $corsConfig['allowed_origins'] ?? ['*'];
+                    $requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
+                    
+                    // インスタンスプロパティで上書き可能
+                    $origin = $this->corsOrigin ?? null;
+                    
+                    if ($origin === null) {
+                        // オリジンの検証
+                        if (in_array('*', $allowedOrigins, true)) {
+                            $origin = '*';
+                        } elseif (in_array($requestOrigin, $allowedOrigins, true)) {
+                            $origin = $requestOrigin;
+                            header('Vary: Origin');
+                        } else {
+                            // 許可されていないオリジンの場合はCORSヘッダーを送信しない
+                            $origin = null;
+                        }
+                    }
+                    
+                    if ($origin !== null) {
+                        header('Access-Control-Allow-Origin: ' . $origin);
+                        
+                        $methods = $this->allowMethods ?? implode(', ', $corsConfig['allowed_methods'] ?? ['GET', 'POST', 'OPTIONS']);
+                        $headers = $this->allowHeaders ?? implode(', ', $corsConfig['allowed_headers'] ?? ['Content-Type', 'X-CSRF-Token']);
+                        
+                        header('Access-Control-Allow-Methods: ' . $methods);
+                        header('Access-Control-Allow-Headers: ' . $headers);
+                        
+                        if (!empty($corsConfig['allow_credentials'])) {
+                            header('Access-Control-Allow-Credentials: true');
+                        }
+                        
+                        if (!empty($corsConfig['max_age'])) {
+                            header('Access-Control-Max-Age: ' . $corsConfig['max_age']);
+                        }
+                    }
+                }
+                
                 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
                     http_response_code(204);
                     exit;

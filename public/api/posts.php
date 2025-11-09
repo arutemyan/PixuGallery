@@ -10,10 +10,37 @@ use App\Security\RateLimiter;
 use App\Utils\Logger;
 use App\Controllers\PublicControllerBase;
 
-// CORS: allow simple cross-origin GET usage and handle preflight
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token');
+// CORS設定を読み込み
+$config = \App\Config\ConfigManager::getInstance()->getConfig();
+$corsConfig = $config['security']['cors'] ?? [];
+
+if (!empty($corsConfig['enabled'])) {
+    $allowedOrigins = $corsConfig['allowed_origins'] ?? ['*'];
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    
+    // オリジンの検証
+    if (in_array('*', $allowedOrigins, true)) {
+        header('Access-Control-Allow-Origin: *');
+    } elseif (in_array($origin, $allowedOrigins, true)) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Vary: Origin');
+    }
+    
+    $methods = implode(', ', $corsConfig['allowed_methods'] ?? ['GET', 'OPTIONS']);
+    $headers = implode(', ', $corsConfig['allowed_headers'] ?? ['Content-Type', 'X-CSRF-Token']);
+    
+    header('Access-Control-Allow-Methods: ' . $methods);
+    header('Access-Control-Allow-Headers: ' . $headers);
+    
+    if (!empty($corsConfig['allow_credentials'])) {
+        header('Access-Control-Allow-Credentials: true');
+    }
+    
+    if (!empty($corsConfig['max_age'])) {
+        header('Access-Control-Max-Age: ' . $corsConfig['max_age']);
+    }
+}
+
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;

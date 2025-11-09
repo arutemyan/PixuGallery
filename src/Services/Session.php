@@ -88,10 +88,18 @@ class Session
 
             ini_set('session.cookie_httponly', '1');
             // HTTPS環境でのみsecure cookieを有効化
+            // 本番環境では常にHTTPS前提でsecure=1を設定することを推奨
             $isHttps = isHttps();
-            ini_set('session.cookie_secure', $isHttps ? '1' : '0');
+            $forceSecure = $config['session']['force_secure_cookie'] ?? false;
+            ini_set('session.cookie_secure', ($isHttps || $forceSecure) ? '1' : '0');
             ini_set('session.cookie_samesite', 'Strict');
             ini_set('session.use_strict_mode', '1');
+            
+            // セッションIDの再生成を定期的に行う設定
+            ini_set('session.gc_maxlifetime', '3600'); // 1時間
+            ini_set('session.gc_probability', '1');
+            ini_set('session.gc_divisor', '100');
+            
             session_start();
         }
     }

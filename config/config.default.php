@@ -177,12 +177,34 @@ return [
             'cookie_samesite' => 'Strict',
             'use_strict_mode' => true,
             'use_only_cookies' => true,
+            // 本番環境ではHTTPSが検出されなくてもsecure cookieを強制
+            // 開発環境（HTTP）では false に設定してください
+            'force_secure_cookie' => false,
         ],
 
         // CSRF保護設定
         'csrf' => [
             'token_length' => 32,
             'token_name' => 'csrf_token',
+        ],
+
+        // CORS設定（公開API用）
+        'cors' => [
+            // CORS を有効にするか
+            'enabled' => true,
+            // 許可するオリジン（本番環境では具体的なドメインを設定することを推奨）
+            // 例: 'allowed_origins' => ['https://example.com', 'https://www.example.com']
+            // '*' はすべてのオリジンを許可（開発環境向け、本番では非推奨）
+            'allowed_origins' => ['*'],
+            // 許可するHTTPメソッド
+            'allowed_methods' => ['GET', 'POST', 'OPTIONS'],
+            // 許可するヘッダー
+            'allowed_headers' => ['Content-Type', 'X-CSRF-Token'],
+            // 認証情報（Cookie等）を含むリクエストを許可するか
+            // '*' オリジンの場合は false にする必要がある
+            'allow_credentials' => false,
+            // プリフライトリクエストのキャッシュ時間（秒）
+            'max_age' => 3600,
         ],
 
         // パス設定

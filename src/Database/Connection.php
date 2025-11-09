@@ -147,7 +147,13 @@ class Connection
                 // PostgreSQLの場合は検索パスを設定
                 if ($driver === 'postgresql') {
                     $schema = self::$config['database']['postgresql']['schema'] ?? 'public';
-                    self::$instance->exec("SET search_path TO {$schema}");
+                    // SQLインジェクション対策: スキーマ名を検証してからクォート
+                    if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $schema)) {
+                        throw new \PDOException("Invalid PostgreSQL schema name: {$schema}");
+                    }
+                    // identifier をクォートして安全に設定
+                    $quotedSchema = self::$instance->quote($schema);
+                    self::$instance->exec("SET search_path TO " . trim($quotedSchema, "'"));
                 }
 
                 // SQLiteではロック待ちタイムアウトやWALモード、外部キーを有効にしておく
