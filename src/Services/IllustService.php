@@ -224,6 +224,58 @@ class IllustService
                 // Try JSON first (backwards compatibility)
                 $maybe = @json_decode($rawDecoded, true);
                 if (is_array($maybe)) {
+                    // If the decoded JSON is a package containing events and snapshots,
+                    // preserve it as JSON (gzip) rather than attempting to coerce to CSV.
+                    if (isset($maybe['events']) || isset($maybe['snapshots'])) {
+                        // Save JSON package directly as gzipped JSON so playback can access snapshots
+                        $timelapsePath = $timelapseDir . '/timelapse_' . $id . '.json.gz';
+                        $gzData = gzencode(is_string($rawDecoded) ? $rawDecoded : json_encode($maybe));
+                        if ($gzData === false) {
+                            throw new \RuntimeException('Failed to gzip timelapse JSON package');
+                        }
+                        $tmpTL = $timelapsePath . '.tmp';
+                        if (file_put_contents($tmpTL, $gzData) === false) {
+                            throw new \RuntimeException('Failed to write timelapse file');
+                        }
+                        if (!@rename($tmpTL, $timelapsePath)) {
+                            throw new \RuntimeException('Failed to move timelapse into place');
+                        }
+                        $createdFiles[] = $timelapsePath;
+
+                        // Update DB and finish saving other files; skip CSV merge below
+                        $update = $this->db->prepare('UPDATE paint SET title = :title, description = :description, tags = :tags, data_path = :data_path, image_path = :image_path, thumbnail_path = :thumbnail_path, timelapse_path = :timelapse_path, file_size = :file_size, nsfw = :nsfw, is_visible = :is_visible WHERE id = :id');
+                        $update->execute([
+                            ':title' => $payload['title'] ?? '',
+                            ':description' => $payload['description'] ?? '',
+                            ':tags' => $payload['tags'] ?? '',
+                            ':data_path' => $this->toPublicPath($dataPath),
+                            ':image_path' => file_exists($imagePath) ? $this->toPublicPath($imagePath) : null,
+                            ':thumbnail_path' => (file_exists($thumbPath) ? $this->toPublicPath($thumbPath) : null),
+                            ':timelapse_path' => file_exists($timelapsePath) ? $this->toPublicPath($timelapsePath) : null,
+                            ':file_size' => filesize($dataPath) ?: 0,
+                            ':nsfw' => $nsfw,
+                            ':is_visible' => $isVisible,
+                            ':id' => $id,
+                        ]);
+
+                        $this->db->commit();
+
+                        // cleanup backups on success
+                        foreach ($backups as [$orig, $bak]) {
+                            if (file_exists($bak)) {
+                                @unlink($bak);
+                            }
+                        }
+
+                        return [
+                            'id' => $id,
+                            'data_path' => $this->toPublicPath($dataPath),
+                            'image_path' => file_exists($imagePath) ? $this->toPublicPath($imagePath) : null,
+                            'thumbnail_path' => (file_exists($thumbPath) ? $this->toPublicPath($thumbPath) : null),
+                            'timelapse_path' => file_exists($timelapsePath) ? $this->toPublicPath($timelapsePath) : null,
+                        ];
+                    }
+
                     $incomingEvents = $maybe;
                 }
 

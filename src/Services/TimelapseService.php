@@ -81,13 +81,24 @@ class TimelapseService
             $ext = pathinfo($timelapseFile, PATHINFO_EXTENSION);
             
             if ($ext === 'gz') {
-                // gzip圧縮されたCSVファイル
-                $content = gzdecode(file_get_contents($timelapseFile));
+                // gzip圧縮されたCSVファイル または gzipped JSON パッケージ（events + snapshots）
+                $raw = file_get_contents($timelapseFile);
+                $content = @gzdecode($raw);
 
                 if ($content === false) {
                     return [
                         'success' => false,
                         'error' => 'Failed to decompress timelapse data'
+                    ];
+                }
+
+                // If the decompressed content is JSON containing events/snapshots, return as JSON
+                $maybeJson = @json_decode($content, true);
+                if (is_array($maybeJson) && (isset($maybeJson['events']) || isset($maybeJson['snapshots']))) {
+                    return [
+                        'success' => true,
+                        'format' => 'json',
+                        'timelapse' => $maybeJson
                     ];
                 }
 

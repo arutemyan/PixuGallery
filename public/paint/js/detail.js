@@ -3,7 +3,7 @@
  * イラスト詳細ページのタイムラプス再生機能
  */
 
-import { TimelapsePlayer, parseTimelapseCSV } from './timelapse_player.js';
+import { TimelapsePlayer, parseTimelapseCSV, convertEventsToStrokes } from './timelapse_player.js';
 
 // グローバル変数
 let timelapsePlayer = null;
@@ -34,7 +34,22 @@ export async function initTimelapse(illustId) {
             frames = parseTimelapseCSV(data.csv);
         } else if (data.timelapse) {
             // Using JSON timelapse data
-            frames = data.timelapse;
+            const pkg = data.timelapse;
+            // If snapshots are present prefer snapshot-based frames (they capture composite state)
+            if (pkg && pkg.snapshots && Array.isArray(pkg.snapshots) && pkg.snapshots.length > 0) {
+                frames = pkg.snapshots.map(s => ({ type: 'snapshot', data: s.data, width: pkg.canvasWidth || (pkg.canvasWidth === undefined ? undefined : pkg.canvasWidth), height: pkg.canvasHeight || (pkg.canvasHeight === undefined ? undefined : pkg.canvasHeight), durationMs: 500 }));
+            } else if (Array.isArray(pkg)) {
+                frames = pkg;
+            } else if (pkg && pkg.events) {
+                try {
+                    frames = convertEventsToStrokes(pkg.events);
+                } catch (e) {
+                    console.warn('Failed to convert JSON timelapse events to frames:', e);
+                    frames = [];
+                }
+            } else {
+                frames = [];
+            }
         }
         
     // Parsed frames count

@@ -21,6 +21,11 @@ export class TimelapsePlayer {
         // アルファチャンネルなしのコンテキストを取得（常に不透明な白背景）
         this.ctx = this.canvas.getContext('2d', { alpha: false });
         this.frames = timelapseData;
+    // Track simple per-layer state so control events can be applied during playback.
+    // This is a minimal implementation: it tracks visibility and opacity and
+    // ensures subsequent stroke/fill frames respect those settings when possible.
+    this.layerStates = {}; // { [layerIndex]: { visible: true/false, opacity: number } }
+    this.layerOrder = null; // optional ordering if reorder events are provided
         // -1 を初期値として、まだ何も描画していない状態を表す
         // これにより再生開始前はプログレスが0%のままになる
         this.currentFrame = -1;
@@ -204,6 +209,57 @@ export class TimelapsePlayer {
             } catch (e) {
                 console.warn('Error rendering snapshot frame:', e);
             }
+        } else if (frame.type === 'reorder') {
+            // Minimal handling: record new layer order. We expect snapshots to be
+            // recorded around reorder events so the visual state will be restored
+            // by snapshot frames. Still keep track of ordering for potential
+            // future use.
+            try {
+                if (Array.isArray(frame.order)) {
+                    this.layerOrder = frame.order.slice();
+                } else if (typeof frame.from === 'number' && typeof frame.to === 'number') {
+                    // simple swap: maintain layerOrder as [0..n-1] if uninitialized
+                    if (!this.layerOrder) {
+                        // try to infer maximum layer index from frames
+                        let maxLayer = -1;
+                        for (const f of this.frames) {
+                            if (typeof f.layer === 'number') maxLayer = Math.max(maxLayer, f.layer);
+                        }
+                        this.layerOrder = Array.from({ length: Math.max(1, maxLayer + 1) }, (_, i) => i);
+                    }
+                    const from = frame.from;
+                    const to = frame.to;
+                    if (from >= 0 && to >= 0 && from < this.layerOrder.length && to < this.layerOrder.length) {
+                        // move element at index "from" to index "to"
+                        const item = this.layerOrder.splice(from, 1)[0];
+                        this.layerOrder.splice(to, 0, item);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to apply reorder frame:', e);
+            }
+        } else if (frame.type === 'visibility') {
+            // Update layer visibility for subsequent frames.
+            try {
+                const li = Number(frame.layer);
+                if (!Number.isNaN(li)) {
+                    if (!this.layerStates[li]) this.layerStates[li] = { visible: true, opacity: 1 };
+                    this.layerStates[li].visible = !!frame.visible;
+                }
+            } catch (e) {
+                console.warn('Failed to apply visibility frame:', e);
+            }
+        } else if (frame.type === 'opacity') {
+            try {
+                const li = Number(frame.layer);
+                if (!Number.isNaN(li)) {
+                    if (!this.layerStates[li]) this.layerStates[li] = { visible: true, opacity: 1 };
+                    const op = parseFloat(frame.opacity);
+                    if (!Number.isNaN(op)) this.layerStates[li].opacity = op;
+                }
+            } catch (e) {
+                console.warn('Failed to apply opacity frame:', e);
+            }
         } else {
             console.warn('Unexpected frame type:', frame.type);
         }
@@ -211,6 +267,18 @@ export class TimelapsePlayer {
 
     drawStroke(frame) {
         if (!frame.path || frame.path.length === 0) return;
+
+        // Respect per-layer visibility/opacity if available (minimal support).
+        if (typeof frame.layer !== 'undefined') {
+            const li = Number(frame.layer);
+            const st = this.layerStates[li];
+            if (st && st.visible === false) return; // layer hidden -> skip drawing
+            // merge layer opacity into frame opacity for immediate effect
+            if (st && typeof st.opacity === 'number') {
+                frame._originalOpacity = frame._originalOpacity === undefined ? (frame.opacity !== undefined ? frame.opacity : 1) : frame._originalOpacity;
+                frame.opacity = (frame._originalOpacity !== undefined ? frame._originalOpacity : 1) * st.opacity;
+            }
+        }
 
         this.ctx.save();
 
@@ -337,6 +405,17 @@ export class TimelapsePlayer {
 
     drawFill(frame) {
         if (frame.x === undefined || frame.y === undefined) return;
+
+        // Respect per-layer visibility/opacity for fills as well
+        if (typeof frame.layer !== 'undefined') {
+            const li = Number(frame.layer);
+            const st = this.layerStates[li];
+            if (st && st.visible === false) return;
+            if (st && typeof st.opacity === 'number') {
+                frame._originalOpacity = frame._originalOpacity === undefined ? (frame.opacity !== undefined ? frame.opacity : 1) : frame._originalOpacity;
+                frame.opacity = (frame._originalOpacity !== undefined ? frame._originalOpacity : 1) * st.opacity;
+            }
+        }
 
         // Get image data for flood fill
         const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
@@ -694,6 +773,16 @@ export function convertEventsToStrokes(events) {
                 startTime: event.t !== undefined ? event.t : lastEventTime,
                 endTime: event.t !== undefined ? event.t : lastEventTime
             });
+            if (event.t !== undefined) lastEventTime = event.t;
+        } else if (event.type === 'reorder' || event.type === 'visibility' || event.type === 'opacity' || event.type === 'snapshot') {
+            // Preserve control events so the player can interpret them.
+            // We copy relevant fields and keep timestamps when available.
+            const ctrl = Object.assign({}, event);
+            // normalize boolean/number fields
+            if (ctrl.layer !== undefined) ctrl.layer = Number(ctrl.layer);
+            if (ctrl.opacity !== undefined) ctrl.opacity = parseFloat(ctrl.opacity);
+            if (ctrl.visible !== undefined) ctrl.visible = !!ctrl.visible;
+            strokes.push(ctrl);
             if (event.t !== undefined) lastEventTime = event.t;
         }
     }

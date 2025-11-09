@@ -305,7 +305,20 @@ export function setActiveLayer(index, updateStatusBar, setStatus) {
  */
 export function toggleLayerVisibility(index, updateStatusBar, setStatus) {
     const layer = state.layers[index];
-    layer.style.display = layer.style.display === 'none' ? 'block' : 'none';
+    const newDisplay = layer.style.display === 'none' ? 'block' : 'none';
+    layer.style.display = newDisplay;
+    // Record visibility change in timelapse so playback can reflect it
+    try {
+        if (typeof recordTimelapse === 'function') {
+            recordTimelapse({ t: Date.now(), type: 'visibility', layer: index, visible: newDisplay !== 'none' });
+            // Also create a snapshot to capture composite state immediately
+            if (typeof createTimelapseSnapshotPublic === 'function') {
+                createTimelapseSnapshotPublic();
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to record visibility change for timelapse:', e);
+    }
     renderLayers(updateStatusBar, setStatus);
 }
 
