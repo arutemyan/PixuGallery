@@ -30,7 +30,7 @@ class Setting
      */
     public function get(string $key, string $default = ''): string
     {
-        $stmt = $this->db->prepare("SELECT value FROM settings WHERE key = ?");
+        $stmt = $this->db->prepare("SELECT `value` FROM settings WHERE `key` = ?");
         $stmt->execute([$key]);
         $result = $stmt->fetch();
         return $result ? $result['value'] : $default;
@@ -52,17 +52,17 @@ class Setting
         if ($driver === 'mysql') {
             // MySQLの場合
             $stmt = $this->db->prepare("
-                INSERT INTO settings (`key`, value, updated_at)
+                INSERT INTO settings (`key`, `value`, updated_at)
                 VALUES (?, ?, CURRENT_TIMESTAMP)
-                ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = CURRENT_TIMESTAMP
+                ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), updated_at = CURRENT_TIMESTAMP
             ");
             return $stmt->execute([$key, $value]);
         } else {
             // SQLite/PostgreSQLの場合
             $stmt = $this->db->prepare("
-                INSERT INTO settings (key, value, updated_at)
+                INSERT INTO settings (`key`, `value`, updated_at)
                 VALUES (?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
+                ON CONFLICT(`key`) DO UPDATE SET `value` = EXCLUDED.`value`, updated_at = CURRENT_TIMESTAMP
             ");
             return $stmt->execute([$key, $value]);
         }
@@ -75,7 +75,7 @@ class Setting
      */
     public function getAll(): array
     {
-        $stmt = $this->db->query("SELECT key, value FROM settings");
+        $stmt = $this->db->query("SELECT `key`, `value` FROM settings");
         return $stmt->fetchAll();
     }
 }
