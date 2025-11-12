@@ -156,7 +156,8 @@ jobs:
           DB_PASS: ${{ env.TEST_DB_PASS }}
         run: |
           if [ -f public/setup/run_migrations.php ]; then
-            php public/setup/run_migrations.php || true
+            # Run migrations and fail the job on error so CI detects DB incompatibilities
+            php public/setup/run_migrations.php
           fi
 
       - name: Run phpunit
