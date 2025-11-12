@@ -26,19 +26,7 @@ export function recordTimelapse(event) {
     }
     state.timelapseEvents.push(event);
 
-    // Debug: log layer-related events and occasional sampling of sequences
-    try {
-        // Log layer-related events (include common edit ops)
-        if (event.type && (event.type === 'visibility' || event.type === 'opacity' || event.type === 'blend' || event.type === 'reorder' || event.type === 'duplicate' || event.type === 'merge' || event.type === 'clear' || event.type === 'delete')) {
-            console.debug('[timelapse] recorded layer-event', event.type, 'layer=', event.layer ?? event.from ?? event.to ?? null, '_seq=', event._seq);
-        }
-        // light debug sampling for high-frequency events
-        if (event.type === 'move' && (event._seq % 500 === 0)) {
-            console.debug('[timelapse] recorded move sample _seq=', event._seq);
-        }
-    } catch (e) {
-        // ignore console failures
-    }
+    // Temporary instrumentation removed; sequence IDs are still attached to events for diagnostics
 
     // Create snapshot every N events or every M ms
     const SNAPSHOT_EVENTS = 200;

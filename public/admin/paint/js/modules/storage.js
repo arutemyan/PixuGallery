@@ -372,14 +372,9 @@ async function compressTimelapseData() {
             ...state.timelapseEvents
         ];
 
-        // Debug: report events count and last sequence id when available
-        try {
-            const last = state.timelapseEvents.length > 0 ? state.timelapseEvents[state.timelapseEvents.length - 1] : null;
-            const lastSeq = last && typeof last._seq !== 'undefined' ? last._seq : null;
-            console.debug('[timelapse] compressTimelapseData: eventsWithMeta=', eventsWithMeta.length, 'last_seq=', lastSeq);
-        } catch (e) {
-            // ignore
-        }
+        // (debug logs removed) compute last sequence id if needed for later checks
+        const last = state.timelapseEvents.length > 0 ? state.timelapseEvents[state.timelapseEvents.length - 1] : null;
+        const lastSeq = last && typeof last._seq !== 'undefined' ? last._seq : null;
 
         // If snapshots exist, produce a JSON package including events and snapshots so playback
         // can render snapshots (which capture composite including layer order changes).

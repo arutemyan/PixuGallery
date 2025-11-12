@@ -14,18 +14,18 @@ let timelapsePlayer = null;
  */
 export async function initTimelapse(illustId) {
     try {
-    // Fetching timelapse for given ID
+        // Fetching timelapse for given ID
         const response = await fetch(`/paint/api/timelapse.php?id=${illustId}`);
         const data = await response.json();
         
-    // Timelapse API response received
+        // Timelapse API response received
         
         if (!data.success) {
             console.error('Timelapse load error:', data.error);
             hideTimelapseSection();
             return;
         }
-        console.debug('initTimelapse: response format=', data.format, 'keys=', Object.keys(data));
+        // initTimelapse: response format and keys available for debugging
         
         let frames = [];
         
@@ -53,14 +53,14 @@ export async function initTimelapse(illustId) {
             }
         }
         
-    // Parsed frames count
+        // Parsed frames count
         
         if (!Array.isArray(frames) || frames.length === 0) {
             console.warn('No frames found');
             hideTimelapseSection();
             return;
         }
-        console.debug('initTimelapse: parsed frames count=', frames.length);
+        // parsed frames count available: frames.length
         
         // 重いタイムラプスの警告（1000フレーム以上）
         if (frames.length > 1000) {
