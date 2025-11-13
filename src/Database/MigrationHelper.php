@@ -144,17 +144,54 @@ class MigrationHelper
      */
     public function addColumnIfNotExists(PDO $db, string $table, string $column, string $definition): bool
     {
+        // If column already exists, skip immediately
         if ($this->columnExists($db, $table, $column)) {
             Logger::getInstance()->info("MigrationHelper: Column {$table}.{$column} already exists (skipped)");
             return false;
         }
 
+        $driver = DatabaseHelper::getDriver($db);
+
+        // Build SQL. Prefer IF NOT EXISTS when we can detect support (Postgres, MySQL 8+).
+        $sql = "ALTER TABLE {$table} ADD COLUMN {$column} {$definition}";
+
+        // Detect MySQL version_num (integer like 80021). If unavailable, treat as 0.
+        $mysqlVersionNum = 0;
+        if ($driver === 'mysql') {
+            try {
+                $ver = $db->query('SELECT @@version_num')->fetchColumn();
+                $mysqlVersionNum = $ver !== false ? (int)$ver : 0;
+            } catch (PDOException $e) {
+                // ignore and fall back to non-IF mode
+                $mysqlVersionNum = 0;
+            }
+        }
+
+        if ($driver === 'postgresql') {
+            $sql = "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS {$column} {$definition}";
+        } elseif ($driver === 'mysql' && $mysqlVersionNum >= 80000) {
+            $sql = "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS {$column} {$definition}";
+        }
+
         try {
-            $db->exec("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");
+            $db->exec($sql);
             Logger::getInstance()->info("MigrationHelper: Added column {$table}.{$column}");
             return true;
         } catch (PDOException $e) {
-            Logger::getInstance()->error("MigrationHelper: Failed to add column {$table}.{$column}: " . $e->getMessage());
+            $msg = $e->getMessage();
+            $sqlState = $e->getCode();
+
+            // Handle duplicate-column errors (TOCTOU protection).
+            // Postgres duplicate_column => SQLSTATE 42701, MySQL => 42S21
+            if ($sqlState === '42701' || $sqlState === '42S21'
+                || stripos($msg, 'duplicate column') !== false
+                || stripos($msg, 'already exists') !== false
+                || stripos($msg, 'Duplicate') !== false) {
+                Logger::getInstance()->info("MigrationHelper: Column {$table}.{$column} appears to already exist (caught during ALTER, skipping): " . $msg);
+                return false;
+            }
+
+            Logger::getInstance()->error("MigrationHelper: Failed to add column {$table}.{$column}: " . $msg);
             throw $e;
         }
     }
