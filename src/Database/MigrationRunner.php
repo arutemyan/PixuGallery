@@ -49,6 +49,27 @@ class MigrationRunner
             Logger::getInstance()->warning('MigrationRunner: Could not set PRAGMA options: ' . $e->getMessage());
         }
 
+        // Ensure migrations table exists so we can track executed migrations.
+        // This allows running migrations on a fresh DB where the table hasn't been created yet.
+        try {
+            $helper = \App\Database\DatabaseHelper::class;
+            $intType = $helper::getIntegerType($this->db);
+            $textType = $helper::getTextType($this->db);
+            $timestampType = $helper::getTimestampType($this->db);
+            $currentTimestamp = $helper::getCurrentTimestamp($this->db);
+
+            $this->db->exec(
+                "CREATE TABLE IF NOT EXISTS migrations (\n" .
+                "    version {$intType} PRIMARY KEY,\n" .
+                "    name {$textType} NOT NULL,\n" .
+                "    executed_at {$timestampType} DEFAULT {$currentTimestamp}\n" .
+                ")"
+            );
+        } catch (\Exception $e) {
+            Logger::getInstance()->warning('MigrationRunner: Could not ensure migrations table exists: ' . $e->getMessage());
+            // proceed; getExecutedMigrations will handle missing table scenario
+        }
+
         // 実行済みマイグレーションを取得
         $executed = $this->getExecutedMigrations();
 
