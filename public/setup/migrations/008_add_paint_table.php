@@ -16,6 +16,8 @@ return [
         $driver = $helper::getDriver($db);
         $intType = $helper::getIntegerType($db);
         $textType = $helper::getTextType($db);
+        $shortText = $helper::getTextType($db, 191);
+        $timestampType = $helper::getTimestampType($db);
         $auto = $helper::getAutoIncrement($db);
 
         // paintテーブル作成 (旧: paint)
@@ -23,28 +25,27 @@ return [
             "CREATE TABLE IF NOT EXISTS paint (\n" .
             "                id {$auto},\n" .
             "                user_id {$intType} NOT NULL,\n" .
-            "                title {$textType} NOT NULL DEFAULT '',\n" .
+            "                title {$shortText} NOT NULL DEFAULT '',\n" .
             "                canvas_width {$intType} NOT NULL DEFAULT 800,\n" .
             "                canvas_height {$intType} NOT NULL DEFAULT 600,\n" .
-            "                background_color {$textType} DEFAULT '#FFFFFF',\n" .
+            "                background_color {$shortText} DEFAULT '#FFFFFF',\n" .
             "                data_path {$textType},\n" .
             "                image_path {$textType},\n" .
             "                thumbnail_path {$textType},\n" .
             "                timelapse_path {$textType},\n" .
             "                timelapse_size {$intType} DEFAULT 0,\n" .
             "                file_size {$intType} DEFAULT 0,\n" .
-            "                status {$textType} DEFAULT 'draft' CHECK (status IN ('draft', 'published')),\n" .
-            "                created_at {$textType} DEFAULT CURRENT_TIMESTAMP,\n" .
-            "                updated_at {$textType} DEFAULT CURRENT_TIMESTAMP,\n" .
-            "\n" .
+            "                status {$shortText} DEFAULT 'draft' CHECK (status IN ('draft', 'published')),\n" .
+            "                created_at {$timestampType} DEFAULT CURRENT_TIMESTAMP,\n" .
+            "                updated_at {$timestampType} DEFAULT CURRENT_TIMESTAMP,\n" .
             "                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE\n" .
             ")"
         );
 
-    // インデックス作成 (use MigrationHelper for cross-DB compatibility)
-    $mhelper = new \App\Database\MigrationHelper();
-    $mhelper->addIndexIfNotExists($db, 'paint', 'idx_paint_user_id', 'user_id');
-    $mhelper->addIndexIfNotExists($db, 'paint', 'idx_paint_status', 'status');
-    $mhelper->addIndexIfNotExists($db, 'paint', 'idx_paint_created_at', 'created_at');
+        // インデックス作成 (use MigrationHelper for cross-DB compatibility)
+        $mhelper = new \App\Database\MigrationHelper();
+        $mhelper->addIndexIfNotExists($db, 'paint', 'idx_paint_user_id', 'user_id');
+        $mhelper->addIndexIfNotExists($db, 'paint', 'idx_paint_status', 'status');
+        $mhelper->addIndexIfNotExists($db, 'paint', 'idx_paint_created_at', 'created_at');
     }
 ];
