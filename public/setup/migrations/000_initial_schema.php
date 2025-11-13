@@ -74,8 +74,8 @@ return [
         $db->exec("
             CREATE TABLE IF NOT EXISTS settings (
                 id {$autoInc},
-                setting_key {$shortText} NOT NULL UNIQUE,
-                value {$textType} NOT NULL,
+                `key` {$shortText} NOT NULL UNIQUE,
+                `value` {$textType} NOT NULL,
                 updated_at {$timestampType} DEFAULT {$currentTimestamp}
             )
         ");
