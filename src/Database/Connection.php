@@ -189,138 +189,7 @@ class Connection
         return self::$instance;
     }
 
-    /**
-     * データベーススキーマを初期化
-     */
-    private static function initializeSchema(): void
-    {
-        $db = self::$instance;
-        $driver = self::getDriver();
-        $helper = DatabaseHelper::class;
-
-        $autoInc = $helper::getAutoIncrement($db);
-        $intType = $helper::getIntegerType($db);
-        $textType = $helper::getTextType($db);
-        // 短めのインデックス可能な文字型（MySQLのインデックスに長さ制限があるため）
-        $shortText = $helper::getTextType($db, 191);
-        $datetimeType = $helper::getDateTimeType($db);
-        $timestampType = $helper::getTimestampType($db);
-        $currentTimestamp = $helper::getCurrentTimestamp($db);
-
-        // usersテーブル（管理者認証用）
-        $db->exec("
-            CREATE TABLE IF NOT EXISTS users (
-                id {$autoInc},
-                username {$shortText} NOT NULL UNIQUE,
-                password_hash {$textType} NOT NULL,
-                created_at {$datetimeType} DEFAULT {$currentTimestamp}
-            )
-        ");
-
-        // postsテーブル
-        $db->exec("
-            CREATE TABLE IF NOT EXISTS posts (
-                id {$autoInc},
-                title {$textType} NOT NULL,
-                tags {$textType},
-                detail {$textType},
-                image_path {$textType},
-                thumb_path {$textType},
-                is_sensitive {$intType} DEFAULT 0,
-                is_visible {$intType} NOT NULL DEFAULT 1,
-                created_at {$datetimeType} DEFAULT {$currentTimestamp}
-            )
-        ");
-
-    // postsテーブルのインデックス
-    \App\Database\DatabaseHelper::createIndexIfNotExists($db, 'idx_posts_created_at', 'posts', 'created_at DESC');
-    \App\Database\DatabaseHelper::createIndexIfNotExists($db, 'idx_posts_visible', 'posts', 'is_visible, created_at DESC');
-
-        // tagsテーブル（タグマスタ）
-        $db->exec("
-            CREATE TABLE IF NOT EXISTS tags (
-                id {$autoInc},
-                name {$shortText} NOT NULL UNIQUE,
-                created_at {$timestampType} DEFAULT {$currentTimestamp}
-            )
-        ");
-
-    // tagsテーブルのインデックス
-    \App\Database\DatabaseHelper::createIndexIfNotExists($db, 'idx_tags_name', 'tags', 'name');
-
-        // migrationsテーブル（マイグレーションバージョン管理）
-        $db->exec("
-            CREATE TABLE IF NOT EXISTS migrations (
-                version {$intType} PRIMARY KEY,
-                name {$textType} NOT NULL,
-                executed_at {$timestampType} DEFAULT {$currentTimestamp}
-            )
-        ");
-
-        // settingsテーブル
-        $db->exec("
-            CREATE TABLE IF NOT EXISTS settings (
-                id {$autoInc},
-                `key` {$shortText} NOT NULL UNIQUE,
-                `value` {$textType} NOT NULL,
-                updated_at {$timestampType} DEFAULT {$currentTimestamp}
-            )
-        ");
-
-        // themesテーブル（テーマカスタマイズ用）
-        $db->exec("
-            CREATE TABLE IF NOT EXISTS themes (
-                id {$autoInc},
-                header_html {$textType},
-                footer_html {$textType},
-                site_title {$shortText} DEFAULT 'イラストポートフォリオ',
-                site_subtitle {$shortText} DEFAULT 'Illustration Portfolio',
-                site_description {$shortText} DEFAULT 'イラストレーターのポートフォリオサイト',
-                primary_color {$shortText} DEFAULT '#8B5AFA',
-                secondary_color {$shortText} DEFAULT '#667eea',
-                accent_color {$shortText} DEFAULT '#FFD700',
-                background_color {$shortText} DEFAULT '#1a1a1a',
-                text_color {$shortText} DEFAULT '#ffffff',
-                heading_color {$shortText} DEFAULT '#ffffff',
-                footer_bg_color {$shortText} DEFAULT '#2a2a2a',
-                footer_text_color {$shortText} DEFAULT '#cccccc',
-                card_border_color {$shortText} DEFAULT '#333333',
-                card_bg_color {$shortText} DEFAULT '#252525',
-                card_shadow_opacity {$shortText} DEFAULT '0.3',
-                link_color {$shortText} DEFAULT '#8B5AFA',
-                link_hover_color {$shortText} DEFAULT '#a177ff',
-                tag_bg_color {$shortText} DEFAULT '#8B5AFA',
-                tag_text_color {$shortText} DEFAULT '#ffffff',
-                filter_active_bg_color {$shortText} DEFAULT '#8B5AFA',
-                filter_active_text_color {$shortText} DEFAULT '#ffffff',
-                header_image {$shortText},
-                logo_image {$shortText},
-                updated_at {$datetimeType} DEFAULT {$currentTimestamp}
-            )
-        ");
-
-        // MySQL/PostgreSQLの場合のみ、view_countsテーブルも作成（1DB構成のため）
-        if ($driver !== 'sqlite') {
-            $db->exec("
-                CREATE TABLE IF NOT EXISTS view_counts (
-                    post_id {$intType} NOT NULL,
-                    post_type {$intType} DEFAULT 0 NOT NULL,
-                    count {$intType} DEFAULT 0,
-                    updated_at {$datetimeType} DEFAULT {$currentTimestamp},
-                    PRIMARY KEY (post_id, post_type)
-                )
-            ");
-            \App\Database\DatabaseHelper::createIndexIfNotExists($db, 'idx_view_counts_updated', 'view_counts', 'updated_at DESC');
-        }
-
-        // デフォルトテーマを作成（存在しない場合）
-        $stmt = $db->query("SELECT COUNT(*) as count FROM themes");
-        $result = $stmt->fetch();
-
-        if ($result['count'] == 0) {
-            $db->exec("INSERT INTO themes (header_html, footer_html) VALUES ('', '')");
-        }
-    }
+    // initializeSchema() was removed: schema is managed via migrations in public/setup/migrations
 
     /**
      * マイグレーション実行
@@ -342,6 +211,7 @@ class Connection
      *
      * @return MigrationRunner
      */
+
     public static function getMigrationRunner(): MigrationRunner
     {
         return new MigrationRunner(self::getInstance());
