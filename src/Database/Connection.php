@@ -151,10 +151,8 @@ class Connection
                     if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $schema)) {
                         throw new \InvalidArgumentException(sprintf('Invalid PostgreSQL schema name: %s', $schema));
                     }
-                    // PDO::quote() でクォートしてから、クォート文字を取り除いて SET に渡す
-                    $quoted = self::$instance->quote($schema);
-                    $schemaForSet = trim($quoted, "'");
-                    self::$instance->exec("SET search_path TO " . $schemaForSet);
+                    // 検証済みのスキーマ名は安全に使用可能
+                    self::$instance->exec("SET search_path TO {$schema}");
                 }
 
                 // SQLiteではロック待ちタイムアウトやWALモード、外部キーを有効にしておく
