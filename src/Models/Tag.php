@@ -107,12 +107,13 @@ class Tag
         }
         
         // SQLインジェクション対策: LIKE のワイルドカードをエスケープ
-        $escapedName = str_replace(['%', '_'], ['\\%', '\\_'], $trimmedName);
+        // ESCAPE句で指定したエスケープ文字を使用
+        $escapedName = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $trimmedName);
         
         $stmt = $this->db->prepare("
             SELECT t.id, t.name, t.created_at
             FROM tags t
-            WHERE t.name LIKE ?
+            WHERE t.name LIKE ? ESCAPE '\\'
             ORDER BY t.name ASC
         ");
         $stmt->execute(['%' . $escapedName . '%']);
