@@ -1,6 +1,6 @@
 # リリースガイド
 
-Photo Siteのリリースパッケージを作成する方法
+PixuGallery のリリースパッケージを作成する方法
 
 ## リリース作成
 
@@ -42,7 +42,7 @@ Photo Siteのリリースパッケージを作成する方法
 
 5. **パッケージの確認**
    ```bash
-   tar -tzf releases/photo-site-v1.0.0.tar.gz | less
+   tar -tzf releases/pixugallery-v1.0.0.tar.gz | less
    ```
 
 ## タグからリリースを作成
@@ -52,8 +52,8 @@ Photo Siteのリリースパッケージを作成する方法
 ```bash
 # タグを指定してarchive
 git archive --format=tar.gz \
-    --prefix=photo-site-v1.0.0/ \
-    --output=releases/photo-site-v1.0.0.tar.gz \
+    --prefix=pixugallery-v1.0.0/ \
+    --output=releases/pixugallery-v1.0.0.tar.gz \
     v1.0.0
 ```
 
@@ -73,8 +73,8 @@ git archive --format=tar.gz \
 
 1. **サーバーでパッケージを展開**
    ```bash
-   tar -xzf photo-site-v1.0.0.tar.gz
-   cd photo-site-v1.0.0
+   tar -xzf pixugallery-v1.0.0.tar.gz
+   cd pixugallery-v1.0.0
    ```
 
 2. **依存関係をインストール**

@@ -112,7 +112,7 @@ return [
 
 ```php
 return [
-    'cache' => ['cache_dir' => '/var/cache/photo-site'],
+    'cache' => ['cache_dir' => '/var/cache/pixugallery'],
     'security' => [
         'https' => [
             'force' => true,

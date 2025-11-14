@@ -1,4 +1,4 @@
-# Contributing to photo-site
+# Contributing to pixugallery
 
 ありがとうございます！このプロジェクトに貢献していただけるのは大変ありがたいです。
 以下は、開発・テスト・PR の流れ、そしてプロジェクトが依存する OSS への支援（funding）についての簡単な案内です。
@@ -18,7 +18,7 @@
 
 ```bash
 git clone <repo-url>
-cd photo-site
+cd pixugallery
 composer install
 ```
 

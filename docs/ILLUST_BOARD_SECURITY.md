@@ -114,7 +114,7 @@ $stmt->execute([$illustId, $userId]);
 
 ### 実装例
 ```php
-$baseDir = '/home/claudecode/photo-site/uploads/paint/';
+$baseDir = '/home/claudecode/pixugallery/uploads/paint/';
 $requestedPath = $_GET['path'];
 
 $realPath = realpath($baseDir . $requestedPath);

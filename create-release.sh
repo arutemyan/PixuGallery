@@ -4,7 +4,7 @@
 set -e
 
 VERSION=${1:-$(date +%Y%m%d-%H%M%S)}
-RELEASE_NAME="photo-site-${VERSION}"
+RELEASE_NAME="pixugallery-${VERSION}"
 OUTPUT_DIR="releases"
 
 echo "🚀 リリース作成中: ${RELEASE_NAME}"

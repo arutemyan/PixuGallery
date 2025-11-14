@@ -26,9 +26,9 @@
     ServerName your-domain.com
 
     # DocumentRootをpublicディレクトリに設定
-    DocumentRoot /var/www/photo-site/public
+    DocumentRoot /var/www/pixugallery/public
 
-    <Directory /var/www/photo-site/public>
+    <Directory /var/www/pixugallery/public>
         Options -Indexes +FollowSymLinks
         AllowOverride All
         Require all granted
@@ -40,12 +40,12 @@
     </Directory>
 
     # src/, vendor/, config/へのアクセスを拒否（念のため）
-    <DirectoryMatch "^/var/www/photo-site/(src|vendor|config|data|cache|logs)">
+    <DirectoryMatch "^/var/www/pixugallery/(src|vendor|config|data|cache|logs)">
         Require all denied
     </DirectoryMatch>
 
-    ErrorLog ${APACHE_LOG_DIR}/photo-site-error.log
-    CustomLog ${APACHE_LOG_DIR}/photo-site-access.log combined
+    ErrorLog ${APACHE_LOG_DIR}/pixugallery-error.log
+    CustomLog ${APACHE_LOG_DIR}/pixugallery-access.log combined
 </VirtualHost>
 ```
 
@@ -55,7 +55,7 @@
 <VirtualHost *:443>
     ServerName your-domain.com
 
-    DocumentRoot /var/www/photo-site/public
+    DocumentRoot /var/www/pixugallery/public
 
     # SSL証明書
     SSLEngine on
@@ -63,13 +63,13 @@
     SSLCertificateKeyFile /etc/ssl/private/your-domain.key
     SSLCertificateChainFile /etc/ssl/certs/your-domain-chain.crt
 
-    <Directory /var/www/photo-site/public>
+    <Directory /var/www/pixugallery/public>
         Options -Indexes +FollowSymLinks
         AllowOverride All
         Require all granted
     </Directory>
 
-    <DirectoryMatch "^/var/www/photo-site/(src|vendor|config|data|cache|logs)">
+    <DirectoryMatch "^/var/www/pixugallery/(src|vendor|config|data|cache|logs)">
         Require all denied
     </DirectoryMatch>
 
@@ -78,8 +78,8 @@
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
 
-    ErrorLog ${APACHE_LOG_DIR}/photo-site-ssl-error.log
-    CustomLog ${APACHE_LOG_DIR}/photo-site-ssl-access.log combined
+    ErrorLog ${APACHE_LOG_DIR}/pixugallery-ssl-error.log
+    CustomLog ${APACHE_LOG_DIR}/pixugallery-ssl-access.log combined
 </VirtualHost>
 ```
 
@@ -87,10 +87,10 @@
 
 ```bash
 # 設定ファイルを作成
-sudo nano /etc/apache2/sites-available/photo-site.conf
+sudo nano /etc/apache2/sites-available/pixugallery.conf
 
 # サイトを有効化
-sudo a2ensite photo-site.conf
+sudo a2ensite pixugallery.conf
 
 # 必要なモジュールを有効化
 sudo a2enmod rewrite
@@ -122,7 +122,7 @@ server {
     server_name your-domain.com;
 
     # DocumentRoot
-    root /var/www/photo-site/public;
+    root /var/www/pixugallery/public;
     index index.php index.html;
 
     # SSL証明書
@@ -169,8 +169,8 @@ server {
     }
 
     # ログ
-    access_log /var/log/nginx/photo-site-access.log;
-    error_log /var/log/nginx/photo-site-error.log;
+    access_log /var/log/nginx/pixugallery-access.log;
+    error_log /var/log/nginx/pixugallery-error.log;
 }
 ```
 
@@ -178,10 +178,10 @@ server {
 
 ```bash
 # 設定ファイルを作成
-sudo nano /etc/nginx/sites-available/photo-site
+sudo nano /etc/nginx/sites-available/pixugallery
 
 # シンボリックリンクを作成
-sudo ln -s /etc/nginx/sites-available/photo-site /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/pixugallery /etc/nginx/sites-enabled/
 
 # 設定をテスト
 sudo nginx -t
@@ -258,21 +258,21 @@ DocumentRoot変更ができない環境の場合：
 
 1. ディレクトリパーミッション
    ```bash
-   chmod 755 /var/www/photo-site/public
+   chmod 755 /var/www/pixugallery/public
    ```
 
 2. 所有者設定
    ```bash
-   sudo chown -R www-data:www-data /var/www/photo-site
+   sudo chown -R www-data:www-data /var/www/pixugallery
    ```
 
 ### 画像が表示されない
 
 1. uploadsディレクトリのパーミッション
    ```bash
-   chmod 777 /var/www/photo-site/public/uploads
-   chmod 777 /var/www/photo-site/public/uploads/images
-   chmod 777 /var/www/photo-site/public/uploads/thumbs
+   chmod 777 /var/www/pixugallery/public/uploads
+   chmod 777 /var/www/pixugallery/public/uploads/images
+   chmod 777 /var/www/pixugallery/public/uploads/thumbs
    ```
 
 ## 関連ドキュメント
