@@ -70,6 +70,26 @@
 
 これらのファイルを根拠として「対応済み（概要）」に記載しています。未対応項目については本稿先頭の一覧を優先してください。
 
+## 追加検証結果（2025-11-15）
+
+- 実施内容: ビルド済みフロントエンドバンドル（`*.bundle.js`）の検出と静的スキャンを実行しました。スキャン対象はリポジトリ内に存在するバンドルファイルです。
+- スキャン対象ファイル（ワークツリー上）:
+   - `public/admin/js/admin.bundle.js`
+   - `public/admin/js/sns-share.bundle.js`
+   - `public/admin/paint/js/paint.bundle.js`
+   - `public/paint/js/detail.bundle.js`
+   - `public/paint/js/gallery.bundle.js`
+   - `public/paint/js/timelapse_player.bundle.js`
+   - `public/res/js/detail.bundle.js`
+   - `public/res/js/main.bundle.js`
+- 検査内容: `unsafe-inline` / `unsafe-eval` / `eval(` / `new Function` / 明示的なインライン `<script>` タグ等の痕跡を検索
+- 結果: 上記バンドル内に該当する危険なパターンは検出されませんでした（静的grepによる検出での結果）。
+
+- 注意事項: 本検査は静的文字列検索による一次スキャンです。バンドル内部で動的に生成されるコードや実行時に組み立てられる文字列は検出対象外です。完全性を高めるにはビルド後のランタイム挙動の監視（Report-Only モードでの CSP ログ収集）を推奨します。
+
+- `docs/work` の扱い: 本スキャン結果を受け、作業用の `docs/work` ディレクトリはワークツリーから削除しました。削除はリポジトリのコミット履歴に残るため、必要であれば履歴から復元できます。
+
+
 ### 作成したドキュメント
 
 1. **SECURITY.md** - 包括的なセキュリティガイド
