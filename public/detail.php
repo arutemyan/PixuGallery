@@ -209,9 +209,8 @@ $imageUrl = !empty($shareImagePath) ? $protocol . ($_SERVER['HTTP_HOST'] ?? 'loc
 <?php /**************************************************************/ ?>
 <body data-age-verification-minutes="<?= $ageVerificationMinutes ?>" data-nsfw-config-version="<?= $nsfwConfigVersion ?>" data-post-id="<?= $id ?>" data-is-sensitive="<?= isset($data['is_sensitive']) && $data['is_sensitive'] == 1 ? '1' : '0' ?>">
     <script nonce="<?= \App\Security\CspMiddleware::getInstance()->getNonce() ?>">
-        // 設定値をdata属性から読み込み（const定義で改ざん防止）
-        const AGE_VERIFICATION_MINUTES = parseFloat(document.body.dataset.ageVerificationMinutes) || 10080;
-        const NSFW_CONFIG_VERSION = parseInt(document.body.dataset.nsfwConfigVersion) || 1;
+        const AGE_VERIFICATION_MINUTES = parseFloat(document.body.dataset.ageVerificationMinutes);
+        const NSFW_CONFIG_VERSION = parseInt(document.body.dataset.nsfwConfigVersion);
     </script>
 
     <!-- 年齢確認モーダル -->

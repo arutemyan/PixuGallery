@@ -192,9 +192,8 @@ $pageUrl = $protocol . $host . $_SERVER['REQUEST_URI'];
 </head>
 <body data-age-verification-minutes="<?= $ageVerificationMinutes ?>" data-nsfw-config-version="<?= $nsfwConfigVersion ?>" data-is-nsfw="<?= !empty($illust['nsfw']) ? '1' : '0' ?>">
     <script nonce="<?= \App\Security\CspMiddleware::getInstance()->getNonce() ?>">
-        // 設定値をdata属性から読み込み（const定義で改ざん防止）
-        const AGE_VERIFICATION_MINUTES = parseFloat(document.body.dataset.ageVerificationMinutes) || 10080;
-        const NSFW_CONFIG_VERSION = parseInt(document.body.dataset.nsfwConfigVersion) || 1;
+        const AGE_VERIFICATION_MINUTES = parseFloat(document.body.dataset.ageVerificationMinutes);
+        const NSFW_CONFIG_VERSION = parseInt(document.body.dataset.nsfwConfigVersion);
     </script>
 
     <!-- 年齢確認モーダル -->
