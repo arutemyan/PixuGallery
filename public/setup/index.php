@@ -304,7 +304,7 @@ try {
 
                 <div class="delete-section">
                     <h2>⚠️ このファイルを削除</h2>
-                    <p data-inline-style="color: #666; margin-bottom: 15px;">
+                    <p class="muted-paragraph">
                         セキュリティリスクを避けるため、このセットアップファイルを削除してください。
                     </p>
                     <form method="POST" onsubmit="return confirm('本当にこのファイルを削除しますか？');">
@@ -667,7 +667,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="btn">管理者アカウントを作成</button>
             </form>
 
-            <div class="security-note" data-inline-style="margin-top: 30px;">
+            <div class="security-note mt-30">
                 <strong>🔒 セキュリティに関する注意</strong><br>
                 このセットアップページは、完了後に自動的に削除されます。<br>
                 セキュリティのため、このファイル名をランダムな名前に変更することもできます。

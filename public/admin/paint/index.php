@@ -367,7 +367,7 @@ try {
             <h2 class="open-modal-title">キャンバスサイズ変更</h2>
             <button class="timelapse-close" id="resize-modal-close">×</button>
         </div>
-        <div class="open-modal-content p-20">
+        <div class="open-modal-content">
             <div class="resize-options">
                 <div class="setting-row">
                     <label class="setting-label">幅 (px):</label>
@@ -403,12 +403,12 @@ try {
 
 <!-- Edit Color Modal -->
 <div class="open-modal-overlay" id="edit-color-modal-overlay">
-    <div class="open-modal open-modal--max400">
+    <div class="open-modal">
         <div class="open-modal-header">
             <h2 class="open-modal-title">パレット色の編集</h2>
             <button class="timelapse-close" id="edit-color-modal-close">×</button>
         </div>
-        <div class="open-modal-content p-20">
+        <div class="open-modal-content">
             <div class="edit-color-preview">
                 <div id="edit-color-preview" class="edit-color-preview-swatch"></div>
                 <div class="flex-1">
@@ -427,21 +427,21 @@ try {
             <div id="hsv-sliders" class="color-sliders-group">
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text rgb-h">H</span>
+                        <span class="rgb-h">H</span>
                         <input type="range" id="edit-hsv-h" class="rgb-slider" min="0" max="360" value="0">
                         <span class="rgb-value" id="edit-hsv-h-value">0°</span>
                     </label>
                 </div>
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text rgb-s">S</span>
+                        <span class="rgb-s">S</span>
                         <input type="range" id="edit-hsv-s" class="rgb-slider" min="0" max="100" value="0">
                         <span class="rgb-value" id="edit-hsv-s-value">0%</span>
                     </label>
                 </div>
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text rgb-v">V</span>
+                        <span class="rgb-v">V</span>
                         <input type="range" id="edit-hsv-v" class="rgb-slider" min="0" max="100" value="0">
                         <span class="rgb-value" id="edit-hsv-v-value">0%</span>
                     </label>
@@ -452,21 +452,21 @@ try {
             <div id="rgb-sliders" class="color-sliders-group d-none">
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text rgb-h">R</span>
+                        <span class="rgb-h">R</span>
                         <input type="range" id="edit-rgb-r" class="rgb-slider" min="0" max="255" value="0">
                         <span class="rgb-value" id="edit-rgb-r-value">0</span>
                     </label>
                 </div>
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text rgb-s">G</span>
+                        <span class="rgb-s">G</span>
                         <input type="range" id="edit-rgb-g" class="rgb-slider" min="0" max="255" value="0">
                         <span class="rgb-value" id="edit-rgb-g-value">0</span>
                     </label>
                 </div>
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text rgb-v">B</span>
+                        <span class="rgb-v">B</span>
                         <input type="range" id="edit-rgb-b" class="rgb-slider" min="0" max="255" value="0">
                         <span class="rgb-value" id="edit-rgb-b-value">0</span>
                     </label>

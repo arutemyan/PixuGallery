@@ -1,6 +1,5 @@
 /* Extracted inline styles used by admin/paint pages */
 .p-8 { padding: 8px; }
-.p-20 { padding: 20px; }
 .preview-bg { background: #f5f5f5; }
 .preview-container { display: flex; justify-content: center; padding: 20px; min-height: 600px; }
 .preview-frame { width: 100%; max-width: 100%; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1); background: white; }
@@ -22,7 +21,6 @@
 .badge-position-number { position: absolute; top: 5px; right: 5px; }
 
 /* modal and color editor helpers */
-.open-modal--max400 { max-width: 400px; }
 .edit-color-preview { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
 .edit-color-preview-swatch { width: 80px; height: 80px; border-radius: 8px; border: 2px solid #ddd; }
 .edit-color-label { display: block; margin-bottom: 8px; font-weight: 600; }
@@ -30,6 +28,12 @@
 .rgb-h { color: #ff6b6b; }
 .rgb-s { color: #51cf66; }
 .rgb-v { color: #4dabf7; }
+
+/* detail / setup helpers */
+.muted-note { font-size: 0.9em; color: #999; margin-top: 20px; }
+.muted-paragraph { color: #666; margin-bottom: 15px; }
+.icon-vertical-align { vertical-align: -2px; }
+.mt-30 { margin-top: 30px; }
 
 /* Inline style fixes extracted from templates to support CSP and consistency
 	Consolidated from `inline-fixes.css` to create a single canonical file.
@@ -70,9 +74,6 @@
 .open-modal{ max-width: 400px; }
 .edit-color-preview{ display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
 .color-mode-tabs{ display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid #ddd; }
-.rgb-label-text--h{ color: #ff6b6b; }
-.rgb-label-text--s{ color: #51cf66; }
-.rgb-label-text--v{ color: #4dabf7; }
 .color-sliders-hidden{ display: none; }
 .form-group-hidden{ display: none; }
 .img-logo{ max-height: 80px; margin-bottom: 10px; }
