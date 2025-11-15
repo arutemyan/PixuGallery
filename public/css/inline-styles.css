@@ -1,3 +1,25 @@
+/* Extracted inline styles used by admin/paint pages */
+.p-8 { padding: 8px; }
+.p-20 { padding: 20px; }
+.preview-bg { background: #f5f5f5; }
+.preview-container { display: flex; justify-content: center; padding: 20px; min-height: 600px; }
+.preview-frame { width: 100%; max-width: 100%; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1); background: white; }
+.preview-iframe { width: 100%; height: 600px; border: none; border-radius: 4px; }
+.badge-tag-sample { background-color: #8B5AFA; color: #ffffff; }
+.header-back-button--preview { display: inline-block; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+.sticky-top--top20 { top: 20px; }
+.d-none { display: none !important; }
+.ogp-image-preview { max-width: 300px; display: none; }
+.delete-ogp-button { display: none; }
+.flex-1 { flex: 1; }
+.preset-heading { margin: 15px 0 10px; font-size: 0.9em; color: #999; }
+.preset-button-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.color-swatch-default { background: #000000; }
+
+/* utility classes used by admin JS templates */
+.img-thumbnail-cover { width: 100%; height: 100px; object-fit: cover; }
+.img-thumbnail-aspect-cover { aspect-ratio: 1; object-fit: cover; }
+.badge-position-number { position: absolute; top: 5px; right: 5px; }
 /* Inline style fixes extracted from templates to support CSP and consistency
 	Consolidated from `inline-fixes.css` to create a single canonical file.
 */

@@ -67,7 +67,7 @@ try {
         <button class="header-btn secondary" id="btn-save-as">名前を付けて保存</button>
         <button class="header-btn secondary" id="btn-timelapse">タイムラプス</button>
         <button class="header-btn secondary" id="btn-export">エクスポート</button>
-        <label class="header-btn secondary" for="import-file-input" id="btn-import" data-inline-style="cursor:pointer;">インポート</label>
+        <label class="header-btn secondary btn-import" for="import-file-input" id="btn-import">インポート</label>
         <input type="file" id="import-file-input" accept=".json,.gz,.json.gz,.paint" class="d-none" />
     </div>
 </header>
@@ -127,9 +127,9 @@ try {
             </div>
             <div class="panel-content">
 
-            <div class="color-current">
-                <div class="color-swatch" id="current-color" data-inline-style="background:#000000;" title="現在の色"></div>
-                <div data-inline-style="flex: 1;">
+                <div class="color-current">
+                <div class="color-swatch color-swatch-default" id="current-color" title="現在の色"></div>
+                <div class="flex-1">
                     <div id="current-color-hex" class="current-color-hex">#000000</div>
                     <div id="current-color-rgb" class="current-color-rgb">RGB(0, 0, 0)</div>
                 </div>
@@ -367,7 +367,7 @@ try {
             <h2 class="open-modal-title">キャンバスサイズ変更</h2>
             <button class="timelapse-close" id="resize-modal-close">×</button>
         </div>
-        <div class="open-modal-content" data-inline-style="padding: 20px;">
+        <div class="open-modal-content p-20">
             <div class="resize-options">
                 <div class="setting-row">
                     <label class="setting-label">幅 (px):</label>
@@ -384,8 +384,8 @@ try {
                     </div>
                 </div>
                 <div class="resize-presets">
-                    <h4 data-inline-style="margin: 15px 0 10px; font-size: 0.9em; color: #999;">プリセット:</h4>
-                    <div data-inline-style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <h4 class="preset-heading">プリセット:</h4>
+                    <div class="preset-button-group">
                         <button class="preset-btn" data-width="512" data-height="512">512×512</button>
                         <button class="preset-btn" data-width="800" data-height="600">800×600</button>
                         <button class="preset-btn" data-width="1024" data-height="768">1024×768</button>

@@ -593,8 +593,8 @@ try {
                                         </div>
                                             <div class="color-item col-span-2">
                                             <label class="form-label small mb-1">プレビュー</label>
-                                            <div data-inline-style="padding: 8px;">
-                                                <span id="tagColorPreview" class="badge" data-inline-style="background-color: #8B5AFA; color: #ffffff;">サンプルタグ</span>
+                                            <div class="p-8">
+                                                <span id="tagColorPreview" class="badge badge-tag-sample">サンプルタグ</span>
                                             </div>
                                         </div>
                                     </div>
@@ -612,8 +612,8 @@ try {
                                         </div>
                                             <div class="color-item col-span-2">
                                             <label class="form-label small mb-1">プレビュー</label>
-                                            <div data-inline-style="padding: 8px;">
-                                                <span id="filterActiveColorPreview" class="badge" data-inline-style="background-color: #8B5AFA; color: #ffffff;">選択中フィルタ</span>
+                                            <div class="p-8">
+                                                <span id="filterActiveColorPreview" class="badge badge-tag-sample">選択中フィルタ</span>
                                             </div>
                                         </div>
                                     </div>
@@ -675,7 +675,7 @@ try {
                                                     <!-- プレビュー -->
                                                     <div class="mt-3 p-3 bg-light rounded">
                                                         <label class="form-label small text-muted">プレビュー:</label>
-                                                        <div id="backButtonPreview" class="header-back-button" data-inline-style="display: inline-block; background-color: #8B5AFA; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                                                        <div id="backButtonPreview" class="header-back-button header-back-button--preview">
                                                             一覧に戻る
                                                         </div>
                                                     </div>
@@ -747,13 +747,13 @@ try {
                                     </button>
                                 </div>
                             </div>
-                            <div class="card-body p-0" data-inline-style="background: #f5f5f5;">
-                                <div id="previewContainer" data-inline-style="display: flex; justify-content: center; padding: 20px; min-height: 600px;">
-                                    <div id="previewFrame" data-inline-style="width: 100%; max-width: 100%; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1); background: white;">
+                            <div class="card-body p-0 preview-bg">
+                                <div id="previewContainer" class="preview-container">
+                                    <div id="previewFrame" class="preview-frame">
                                         <iframe
                                             id="sitePreview"
                                             src="/"
-                                            data-inline-style="width: 100%; height: 600px; border: none; border-radius: 4px;"
+                                            class="preview-iframe"
                                             title="サイトプレビュー"
                                         ></iframe>
                                     </div>
@@ -835,14 +835,14 @@ try {
                                                     <div class="mb-3">
                                                         <label class="form-label">OGP画像</label>
                                                         <div id="ogpImagePreview" class="mb-2">
-                                                            <img src="" alt="OGP画像プレビュー" data-inline-style="max-width: 300px; display: none;" id="ogpImagePreviewImg">
+                                                            <img src="" alt="OGP画像プレビュー" id="ogpImagePreviewImg" class="ogp-image-preview">
                                                         </div>
                                                         <input type="file" class="form-control" id="ogpImageFile" accept="image/*">
                                                         <div class="mt-2">
                                                             <button type="button" class="btn btn-sm btn-primary" id="uploadOgpImage">
                                                                 <i class="bi bi-upload me-1"></i>アップロード
                                                             </button>
-                                                            <button type="button" class="btn btn-sm btn-danger" id="deleteOgpImage" data-inline-style="display: none;">
+                                                            <button type="button" class="btn btn-sm btn-danger delete-ogp-button" id="deleteOgpImage">
                                                                 <i class="bi bi-trash me-1"></i>削除
                                                             </button>
                                                         </div>
@@ -965,7 +965,7 @@ try {
 
                         <!-- 右側：画像プレビュー -->
                         <div class="col-md-6">
-                            <div class="sticky-top" data-inline-style="top: 20px;">
+                            <div class="sticky-top sticky-top--top20">
                                 <label class="form-label">画像</label>
                                 <div class="edit-image-preview-container mb-3">
                                     <img id="editImagePreview" alt="画像プレビュー" class="img-fluid rounded">
@@ -984,7 +984,7 @@ try {
                                 </div>
 
                                 <!-- 差し替え画像のプレビュー -->
-                                <div id="editImageReplacePreview" data-inline-style="display: none;">
+                                <div id="editImageReplacePreview" class="d-none">
                                     <label class="form-label text-primary">新しい画像プレビュー</label>
                                     <div class="edit-image-preview-container mb-2">
                                         <img id="editImageReplacePreviewImg" alt="新しい画像プレビュー" class="img-fluid rounded border border-primary">
