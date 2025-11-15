@@ -403,22 +403,22 @@ try {
 
 <!-- Edit Color Modal -->
 <div class="open-modal-overlay" id="edit-color-modal-overlay">
-    <div class="open-modal" data-inline-style="max-width: 400px;">
+    <div class="open-modal open-modal--max400">
         <div class="open-modal-header">
             <h2 class="open-modal-title">パレット色の編集</h2>
             <button class="timelapse-close" id="edit-color-modal-close">×</button>
         </div>
-        <div class="open-modal-content" data-inline-style="padding: 20px;">
-            <div class="edit-color-preview" data-inline-style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
-                <div data-inline-style="width: 80px; height: 80px; border-radius: 8px; border: 2px solid #ddd;" id="edit-color-preview"></div>
-                <div data-inline-style="flex: 1;">
-                    <label data-inline-style="display: block; margin-bottom: 8px; font-weight: 600;">カラーコード:</label>
+        <div class="open-modal-content p-20">
+            <div class="edit-color-preview">
+                <div id="edit-color-preview" class="edit-color-preview-swatch"></div>
+                <div class="flex-1">
+                    <label class="edit-color-label">カラーコード:</label>
                     <input type="text" id="edit-color-input" class="resize-input" placeholder="#000000" pattern="^#[0-9A-Fa-f]{6}$" maxlength="7">
                 </div>
             </div>
             
             <!-- Tab buttons -->
-            <div class="color-mode-tabs" data-inline-style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid #ddd;">
+            <div class="color-mode-tabs color-mode-tabs--row">
                 <button class="color-mode-tab active" data-mode="hsv">HSV</button>
                 <button class="color-mode-tab" data-mode="rgb">RGB</button>
             </div>
@@ -427,21 +427,21 @@ try {
             <div id="hsv-sliders" class="color-sliders-group">
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text" data-inline-style="color: #ff6b6b;">H</span>
+                        <span class="rgb-label-text rgb-h">H</span>
                         <input type="range" id="edit-hsv-h" class="rgb-slider" min="0" max="360" value="0">
                         <span class="rgb-value" id="edit-hsv-h-value">0°</span>
                     </label>
                 </div>
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text" data-inline-style="color: #51cf66;">S</span>
+                        <span class="rgb-label-text rgb-s">S</span>
                         <input type="range" id="edit-hsv-s" class="rgb-slider" min="0" max="100" value="0">
                         <span class="rgb-value" id="edit-hsv-s-value">0%</span>
                     </label>
                 </div>
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text" data-inline-style="color: #4dabf7;">V</span>
+                        <span class="rgb-label-text rgb-v">V</span>
                         <input type="range" id="edit-hsv-v" class="rgb-slider" min="0" max="100" value="0">
                         <span class="rgb-value" id="edit-hsv-v-value">0%</span>
                     </label>
@@ -449,24 +449,24 @@ try {
             </div>
             
             <!-- RGB Sliders -->
-            <div id="rgb-sliders" class="color-sliders-group" data-inline-style="display: none;">
+            <div id="rgb-sliders" class="color-sliders-group d-none">
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text" data-inline-style="color: #ff6b6b;">R</span>
+                        <span class="rgb-label-text rgb-h">R</span>
                         <input type="range" id="edit-rgb-r" class="rgb-slider" min="0" max="255" value="0">
                         <span class="rgb-value" id="edit-rgb-r-value">0</span>
                     </label>
                 </div>
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text" data-inline-style="color: #51cf66;">G</span>
+                        <span class="rgb-label-text rgb-s">G</span>
                         <input type="range" id="edit-rgb-g" class="rgb-slider" min="0" max="255" value="0">
                         <span class="rgb-value" id="edit-rgb-g-value">0</span>
                     </label>
                 </div>
                 <div class="rgb-slider-group">
                     <label class="rgb-label">
-                        <span class="rgb-label-text" data-inline-style="color: #4dabf7;">B</span>
+                        <span class="rgb-label-text rgb-v">B</span>
                         <input type="range" id="edit-rgb-b" class="rgb-slider" min="0" max="255" value="0">
                         <span class="rgb-value" id="edit-rgb-b-value">0</span>
                     </label>
@@ -509,7 +509,7 @@ try {
             <div class="form-group">
                 <label><input type="checkbox" id="save-visible" checked> 公開（表示する）</label>
             </div>
-            <div class="form-group" id="save-mode-group" data-inline-style="display:none;">
+            <div class="form-group d-none" id="save-mode-group">
                 <label>保存方法</label>
                 <div>
                     <label><input type="radio" name="save-mode" value="new" id="save-mode-new" checked> 新規として保存</label>
