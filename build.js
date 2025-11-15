@@ -83,6 +83,12 @@ const builds = [
     outfile: 'public/res/css/login.bundle.css',
   },
   {
+    name: 'Inline Style CSS',
+    entryPoints: ['public/res/css/inline-styles.css'],
+    outfile: 'public/res/css/inline-styles.bundle.css',
+  },
+
+  {
     name: 'SNS Share',
     entryPoints: ['public/admin/js/sns-share.js'],
     outfile: 'public/admin/js/sns-share.bundle.js',
