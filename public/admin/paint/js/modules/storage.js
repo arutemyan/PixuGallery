@@ -471,6 +471,15 @@ async function compressTimelapseData() {
  * Send save request to server
  */
 async function sendSaveRequest(title, description, tags, compositeImage, illustData, timelapseData, setStatus, setCurrentId, updateIllustDisplay, options = {}) {
+    // クライアント側の即時バリデーション: タグに禁止文字が含まれていないか確認
+    if (tags && typeof tags === 'string') {
+        const parts = tags.split(',').map(s => s.trim()).filter(Boolean);
+        const invalid = parts.filter(p => /[%_\\\\]/.test(p));
+        if (invalid.length) {
+            throw new Error(`タグ名に使用できない文字が含まれています: %, _, \\ (該当: ${invalid.join(', ')})`);
+        }
+    }
+
     try {
         const payload = {
             title: title,

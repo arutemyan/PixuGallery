@@ -105,18 +105,18 @@ class Tag
         if (empty($trimmedName) || mb_strlen($trimmedName) > 100) {
             return [];
         }
+        // 禁止文字のチェック: '%'、'_'、'\\' を検索語に含めると挙動が複雑になるため拒否する
+        // （テストや既存のワイルドカードエスケープ処理を簡素化するための設計選択）
+        if (preg_match('/[%_\\\\]/u', $trimmedName)) {
+            return [];
+        }
         
-        // SQLインジェクション対策: LIKE のワイルドカードをエスケープ
-        // ESCAPE句で指定したエスケープ文字を使用
-        $escapedName = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $trimmedName);
-        
-        $stmt = $this->db->prepare("
-            SELECT t.id, t.name, t.created_at
-            FROM tags t
-            WHERE t.name LIKE ? ESCAPE '\\'
-            ORDER BY t.name ASC
-        ");
-        $stmt->execute(['%' . $escapedName . '%']);
+        // プレースホルダに検索パターンを渡す（禁止文字は上ですでにチェック済み）
+        $pattern = '%' . $trimmedName . '%';
+        $stmt = $this->db->prepare(
+            "SELECT t.id, t.name, t.created_at FROM tags t WHERE t.name LIKE ? ORDER BY t.name ASC"
+        );
+        $stmt->execute([$pattern]);
         $tags = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if ($includePostCount) {
@@ -142,11 +142,7 @@ class Tag
      */
     public function getById(int $id, bool $includePostCount = false): ?array
     {
-        $stmt = $this->db->prepare("
-            SELECT t.id, t.name, t.created_at
-            FROM tags t
-            WHERE t.id = ?
-        ");
+        $stmt = $this->db->prepare("SELECT t.id, t.name, t.created_at FROM tags t WHERE t.id = ?");
         $stmt->execute([$id]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 

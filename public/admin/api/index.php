@@ -97,6 +97,18 @@ $router->post('/admin/api/posts', function () {
         $detail = $_POST['detail'] ?? '';
         $isSensitive = isset($_POST['is_sensitive']) ? (int)$_POST['is_sensitive'] : 0;
 
+        // タグ禁止文字チェック: %, _, バックスラッシュ
+        if (!empty($tags)) {
+            $parts = array_map('trim', explode(',', $tags));
+            foreach ($parts as $t) {
+                if ($t === '') continue;
+                if (preg_match('/[%_\\\\]/u', $t)) {
+                    Router::error('タグ名に使用できない文字が含まれています: %, _, \\', 400);
+                    return;
+                }
+            }
+        }
+
         // バリデーション
         if (empty($title)) {
             Router::error('タイトルは必須です', 400);
@@ -188,6 +200,18 @@ $router->put('/admin/api/posts/:id', function (string $id) {
         $detail = $_POST['detail'] ?? '';
         $isSensitive = isset($_POST['is_sensitive']) ? (int)$_POST['is_sensitive'] : 0;
         $isVisible = isset($_POST['is_visible']) ? (int)$_POST['is_visible'] : 0;
+
+        // タグ禁止文字チェック: %, _, バックスラッシュ
+        if (!empty($tags)) {
+            $parts = array_map('trim', explode(',', $tags));
+            foreach ($parts as $t) {
+                if ($t === '') continue;
+                if (preg_match('/[%_\\\\]/u', $t)) {
+                    Router::error('タグ名に使用できない文字が含まれています: %, _, \\', 400);
+                    return;
+                }
+            }
+        }
 
         // バリデーション
         if (empty($title)) {

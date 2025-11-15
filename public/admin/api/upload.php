@@ -60,6 +60,17 @@ class UploadController extends AdminControllerBase
         // 投稿データを取得
         $title = trim($_POST['title']);
         $tags = isset($_POST['tags']) ? trim($_POST['tags']) : null;
+
+        // タグ禁止文字チェック: %, _, バックスラッシュ
+        if (!empty($tags)) {
+            $parts = array_map('trim', explode(',', $tags));
+            foreach ($parts as $t) {
+                if ($t === '') continue;
+                if (preg_match('/[%_\\\\]/u', $t)) {
+                    $this->sendError('タグ名に使用できない文字が含まれています: %, _, \\', 400);
+                }
+            }
+        }
         $detail = isset($_POST['detail']) ? trim($_POST['detail']) : null;
         $isSensitive = isset($_POST['is_sensitive']) ? (int)$_POST['is_sensitive'] : 0;
         $isVisible = isset($_POST['is_visible']) ? (int)$_POST['is_visible'] : 1;

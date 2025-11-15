@@ -64,6 +64,11 @@ class TagsPublicController extends PublicControllerBase
                     $this->sendError('Search query cannot be empty', 400);
                 }
 
+                // 禁止文字チェック: %, _, バックスラッシュは検索語に含められない
+                if (preg_match('/[%_\\\\]/u', $searchQuery)) {
+                    $this->sendError('検索語に使用できない文字が含まれています: %, _, \\', 400);
+                }
+
                 $tags = $tagModel->searchByName($searchQuery);
                 $this->sendSuccess(['query' => $searchQuery, 'count' => count($tags), 'tags' => $tags]);
             }

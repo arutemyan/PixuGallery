@@ -134,10 +134,9 @@ final class TagTest extends TestCase
         // %を含むタグ名で検索
         $results = $this->tagModel->searchByName('100%cool', false);
 
-        // 1件のみヒットすることを確認（ワイルドカードとして機能していない）
+        // 設計方針: 検索語に '%' や '_'、'\\' を含む場合は検索を拒否するため空配列を返す
         $this->assertIsArray($results);
-        $this->assertCount(1, $results);
-        $this->assertStringContainsString('100%cool', $results[0]['name']);
+        $this->assertEmpty($results);
     }
 
     /**
@@ -152,10 +151,9 @@ final class TagTest extends TestCase
         // _を含むタグ名で検索
         $results = $this->tagModel->searchByName('under_score', false);
 
-        // 1件のみヒットすることを確認（_がワイルドカードとして機能していない）
+        // 設計方針: 検索語に '%' や '_'、'\\' を含む場合は検索を拒否するため空配列を返す
         $this->assertIsArray($results);
-        $this->assertCount(1, $results);
-        $this->assertEquals('under_score', $results[0]['name']);
+        $this->assertEmpty($results);
     }
 
     /**
@@ -169,10 +167,9 @@ final class TagTest extends TestCase
         // 複数のワイルドカードを含むタグ名で検索
         $results = $this->tagModel->searchByName('100%_test', false);
 
-        // 1件のみヒットすることを確認
+        // 設計方針: 検索語に '%' や '_'、'\\' を含む場合は検索を拒否するため空配列を返す
         $this->assertIsArray($results);
-        $this->assertCount(1, $results);
-        $this->assertEquals('100%_test', $results[0]['name']);
+        $this->assertEmpty($results);
     }
 
     /**

@@ -156,6 +156,17 @@ class PostsController extends AdminControllerBase
             $this->sendError('投稿が見つかりません', 404);
         }
 
+        // タグ禁止文字チェック: %, _, バックスラッシュ
+        if (!empty($tags)) {
+            $parts = array_map('trim', explode(',', $tags));
+            foreach ($parts as $t) {
+                if ($t === '') continue;
+                if (preg_match('/[%_\\\\]/u', $t)) {
+                    $this->sendError('タグ名に使用できない文字が含まれています: %, _, \\', 400);
+                }
+            }
+        }
+
         // NSFWフィルター設定を読み込み
         $config = \App\Config\ConfigManager::getInstance()->getConfig();
         $filterSettings = $config['nsfw']['filter_settings'];
