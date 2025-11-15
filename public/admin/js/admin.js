@@ -567,8 +567,8 @@ function loadPosts(append = false) {
         'replaceGroupImage': replaceGroupImage,
         'deleteGroupImage': deleteGroupImage,
         'copyShareGroupUrl': copyShareGroupUrl,
-        'shareToSNS': shareToSNS,
-        'copyShareUrl': copyShareUrl,
+        'shareToSNS': (typeof shareToSNS !== 'undefined') ? shareToSNS : ((typeof window !== 'undefined' && typeof window.shareToSNS !== 'undefined') ? window.shareToSNS : null),
+        'copyShareUrl': (typeof copyShareUrl !== 'undefined') ? copyShareUrl : ((typeof window !== 'undefined' && typeof window.copyShareUrl !== 'undefined') ? window.copyShareUrl : null),
         'updateBulkActionButtons': updateBulkActionButtons,
         'bulkUpdateVisibility': bulkUpdateVisibility,
         'updateSinglePost': updateSinglePost
