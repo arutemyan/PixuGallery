@@ -1,99 +1,59 @@
 # Contributing to pixugallery
 
-ありがとうございます！このプロジェクトに貢献していただけるのは大変ありがたいです。
-以下は、開発・テスト・PR の流れ、そしてプロジェクトが依存する OSS への支援（funding）についての簡単な案内です。
+以下は、開発・テスト・PR の流れ、そしてプロジェクトが依存する OSS についてになります。
 
-## 目次
+**目次**
+- 基本方針
 - 開発環境の準備
 - テストの実行
-- CI / DB マトリクスについて
-- マイグレーションの実行
-- PR の作り方とルール
-- Funding（寄付・支援）
+- Issue / PR の作り方
+- コードスタイルとコミット規約
+- セキュリティ報告
+- CI とマージ基準
+- OSS 支援（Funding）
 
 ---
 
-## 開発環境の準備
-1. リポジトリをクローンし、依存をインストールします。
+**基本方針**
+- オープンな貢献を歓迎します。まずは Issue で相談、もしくはフォーク→PR の流れでお願いします。
+- 機密情報は一切コミットしないでください。もし誤ってコミットした場合は速やかに報告してください（下部に手順を記載）。
+
+**開発環境の準備**
+1. リポジトリをクローンして依存をインストールします。
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/arutemyan/pixugallery.git
 cd pixugallery
 composer install
 ```
 
-2. 開発時は PHP 8.1+ を推奨しています。ローカルに PHP がない場合は Docker を利用してください。
+2. PHP バージョン: PHP 8.1+ を推奨します。ローカルで PHP が用意できない場合は Docker を利用してください。
 
-### 開発環境と本番環境のセッション設定について
+3. 設定ファイル: `config.local.php` や `.env` などのローカル設定はリポジトリに含めず、サンプル（`config.local.example.php`）をコピーして利用してください。
 
-開発環境では HTTP（非HTTPS）でテストする場合が多いため、`force_secure_cookie` はデフォルトで `false` に設定されています。本番環境では以下の方法でセキュアクッキーを強制してください:
-
-- 環境変数 `FORCE_SECURE_COOKIE=1` を設定
-- または環境変数 `APP_ENV=production` を設定
-- または `config/config.local.php` で `['security']['session']['force_secure_cookie'] = true` を設定
-
-これにより、プロキシやロードバランサ経由でも確実にセッションクッキーに secure フラグが付与されます。
-
-## テストの実行
-ユニット/統合テストは PHPUnit で管理されています。簡単な実行方法:
-
-- 全テスト（ローカル sqlite の場合）
+**テストの実行**
+- ユニット/統合テストは PHPUnit を使用します。
 
 ```bash
 vendor/bin/phpunit --configuration phpunit.xml
 ```
 
-- CI と同じように環境変数で DB を切り替える例（MySQL）
+- CI と同じ条件で実行するには `phpunit.xml.dist` を使い、必要に応じて `TEST_DB_*` 環境変数を設定してください。
 
-```bash
-export TEST_DB_DRIVER=mysql
-export TEST_DB_HOST=127.0.0.1
-export TEST_DB_PORT=3306
-export TEST_DB_NAME=testdb
-export TEST_DB_USER=root
-export TEST_DB_PASS=root
-php public/setup/run_migrations.php
-vendor/bin/phpunit --configuration phpunit.xml.dist
-```
+**Issue / PR の作り方**
+- Issue: バグ報告や機能提案は Issue を立ててください。再現手順やログ、環境情報をできるだけ詳しく書い短い説明い。
+- フォーク → ブランチ: フォークして `feature/<短い説明>`、`fix/<短い説明>`、`feature_<短い説明>`、`fix_<短い説明>` などの形式でブランチを作成してください。
+- PR: PR には目的と変更点を明記し、関連する Issue があればリンクしてください。
 
-（CI は `phpunit.xml.dist` を使い、`TEST_DB_*` 環境変数で DB を切り替えます。）
+**コードスタイルとコミット規約**
+- コードスタイルは既存のスタイルに合わせてください
 
-## CI / DB マトリクスについて
-- GitHub Actions で sqlite / MySQL / PostgreSQL のマトリクスを回す設定があります。
-- ローカルで CI 相当を動かすには `act` を使うか、Docker Compose を用いて DB を立ち上げ、上記の `TEST_DB_*` 環境変数を渡してください。
+**セキュリティ報告**
+- セキュリティ脆弱性を発見した場合は、公開Issueではなくまずプライベートに報告してください。
 
-## マイグレーションの実行
-- CI では `php public/setup/run_migrations.php` を実行して DB をセットアップします。
-- ローカルでも同じコマンドを使ってください（`TEST_DB_*` を必要に応じて設定）。
+**CI とマージ基準**
+- CI（GitHub Actions など）が成功していること
 
-## PR の作り方とルール
-- ブランチ名: `feature/<短い説明>` または `fix/<短い説明>`
-- 変更は小さく、1つの PR に 1 つの目的を含めてください。
-- テストがある変更は必ずテストを追加してください（Unit または Integration）。
-- 可能であれば自己レビューを行い、コミットメッセージは要点を含めてください。
-- マージ前に CI がすべて通ること（必須）
+**OSS 支援（Funding）**
+- このプロジェクトは一部の OSS に依存しています。
 
-## Funding（このプロジェクトが依存しているOSSへの支援）
-このリポジトリは多数のオープンソースライブラリに依存しています。`composer fund` コマンドで依存パッケージが公開している支援ページが確認できます。プロジェクト内で `composer fund` を実行した結果、主に以下のパッケージが funding 情報を公開しています（抜粋）：
-
-- sebastianbergmann (phpunit / sebastian/* 関連)
-  - https://github.com/sponsors/sebastianbergmann
-  - https://liberapay.com/sebastianbergmann
-  - https://thanks.dev/u/gh/sebastianbergmann
-- PHPUnit 関連
-  - https://phpunit.de/sponsors.html
-  - https://tidelift.com/funding/github/packagist/phpunit/phpunit
-- theseer (phar-io / tokenizer)
-  - https://github.com/sponsors/theseer
-- myclabs/deep-copy
-  - https://tidelift.com/funding/github/packagist/myclabs/deep-copy
-
-もし関心があれば、`composer fund` を実行してみてください。依存パッケージの作者に感謝と支援を示す良い方法です。
-
----
-
-### 追加の提案
-- CONTRIBUTING に開発環境の Docker Compose の例を追加することもできます（要望があれば作成します）。
-- CI が重くなってきたら、PR レベルは sqlite+unit のみ必須、merge 前に MySQL/Postgres を走らせる運用を提案します。
-
-ご希望ならこの `CONTRIBUTING.md` をそのままコミットして push します（私は今からコミットして反映します）。
