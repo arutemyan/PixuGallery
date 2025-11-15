@@ -55,6 +55,21 @@
 
 ---
 
+### 検証済みファイル（抜粋）
+
+以下は「対応済み」として本書に記載した項目をソース／設定から確認した際に参照した主要なファイルです。詳細は各ファイルの該当箇所を確認してください。
+
+- `src/Database/Connection.php`  — PostgreSQL スキーマ名検証と SET search_path の実装
+- `src/Services/Session.php`  — `force_secure_cookie` の適用、キー管理、`ensureKeyDir()` による権限調整
+- `config/config.default.php` / `config/config.local.example.php` / `README.md` — `force_secure_cookie` と CORS の設定例
+- `src/Security/CspMiddleware.php` / `src/Security/SecurityUtil.php` — nonce ベース CSP のミドルウェア呼び出しと sendSecurityHeaders の実装（CSPは設定で有効化が必要）
+- `src/Security/CsrfProtection.php` / `src/Controllers/AdminControllerBase.php` — CSRF トークン生成・検証の適用箇所
+- `src/Security/SecurityUtil.php` — `escapeHtml()`, `finfo_file()` / `is_uploaded_file()` を使ったファイル検証ユーティリティ
+- `src/Security/RateLimiter.php` / `public/api/posts.php` — RateLimiter の利用と API 側でのチェック
+- `src/Models/Tag.php` / `src/Services/PostTagService.php` — タグ検索時の入力検証とパターン構築（LIKEの扱い）
+
+これらのファイルを根拠として「対応済み（概要）」に記載しています。未対応項目については本稿先頭の一覧を優先してください。
+
 ### 作成したドキュメント
 
 1. **SECURITY.md** - 包括的なセキュリティガイド

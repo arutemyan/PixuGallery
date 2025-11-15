@@ -12,22 +12,7 @@
 ---
 
 ## 完了した作業（Phase 1）
-
-### 1. eval() の削除
-- `public/admin/js/admin.js` - Function map に変更
-- 効果: `'unsafe-eval'` 不要に
-
-### 2. Inline script の削除
-- `public/admin/index.php` - CSRF token / ADMIN_PATH を meta/data属性に
-- `public/admin/paint/index.php` - 140+行を外部ファイル化
-- 効果: `'unsafe-inline'` 不要に
-
-### 3. CSP Middleware の実装
-- `src/Security/CspMiddleware.php` - Nonce生成とヘッダー管理
-- `src/Security/SecurityUtil.php` - Middleware使用に更新
-
-### 4. Config API の作成
-- `public/admin/api/config.php` - 設定値配信用エンドポイント
+<!-- 完了済みの作業内容は削除済み -->
 
 ---
 

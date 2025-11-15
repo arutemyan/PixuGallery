@@ -19,29 +19,7 @@
 ---
 
 ## Phase 1 で達成した内容（完了済み）
-
-### ✅ Issue の妥当性検証
-- CSP の unsafe-inline/unsafe-eval 使用は実際に問題だった
-- 段階的な移行が実現可能であることを確認
-
-### ✅ セキュリティリスクの軽減
-
-**変更前**:
-- 管理画面: `script-src 'self' 'unsafe-inline' 'unsafe-eval'` 
-- XSS攻撃により任意スクリプトが実行可能
-
-**変更後**:
-- 管理画面: `script-src 'self' 'nonce-XXXXX'`
-- XSS攻撃をブロック（nonce なしスクリプトは実行不可）
-
-### ✅ 実装完了項目
-
-1. **eval() 削除**: public/admin/js/admin.js
-2. **Inline scripts 削除**: admin/index.php, admin/paint/index.php
-3. **CSP middleware**: src/Security/CspMiddleware.php 新規作成
-4. **Config API**: public/admin/api/config.php 新規作成
-
----
+<!-- Phase 1 の完了項目は削除済み -->
 
 ## 次のアクション
 

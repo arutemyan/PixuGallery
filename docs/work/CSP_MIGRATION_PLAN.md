@@ -51,29 +51,7 @@
 ---
 
 ## Phase 1 で解決した問題（完了済み）
-
-### ✅ eval() の削除
-- **ファイル**: `public/admin/js/admin.js`
-- **変更**: Function map で置き換え
-- **効果**: `'unsafe-eval'` 不要に
-
-### ✅ 管理画面の inline script 削除
-- **ファイル**: `public/admin/index.php`, `public/admin/paint/index.php`
-- **変更**: Meta tag / data 属性 / 外部ファイル化
-- **効果**: `'unsafe-inline'` 不要に（管理画面）
-
-### ✅ nonce-based CSP の導入
-- **新規ファイル**: `src/Security/CspMiddleware.php`
-- **変更**: `src/Security/SecurityUtil.php` で使用
-- **効果**: 安全な CSP ポリシー
-
-**新しい CSP ポリシー** (Phase 1 後):
-```
-script-src 'self' 'nonce-XXXXX' cdn.jsdelivr.net code.jquery.com
-style-src 'self' 'nonce-XXXXX' cdn.jsdelivr.net fonts.googleapis.com
-```
-
----
+<!-- Phase 1 に関する完了済み項目は削除済み -->
 
 ## 次のステップ
 

@@ -1,4 +1,3 @@
-````markdown
 # Documentation (ユーザー向け)
 
 このフォルダはエンドユーザー向けのドキュメントを置きます。設計や内部アーキテクチャの詳細は [design/README.md](../design/README.md) に移動しています。
@@ -14,10 +13,8 @@
 
 クイックスタート:
 
-1. 依存関係をインストール: `composer install`
+1. 依存関係をインストール: `composer install --no-dev --optimize-autoloader`
 2. 開発サーバー: `php -S localhost:8000 -t public/`
 3. 詳細な設定: [CONFIG.md](CONFIG.md) を参照
 
 追加情報や開発者向けの詳細は [design/README.md](../design/README.md) を参照してください。
-
-````
