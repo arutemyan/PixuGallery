@@ -106,7 +106,7 @@ const ADMIN_PATH = document.body.dataset.adminPath || '';
 
 **主な変更点**:
 - `public/paint/detail.php`: タイムラプス関連の `data-inline-style` をクラス化（`timelapse-size-note`, `timelapse-options-center`, `timelapse-option-label`）に置換。
-- `public/js/inline-style-applier.js`: 一時的に導入していた `data-inline-style` の動的適用ロジックは差し戻し（現在は `data-bg` / `data-color` のみ適用）。
+// `public/js/inline-style-applier.js` は不要となったため削除済み。`data-bg`/`data-color` 相当の処理はテーマの CSS 変数／クラスへ統合しました。
 - 新規/更新 CSS: `public/css/inline-styles.css` に移行用のユーティリティクラスをまとめました。
 
 **理由**: 直接の `style` 属性や動的なスタイル注入は CSP の `unsafe-inline` を要求しやすいため、静的クラス化でポリシー準拠を目指します。

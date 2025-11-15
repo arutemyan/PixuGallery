@@ -82,7 +82,8 @@ self::$instance->exec("SET search_path TO {$schema}");
 
 - `public/css/inline-styles.css` を作成し、従来テンプレートに埋め込まれていたスタイルをユーティリティクラスとして収容しました。
 - `public/paint/detail.php` 等のテンプレートは `data-inline-style` をクラス化して置換済みで、動作に応じたクラス（例: `timelapse-size-note`）が追加されています。
-- 一時的に導入された `public/js/inline-style-applier.js` の動的パーサは安全性と安定性の観点から簡素化（`data-bg` / `data-color` のみ適用）され、後に元の単純実装に戻されました。
+
+- 一時的に導入された `public/js/inline-style-applier.js` は不要となったため削除済みです。UI のテーマ色や小さなスタイルは `public/block/style.php` の CSS 変数と `public/css/inline-styles.css` のユーティリティクラスに移行しました。
 
 影響と推奨:
 

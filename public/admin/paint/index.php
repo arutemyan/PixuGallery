@@ -38,7 +38,6 @@ try {
     <title>お絵描き - 管理</title>
     <?php echo \App\Utils\AssetHelper::linkTag(PathHelper::getAdminUrl('/paint/css/style.css')); ?>
     <?php echo \App\Utils\AssetHelper::linkTag('/css/inline-styles.css'); ?>
-    <script src="/js/inline-style-applier.js"></script>
 </head>
 <body data-paint-base-url="<?= htmlspecialchars(rtrim(PathHelper::getAdminUrl('/paint/'), '/') . '/', ENT_QUOTES, 'UTF-8') ?>">
 

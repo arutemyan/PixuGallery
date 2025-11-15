@@ -1,4 +1,6 @@
-/* Inline style fixes extracted from templates to support CSP and consistency */
+/* Inline style fixes extracted from templates to support CSP and consistency
+	Consolidated from `inline-fixes.css` to create a single canonical file.
+*/
 .no-underline{ text-decoration: none !important; }
 .icon-large{ font-size: 3rem !important; }
 .clipboard-preview{ display: none; position: relative; }

@@ -17,9 +17,8 @@ $backButtonBgColor = $theme['back_button_bg_color'] ?? '#8B5AFA';
 $backButtonTextColor = $theme['back_button_text_color'] ?? '#FFFFFF';
 ?>
 <a href="/index.php" class="back-link">
-    <div class="header-back-button header-back-button-inline" data-bg="<?= escapeHtml($backButtonBgColor) ?>" data-color="<?= escapeHtml($backButtonTextColor) ?>">
+    <div class="header-back-button header-back-button-inline">
         <?= escapeHtml($backButtonText) ?>
     </div>
 </a>
-<script src="/js/inline-style-applier.js"></script>
 <?php } ?>

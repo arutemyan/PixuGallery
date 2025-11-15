@@ -37,7 +37,6 @@ try {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <?php echo \App\Utils\AssetHelper::linkTag('/res/css/admin.css'); ?>
     <?php echo \App\Utils\AssetHelper::linkTag('/css/inline-styles.css'); ?>
-    <script src="/js/inline-style-applier.js"></script>
 </head>
 <body data-admin-path="<?= escapeHtml(PathHelper::getAdminPath()) ?>">
     <!-- ナビゲーションバー -->
