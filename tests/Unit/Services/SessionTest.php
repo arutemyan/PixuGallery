@@ -10,6 +10,13 @@ final class SessionTest extends TestCase
 
     protected function setUp(): void
     {
+        // Ensure APP_ID_SECRET is set for tests (required by Session)
+        if (getenv('APP_ID_SECRET') === false || getenv('APP_ID_SECRET') === '') {
+            // 256-bit secret in hex
+            $secret = bin2hex(random_bytes(32));
+            putenv('APP_ID_SECRET=' . $secret);
+        }
+
         $this->keyDir = sys_get_temp_dir() . '/session_keys_test_' . uniqid('', true);
         if (!is_dir($this->keyDir)) {
             mkdir($this->keyDir, 0700, true);
@@ -29,6 +36,9 @@ final class SessionTest extends TestCase
 
     protected function tearDown(): void
     {
+        // Unset APP_ID_SECRET to avoid leaking between tests
+        putenv('APP_ID_SECRET');
+
         if (session_status() !== PHP_SESSION_NONE) {
             session_unset();
             session_destroy();
