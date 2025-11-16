@@ -1283,3 +1283,27 @@ body.hide-titles .card-content {
         min-width: 60px;
     }
 }
+
+/* ========================================
+   画像カウント表示
+   ======================================== */
+.image-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-weight: 500;
+}
+
+.image-count::before {
+    font-size: 0.9em;
+    display: inline-block;
+    filter: grayscale(0.3) brightness(1.1);
+}
+
+/* グループバッジのアイコン */
+.group-badge::before {
+    margin-right: 0.25rem;
+    font-size: 0.9em;
+    display: inline-block;
+    filter: grayscale(0.2) brightness(1.2);
+}

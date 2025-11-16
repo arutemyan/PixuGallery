@@ -16,9 +16,13 @@ return [
     'app' => [
         // 環境: 'development' または 'production'
         'environment' => 'development',
-        
-    // 本番環境ではbundle版のアセット（JS/CSS）を使用
-    'use_bundled_assets' => false,
+
+        // ベースURL設定（サブディレクトリで動作させる場合は設定）
+        // 例: '/subdir' または '' (ルート)
+        'base_url' => '',
+
+        // 本番環境ではbundle版のアセット（JS/CSS）を使用
+        'use_bundled_assets' => false,
     ],
 
     /**
