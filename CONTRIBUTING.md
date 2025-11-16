@@ -29,7 +29,7 @@ composer install
 
 2. PHP バージョン: PHP 8.1+ を推奨します。ローカルで PHP が用意できない場合は Docker を利用してください。
 
-3. 設定ファイル: `config.local.php` や `.env` などのローカル設定はリポジトリに含めず、サンプル（`config.local.example.php`）をコピーして利用してください。
+3. 設定ファイル: `config.local.php` や `.env` などのローカル設定はリポジトリに含めず、`config/config.default.php` をコピーして `config/config.local.php` を作成して利用してください。
 
 **テストの実行**
 - ユニット/統合テストは PHPUnit を使用します。

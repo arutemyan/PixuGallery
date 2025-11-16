@@ -33,43 +33,16 @@ PixuGallery はブラウザ上で簡単にイラストを作成・投稿・閲�
 
 ## 要件
 
-- PHP 8.x 推奨
+- PHP 8.1 以上を推奨
 - Composer（PHP 依存管理）
 - SQLite（開発用）または任意の対応 DB
 - Node.js と pnpm / npm（フロントエンドビルドが必要な場合）
 
 ## クイックスタート（開発）
 
-1. リポジトリをクローン
+詳しい手順は `docs/DEVELOP.md` を参照してください。ローカル開発の基本フロー、依存のインストール、テスト実行方法が記載されています。
 
-2. PHP 依存をインストール
-
-```bash
-composer install
-```
-
-3. フロントエンド依存（該当する場合）
-
-```bash
-pnpm install
-# または
-npm install
-```
-
-4. （任意）フロントをビルド
-
-```bash
-pnpm run build
-```
-
-5. 内蔵 PHP サーバーで起動（開発用）
-
-```bash
-php -S localhost:8000 -t public/
-# ブラウザで http://localhost:8000 を開く
-```
-
-> 注: 本番運用では nginx / Apache と PHP-FPM 等を推奨します（設定例は追記できます）。
+本番設置／シークレット管理については `docs/SETUP.md` を参照してください。`APP_ID_SECRET` は起動に必須です。
 
 ## 設定
 
@@ -93,7 +66,7 @@ cp config/config.local.example.php config/config.local.php
 - `config/config.local.php` を作成し、管理パスを推測されにくくする
 - HTTPS（TLS）を強制する設定を行う
 - 不要なセットアップファイル（例: `public/setup/`）を削除
-- `data/`, `config/`, `config/session_keys/` 等のパーミッションを適切に設定する
+- `data/`, `config/` 等のパーミッションを適切に設定する
 - 強力な管理者パスワードを設定する（推奨: 12文字以上・複雑）
 
 ### セッションセキュリティ設定（本番環境推奨）
@@ -169,19 +142,8 @@ vendor/bin/phpunit
 ## 開発メモ / 既知のユーティリティ
 
 - `scripts/generate_thumbnail.php` — サムネイル生成スクリプト
-- `update_timelapse_sizes.php` — タイムラプスのサイズ調整
 
 これらのスクリプトは直接データを操作することがあるため、実行前にバックアップを取ることを推奨します。
-
-## 貢献
-
-貢献歓迎です。Issue や Pull Request をお送りください。PR の際は以下を心がけてください:
-
-- 小さな単位で変更する
-- 可能であればテストを追加する
-- 変更点は README または docs に反映する
-
-詳細は `CONTRIBUTING.md` を参照してください。
 
 ## ライセンス
 

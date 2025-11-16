@@ -21,7 +21,7 @@ config/
 ### 1. ローカル設定ファイルを作成
 
 ```bash
-cp config/config.local.php.example config/config.local.php
+cp config/config.default.php config/config.local.php
 ```
 
 ### 2. 必要な設定のみを記述
