@@ -193,6 +193,10 @@ return [
             'token_name' => 'csrf_token',
         ],
 
+        // ID トークン用シークレット（任意）
+        // 環境変数 `APP_ID_SECRET` が優先されます。空の場合は Session キーの先頭要素をフォールバックで使用します。
+        'id_secret' => getenv('APP_ID_SECRET') ?: '',
+
         // CORS設定（公開API用）
         'cors' => [
             // CORS を有効にするか

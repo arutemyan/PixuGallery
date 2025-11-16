@@ -7,6 +7,7 @@ namespace App\Services;
 require_once __DIR__. '/../Security/SecurityUtil.php';
 
 use Exception;
+use App\Utils\Logger;
 
 /**
  * 簡易 Session 管理クラス
@@ -36,7 +37,29 @@ class Session
     public static function start(array $opts = []): Session
     {
         if (self::$instance === null) {
-            self::$instance = new self($opts);
+            try {
+                self::$instance = new self($opts);
+            } catch (\Throwable $ex) {
+                // constructor already logs detailed instructions; ensure an
+                // operator-friendly response is returned instead of a PHP
+                // fatal error/stack trace. Log at error level as a fallback.
+                try {
+                    Logger::getInstance()->error('Session start failed: ' . $ex->getMessage());
+                } catch (\Throwable $ignore) {
+                    // ignore logging failures
+                }
+
+                // Return a user-friendly HTML page and exit gracefully.
+                if (!headers_sent()) {
+                    header(($_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.1') . ' 503 Service Unavailable');
+                    header('Content-Type: text/html; charset=utf-8');
+                }
+                echo '<!doctype html><html><head><meta charset="utf-8"><title>セットアップが完了していません / Setup incomplete</title></head><body style="font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;padding:2rem;">';
+                echo '<h1>セットアップが完了していません</h1>';
+                echo '<p>Setup incomplete. Please contact the site administrator.</p>';
+                echo '</body></html>';
+                exit(1);
+            }
         } else {
             // If instance already exists ensure PHP session is active; this
             // handles tests that destroy the PHP session but keep the
@@ -46,6 +69,7 @@ class Session
                 self::$instance->initPhpSession($opts);
             }
         }
+
         return self::$instance;
     }
 
@@ -65,9 +89,37 @@ class Session
         $this->retainKeys = $opts['retain_keys'] ?? 3; // keep newest N keys to allow decryption after rotation
 
         $this->initPhpSession($opts);
-        $this->ensureKeyDir();
-        $this->loadKeys();
-        $this->rotateIfNeeded();
+        // Require an explicit secret for ID token HMACs. Making APP_ID_SECRET (or
+        // config.security.id_secret) mandatory removes the need for file-based
+        // session_keys; file keys are no longer used by default.
+        $hasEnvSecret = (getenv('APP_ID_SECRET') !== false && getenv('APP_ID_SECRET') !== '');
+        try {
+            $cfg = \App\Config\ConfigManager::getInstance()->getConfig();
+            $hasConfigSecret = !empty($cfg['security']['id_secret']);
+        } catch (\Throwable $ex) {
+            $hasConfigSecret = false;
+        }
+
+        if (!$hasEnvSecret && !$hasConfigSecret) {
+            // Log detailed guidance for operators to app.log, but throw a concise
+            // message for the running process so that end-users/operators see
+            // a clear "setup incomplete" error without exposing internals.
+            try {
+                $msg = "APP_ID_SECRET or security.id_secret is not configured.\n" .
+                    "This application requires an HMAC secret for ID token signing.\n" .
+                    "Generate a 256-bit secret (example): openssl rand -base64 32 | tr '+/' '-_' | tr -d '='\n" .
+                    "Set it as environment variable APP_ID_SECRET or put it in config.security.id_secret.\n" .
+                    "Do NOT commit secrets to version control.\n";
+                Logger::getInstance()->error('Session initialization failed: ' . str_replace("\n", ' | ', $msg));
+            } catch (\Throwable $ex) {
+                // If logging fails, continue to throw the concise exception below.
+            }
+
+            throw new Exception('Setup incomplete: APP_ID_SECRET is not configured. See logs/app.log for details.');
+        }
+
+        // Do not use file-based keyring when APP_ID_SECRET or config secret is present.
+        $this->keys = [];
     }
 
     private function initPhpSession(array $config = null): void
@@ -358,45 +410,75 @@ class Session
     }
 
     /**
-     * マスク（可逆暗号）: AES-256-GCM を使う
-     * 出力は URL 安全な base64（+/- を -_ に）
+     * ID トークン生成（不可逆）
+     * HMAC-SHA256 を用いて ID に対する検証タグを付与します。
+     * トークンは URL 安全な base64 でエンコードされます。
+     *
+     * 仕組み:
+     *  - secret = 環境変数 `APP_ID_SECRET` または config.security.id_secret を優先
+     *  - フォールバック: 内部キーリングの先頭キーを使用
+     *
+     * メリット: 復号不要（不可逆）で鍵管理が単純になります。
      */
     public function maskId(int $id): string
     {
-        $key = $this->keys[0];
-        $iv = random_bytes(12);
-        $plaintext = (string)$id;
-        $tag = '';
-        $cipher = openssl_encrypt($plaintext, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag);
-        if ($cipher === false) {
-            throw new Exception('Encryption failed');
-        }
-        $raw = $iv . $tag . $cipher;
-        return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+        $idStr = (string)$id;
+        $secret = $this->getIdSecret();
+        $mac = hash_hmac('sha256', $idStr, $secret, true);
+        $macB64 = rtrim(strtr(base64_encode($mac), '+/', '-_'), '=');
+        $payload = $idStr . ':' . $macB64;
+        return rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
     }
 
     /**
-     * アンマスク（複数キーを試す）
+     * ID トークン検証（不可逆）
+     * 有効なトークンであれば元の ID を返します。無効なら null を返します。
      */
     public function unmaskId(string $masked): ?int
     {
-        $data = base64_decode(strtr($masked, '-_', '+/'));
-        if ($data === false || strlen($data) < 12 + 16) {
+        $payload = base64_decode(strtr($masked, '-_', '+/'));
+        if ($payload === false) {
             return null;
         }
-        $iv = substr($data, 0, 12);
-        $tag = substr($data, 12, 16);
-        $cipher = substr($data, 28);
-
-        foreach ($this->keys as $k) {
-            $plain = openssl_decrypt($cipher, 'aes-256-gcm', $k, OPENSSL_RAW_DATA, $iv, $tag);
-            if ($plain !== false) {
-                if (is_numeric($plain)) {
-                    return (int)$plain;
-                }
-                return null;
-            }
+        $parts = explode(':', $payload, 2);
+        if (count($parts) !== 2) {
+            return null;
         }
-        return null;
+        [$idStr, $macB64] = $parts;
+        if (!ctype_digit($idStr)) {
+            return null;
+        }
+        $secret = $this->getIdSecret();
+        $expectedMac = hash_hmac('sha256', $idStr, $secret, true);
+        $expectedMacB64 = rtrim(strtr(base64_encode($expectedMac), '+/', '-_'), '=');
+        if (!hash_equals($expectedMacB64, $macB64)) {
+            return null;
+        }
+        return (int)$idStr;
+    }
+
+    /**
+     * ID トークン用のシークレットを取得する。優先順:
+     * 1) 環境変数 `APP_ID_SECRET`
+     * 2) config.security.id_secret
+     * 3) キーリングの先頭キー（バイナリ）
+     */
+    private function getIdSecret(): string
+    {
+        $env = getenv('APP_ID_SECRET');
+        if ($env !== false && $env !== '') {
+            return $env;
+        }
+
+        try {
+            $config = \App\Config\ConfigManager::getInstance()->getConfig();
+            if (!empty($config['security']['id_secret'])) {
+                return $config['security']['id_secret'];
+            }
+        } catch (\Throwable $ex) {
+            // ignore — fall back to key
+        }
+
+        throw new Exception('No ID secret available (set APP_ID_SECRET or security.id_secret in config)');
     }
 }
