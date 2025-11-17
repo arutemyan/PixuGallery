@@ -12,7 +12,7 @@ class AdminIntegrationTest extends IntegrationTestCase
     public function testLoginAndUploadFlow(): void
     {
         // GET login page to fetch csrf_token
-        $resp = $this->curl('/admin/login.php');
+        $resp = $this->curl(\App\Utils\PathHelper::getAdminUrl('login.php'));
         $this->assertEquals(200, $resp['http_code'], 'Login page did not return 200. Body: ' . substr($resp['output'], 0, 1000));
         $body = $resp['output'];
 
@@ -23,7 +23,7 @@ class AdminIntegrationTest extends IntegrationTestCase
         $csrf = $m[1];
 
         // Post login (password set in setup is 'testpassword')
-        $loginResp = $this->curl('/admin/login.php', ['form' => ['username' => 'admin', 'password' => 'testpassword', 'csrf_token' => $csrf]]);
+        $loginResp = $this->curl(\App\Utils\PathHelper::getAdminUrl('login.php'), ['form' => ['username' => 'admin', 'password' => 'testpassword', 'csrf_token' => $csrf]]);
         $this->assertTrue(in_array($loginResp['http_code'], [200,302]), 'Login POST did not return 200/302. Body: ' . substr($loginResp['output'], 0, 1000));
 
         // create a small test image
@@ -35,7 +35,7 @@ class AdminIntegrationTest extends IntegrationTestCase
         imagedestroy($im);
 
         // After login, fetch the admin dashboard to confirm authentication and get a fresh CSRF token
-        $dashResp = $this->curl('/admin/index.php');
+        $dashResp = $this->curl(\App\Utils\PathHelper::getAdminUrl('index.php'));
         $this->assertEquals(200, $dashResp['http_code'], 'Dashboard did not return 200 after login. Body: ' . substr($dashResp['output'], 0, 1000));
 
         // extract csrf_token from dashboard forms (upload form includes it)
@@ -45,7 +45,7 @@ class AdminIntegrationTest extends IntegrationTestCase
         $csrfDashboard = $m2[1];
 
         // perform upload via multipart using dashboard CSRF token
-        $uploadResp = $this->curl('/admin/api/upload.php', ['upload' => ['image' => $img], 'form' => ['title' => 'Integration Test', 'csrf_token' => $csrfDashboard]]);
+        $uploadResp = $this->curl(\App\Utils\PathHelper::getAdminUrl('api/upload.php'), ['upload' => ['image' => $img], 'form' => ['title' => 'Integration Test', 'csrf_token' => $csrfDashboard]]);
         $debugMsg = 'Upload did not return 200. http_code=' . ($uploadResp['http_code'] ?? 'NULL') . ' exec_code=' . ($uploadResp['code'] ?? 'NULL') . ' raw_exec_output=' . substr($uploadResp['raw_exec_output'] ?? '', 0, 4000);
         $this->assertEquals(200, $uploadResp['http_code'], $debugMsg);
         // write response for debugging

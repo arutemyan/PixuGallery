@@ -18,7 +18,8 @@ echo "Using base URL: $BASE_URL"
 
 # 1) GET login page to get initial cookies and CSRF token
 echo "Fetching login page..."
-LOGIN_HTML=$(curl -s -c "$COOKIEJAR" "$BASE_URL/admin/login.php")
+ADMIN_PATH=${ADMIN_PATH:-admin}
+LOGIN_HTML=$(curl -s -c "$COOKIEJAR" "$BASE_URL/$ADMIN_PATH/login.php")
 CSRF_TOKEN=$(echo "$LOGIN_HTML" | grep -oP 'name="csrf_token" value="\K[0-9a-f]+' | head -n1)
 
 if [ -z "$CSRF_TOKEN" ]; then
@@ -31,7 +32,7 @@ echo "CSRF token: $CSRF_TOKEN"
 
 # 2) POST login
 echo "Posting login..."
-LOGIN_RESP=$(curl -s -b "$COOKIEJAR" -c "$COOKIEJAR" -X POST "$BASE_URL/admin/login.php" \
+LOGIN_RESP=$(curl -s -b "$COOKIEJAR" -c "$COOKIEJAR" -X POST "$BASE_URL/$ADMIN_PATH/login.php" \
   -d "username=$USER&password=$PASS&csrf_token=$CSRF_TOKEN" -D -)
 
 echo "Login response snippet:"

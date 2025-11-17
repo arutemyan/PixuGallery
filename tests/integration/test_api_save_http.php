@@ -131,7 +131,8 @@ function curl_post(string $url, $postFields, string $cookieFile, array $headers 
 echo "Using base URL: $base\n";
 
 // 1) GET login page to extract CSRF
-$loginPage = curl_get($base . '/admin/login.php', $cookieFile);
+$adminPath = getenv('ADMIN_PATH') ?: 'admin';
+$loginPage = curl_get($base . '/' . $adminPath . '/login.php', $cookieFile);
 echo "[DEBUG] login GET http_code=" . $loginPage['http_code'] . "\n";
 echo "[DEBUG] login GET snippet=" . substr($loginPage['output'] ?? '', 0, 1000) . "\n";
 if ($loginPage['http_code'] !== 200) {
@@ -148,7 +149,7 @@ if (!isset($m[1])) {
 $loginCsrf = $m[1];
 
 // 2) POST login
-$loginResp = curl_post($base . '/admin/login.php', ['username' => 'admin', 'password' => 'testpassword', 'csrf_token' => $loginCsrf], $cookieFile);
+$loginResp = curl_post($base . '/' . $adminPath . '/login.php', ['username' => 'admin', 'password' => 'testpassword', 'csrf_token' => $loginCsrf], $cookieFile);
 echo "[DEBUG] login POST http_code=" . $loginResp['http_code'] . "\n";
 echo "[DEBUG] login POST output snippet=" . substr($loginResp['output'] ?? '', 0, 1000) . "\n";
 // show cookie contents for debugging
@@ -165,7 +166,7 @@ if (!in_array($loginResp['http_code'], [200, 302])) {
 }
 
 // 3) GET dashboard to get session-bound CSRF
-$dash = curl_get($base . '/admin/index.php', $cookieFile);
+$dash = curl_get($base . '/' . $adminPath . '/index.php', $cookieFile);
 echo "[DEBUG] dashboard GET http_code=" . $dash['http_code'] . "\n";
 echo "[DEBUG] dashboard snippet=" . substr($dash['output'] ?? '', 0, 1000) . "\n";
 if ($dash['http_code'] !== 200) {
@@ -206,10 +207,10 @@ if (file_exists($logFile)) {
     echo "[DEBUG] server log tail:\n" . ($tail ?: "(empty)\n");
 }
 
-$resp = curl_post($base . '/admin/paint/api/save.php', $body, $cookieFile, ['Content-Type: application/json', 'X-CSRF-Token: ' . $csrf]);
+$resp = curl_post($base . '/' . $adminPath . '/paint/api/save.php', $body, $cookieFile, ['Content-Type: application/json', 'X-CSRF-Token: ' . $csrf]);
 echo "HTTP " . $resp['http_code'] . "\n";
 echo "Response: \n" . ($resp['output'] ?? '') . "\n";
-$resp = curl_post($base . '/admin/paint/api/save.php', $body, $cookieFile, ['Content-Type: application/json', 'X-CSRF-Token: ' . $csrf]);
+$resp = curl_post($base . '/' . $adminPath . '/paint/api/save.php', $body, $cookieFile, ['Content-Type: application/json', 'X-CSRF-Token: ' . $csrf]);
 echo "HTTP " . $resp['http_code'] . "\n";
 echo "Response: \n" . ($resp['output'] ?? '') . "\n";
 

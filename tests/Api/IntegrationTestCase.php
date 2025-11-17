@@ -247,7 +247,7 @@ abstract class IntegrationTestCase extends TestCase
     protected function loginAndGetCsrf(): string
     {
         // GET login page
-        $resp = $this->curl('/admin/login.php');
+        $resp = $this->curl(\App\Utils\PathHelper::getAdminUrl('login.php'));
         // Debug log for troubleshooting login flow
         @file_put_contents(self::$tmpDir . '/debug_login_get.html', $resp['output']);
         if ($resp['http_code'] !== 200) {
@@ -261,14 +261,14 @@ abstract class IntegrationTestCase extends TestCase
         $loginToken = $m[1];
 
         // POST login
-        $loginResp = $this->curl('/admin/login.php', ['form' => ['username' => 'admin', 'password' => 'testpassword', 'csrf_token' => $loginToken]]);
+        $loginResp = $this->curl(\App\Utils\PathHelper::getAdminUrl('login.php'), ['form' => ['username' => 'admin', 'password' => 'testpassword', 'csrf_token' => $loginToken]]);
         @file_put_contents(self::$tmpDir . '/debug_login_post.html', $loginResp['output']);
         if (!in_array($loginResp['http_code'], [200, 302])) {
             throw new \RuntimeException('Login failed: HTTP ' . $loginResp['http_code']);
         }
 
         // GET dashboard to obtain session-bound CSRF
-        $dash = $this->curl('/admin/index.php');
+        $dash = $this->curl(\App\Utils\PathHelper::getAdminUrl('index.php'));
         @file_put_contents(self::$tmpDir . '/debug_dashboard.html', $dash['output']);
         if ($dash['http_code'] !== 200) {
             throw new \RuntimeException('Dashboard not available after login: HTTP ' . $dash['http_code']);

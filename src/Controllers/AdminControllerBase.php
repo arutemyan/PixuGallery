@@ -40,14 +40,13 @@ abstract class AdminControllerBase extends ControllerBase
             $userId = $sess->get('admin_user_id', null);
         }
         if ($userId === null && $redirect) {
-            // redirect to login page
+            // redirect to login page using configured admin path
             if (!headers_sent()) {
                 $protocol = $_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.1';
                 header($protocol . ' 302 Found');
             }
-            $login = '/admin/login.php';
-            // PathHelper may not be available here in some includes; keep simple
-            header('Location: ' . $login);
+            $loginUrl = \App\Utils\PathHelper::getAdminUrl('login.php');
+            header('Location: ' . $loginUrl);
             exit;
         }
 
