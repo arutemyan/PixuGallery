@@ -318,12 +318,17 @@ function logSecurityEvent(string $message, array $context = []): void
         return;
     }
 
-    // ログディレクトリを取得して保護
-    $logDir = dirname($config['security']['logging']['log_file'] ?? __DIR__ . '/../../logs/security.log');
-    ensureSecureDirectory($logDir);
+    // ログファイルパスは必須とする（fail-fast）
+    $logFile = $config['security']['logging']['log_file'] ?? null;
+    if (empty($logFile)) {
+        throw new \RuntimeException('security.logging.log_file is not configured');
+    }
 
-    // ログファイルパスを取得
-    $logFile = $config['security']['logging']['log_file'] ?? __DIR__ . '/../../logs/security.log';
+    // ログディレクトリを取得して保護
+    $logDir = dirname($logFile);
+    if (!ensureSecureDirectory($logDir)) {
+        throw new \RuntimeException(sprintf('Failed to secure log directory: %s', $logDir));
+    }
 
     // 機密情報のサニタイズ
     if (!empty($config['security']['logging']['sanitize'])) {
@@ -342,5 +347,8 @@ function logSecurityEvent(string $message, array $context = []): void
         $contextJson
     );
 
-    file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+    $res = @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+    if ($res === false) {
+        throw new \RuntimeException(sprintf('Failed to write security log file: %s', $logFile));
+    }
 }

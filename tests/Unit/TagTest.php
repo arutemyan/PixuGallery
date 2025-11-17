@@ -210,14 +210,14 @@ final class TagTest extends TestCase
      */
     public function testSearchByNameCaseInsensitive(): void
     {
-        //// テストデータの投入
-        //$this->pdo->exec("INSERT INTO tags (name) VALUES ('TestTag')");
-//
-        //// 小文字で検索
-        //$results = $this->tagModel->searchByName('testtag', false);
-//
-        //// SQLiteのデフォルトはCASE INSENSITIVEなのでヒットする
-        //$this->assertIsArray($results);
-        //$this->assertCount(1, $results);
+        // テストデータの投入
+        $this->pdo->exec("INSERT INTO tags (name) VALUES ('TestTag')");
+
+        // 小文字で検索
+        $results = $this->tagModel->searchByName('testtag', false);
+
+        // SQLiteのデフォルトはCASE INSENSITIVEなのでヒットする
+        $this->assertIsArray($results);
+        $this->assertCount(1, $results);
     }
 }

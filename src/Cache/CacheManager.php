@@ -29,19 +29,32 @@ class CacheManager
     {
         // 設定ファイルを読み込み（ConfigManager 経由）
         $this->config = \App\Config\ConfigManager::getInstance()->get('cache', []);
-
         // キャッシュディレクトリのパスを決定
+        $configured = $this->config['cache_dir'] ?? null;
+
         if ($cacheDir !== null) {
             // 引数で指定された場合はそれを使用（後方互換性）
             $this->cacheDir = rtrim($cacheDir, '/');
-        } else {
+        } elseif ($configured !== null) {
             // 設定ファイルから読み込み
-            $this->cacheDir = rtrim($this->config['cache_dir'] ?? __DIR__ . '/../../cache', '/');
+            $this->cacheDir = rtrim($configured, '/');
+        } else {
+            // fail-fast: 明示的な設定がない場合は例外
+            throw new \RuntimeException('cache.cache_dir is not configured');
         }
 
         // キャッシュディレクトリを作成して保護
         $permissions = $this->config['dir_permissions'] ?? 0755;
-        ensureSecureDirectory($this->cacheDir, $permissions);
+
+        if (!is_dir($this->cacheDir)) {
+            if (!@mkdir($this->cacheDir, $permissions, true)) {
+                throw new \RuntimeException(sprintf('Failed to create cache directory: %s', $this->cacheDir));
+            }
+        }
+
+        if (!ensureSecureDirectory($this->cacheDir, $permissions)) {
+            throw new \RuntimeException(sprintf('Failed to secure cache directory: %s', $this->cacheDir));
+        }
     }
 
     /**

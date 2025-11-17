@@ -70,7 +70,7 @@ $cacheDir = $config['cache']['cache_dir'];
 
 | 項目 | 説明 | デフォルト |
 |-----|------|-----------|
-| `cache_dir` | キャッシュディレクトリ | `cache/` |
+| `cache_dir` | キャッシュディレクトリ | `data/cache` |
 | `enabled` | 有効/無効 | `true` |
 | `default_ttl` | 有効期限（秒） | `0`（無期限） |
 
@@ -136,3 +136,24 @@ return [
 | 設定が反映されない | ファイルの場所とパーミッションを確認 |
 | デフォルトに戻したい | `config.local.php` を削除またはリネーム |
 | 特定の設定だけリセット | `config.local.php` から該当セクションを削除 |
+
+
+## ランタイムディレクトリと必須設定（重要）
+
+- デフォルトのランタイムディレクトリは `data/` 以下に集約されています：
+    - キャッシュ: `data/cache`
+    - ログ: `data/log`（例: `data/log/app.log`）
+
+- 本リリース以降、アプリケーションは以下の設定項目が存在し、書き込み可能であることを前提に動作します。設定がないかディレクトリに書き込み不能な場合は起動時に例外を投げ（フェイルファースト）、サービスは起動しません。
+    - `cache.cache_dir` — キャッシュディレクトリ（例: `data/cache`）
+    - `app_logging.log_file` — アプリケーションログファイル（例: `data/log/app.log`）
+    - `security.logging.log_file` — セキュリティログファイル（必要に応じて）
+
+- セッションの安全性のため、実行環境では `security.id_secret`（もしくは環境変数 `APP_ID_SECRET`）を必ず設定してください。統合テストやテスト用ビルトインサーバでは `security.id_secret` を `config.local.php` に書き出すことを推奨します。
+
+- CI / 本番移行のチェックリスト:
+    1. `config/config.local.php` に上記のパス（`cache.cache_dir`、`app_logging.log_file` 等）を記載する。
+    2. `data/cache` と `data/log` のオーナーとパーミッションがアプリ実行ユーザーで書き込み可能であること。
+    3. `.htaccess` （Apache）やウェブサーバ設定で `data/` 以下が公開されないように保護する。リポジトリに含まれる `secure_directories.php` を利用して `.htaccess` を作成できます。
+
+詳細は `docs/UPGRADE.md` を参照してください（ディレクトリ構成変更と移行手順）。

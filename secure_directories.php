@@ -13,8 +13,9 @@ require_once __DIR__ . '/src/Security/SecurityUtil.php';
 // 保護すべきディレクトリのリスト
 $directories = [
     __DIR__ . '/data',
-    __DIR__ . '/cache',
-    __DIR__ . '/logs',
+    // キャッシュとログを data 以下にまとめる
+    __DIR__ . '/data/cache',
+    __DIR__ . '/data/log',
     __DIR__ . '/public/data',
 ];
 

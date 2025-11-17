@@ -59,6 +59,10 @@ abstract class IntegrationTestCase extends TestCase
             "    ],\n" .
             "    'cache' => [\n" .
             "        'cache_dir' => __DIR__ . '/../tests/tmp_data/cache'\n" .
+            "    ],\n" .
+            "    'security' => [\n" .
+            "        // Test secret for session ID signing (do NOT use in production)\n" .
+            "        'id_secret' => 'phpunit_test_secret_please_change'\n" .
             "    ]\n" .
             "];\n";
 

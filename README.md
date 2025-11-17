@@ -126,6 +126,7 @@ vendor/bin/phpunit
 
 - docs (ユーザー向け): `docs/README.md`
   - 設定: `docs/CONFIG.md`
+  - アップグレードガイド: `docs/UPGRADE.md`
   - ビルド / デプロイ: `docs/BUILD.md`
   - リリース（運用向け）: `design/RELEASE.md`
   - 管理画面パス: `docs/ADMIN_PATH.md`

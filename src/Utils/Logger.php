@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Utils;
 
+
+
 /**
  * Loggerクラス
  *
@@ -27,21 +29,17 @@ class Logger
     private function __construct()
     {
         $this->config = \App\Config\ConfigManager::getInstance()->get('app_logging', []);
-
-        // デフォルト設定
-        if (empty($this->config)) {
-            $this->config = [
-                'enabled' => true,
-                'log_file' => __DIR__ . '/../../logs/app.log',
-                'level' => 'error',
-                'format' => '%timestamp [%level] %file:%line %message'
-            ];
+        // 必須チェック: log_file は必須設定とする（config.default.php にデフォルトがあることを前提）
+        if (empty($this->config['log_file'])) {
+            throw new \RuntimeException('app_logging.log_file is not configured');
         }
 
-        // ログディレクトリが存在しない場合は作成
+        // ログディレクトリが存在しない場合は作成（失敗したら例外）
         $logDir = dirname($this->config['log_file']);
         if (!is_dir($logDir)) {
-            mkdir($logDir, 0755, true);
+            if (!@mkdir($logDir, 0755, true)) {
+                throw new \RuntimeException(sprintf('Failed to create log directory: %s', $logDir));
+            }
         }
     }
 
@@ -117,7 +115,10 @@ class Logger
         ) . "\n";
 
         // ファイルに書き込み
-        file_put_contents($this->config['log_file'], $logLine, FILE_APPEND | LOCK_EX);
+        $res = @file_put_contents($this->config['log_file'], $logLine, FILE_APPEND | LOCK_EX);
+        if ($res === false) {
+            throw new \RuntimeException(sprintf('Failed to write to log file: %s', $this->config['log_file']));
+        }
     }
 
     /**

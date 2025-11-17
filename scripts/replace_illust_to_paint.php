@@ -11,7 +11,7 @@ $excludeDirs = [
     $root . '/vendor',
     $root . '/node_modules',
     $root . '/uploads',
-    $root . '/logs',
+    $root . '/data/log',
     $root . '/releases',
     $root . '/public/paint/js/*.bundle.js',
     $root . '/.git',
@@ -51,7 +51,7 @@ foreach ($iterator as $file) {
     if (!$file->isFile()) continue;
     $path = $file->getPathname();
     // Skip dotfiles and excluded dirs
-    foreach (['/.git', '/vendor', '/node_modules', '/uploads', '/logs', '/releases'] as $skip) {
+    foreach (['/.git', '/vendor', '/node_modules', '/uploads', '/data/log', '/data/cache', '/releases'] as $skip) {
         if (strpos($path, $skip) !== false) {
             continue 2;
         }

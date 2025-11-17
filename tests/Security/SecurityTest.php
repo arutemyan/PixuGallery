@@ -697,7 +697,7 @@ class SecurityTest extends TestCase
      */
     public function testLogSecurityEventWritesToLogFile(): void
     {
-        $logDir = __DIR__ . '/../../logs';
+        $logDir = __DIR__ . '/../../data/log';
         $logFile = $logDir . '/security.log';
 
         // 既存ログを削除

@@ -16,7 +16,8 @@ if (file_exists(PROJECT_ROOT . '/vendor/autoload.php')) {
 
 // テスト用の定数設定
 define('TEST_ENV', true);
-define('CACHE_DIR', PROJECT_ROOT . '/cache');
+// テストでのデフォルトキャッシュディレクトリを data/cache に変更
+define('CACHE_DIR', PROJECT_ROOT . '/data/cache');
 define('DATA_DIR', PROJECT_ROOT . '/data');
 
 // エラーレポーティングの設定

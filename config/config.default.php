@@ -114,7 +114,8 @@ return [
      */
     'cache' => [
         // キャッシュディレクトリのパス
-        'cache_dir' => __DIR__ . '/../cache',
+        // デフォルトで `data/cache` にまとめるように変更
+        'cache_dir' => __DIR__ . '/../data/cache',
         // キャッシュの有効期限（秒、0=無期限）
         'default_ttl' => 0,
         // キャッシュの有効化/無効化
@@ -220,8 +221,8 @@ return [
         'paths' => [
             // データベースディレクトリ
             'data_dir' => __DIR__ . '/../data',
-            // ログディレクトリ
-            'log_dir' => __DIR__ . '/../logs',
+            // ログディレクトリ（デフォルトを data/log に変更）
+            'log_dir' => __DIR__ . '/../data/log',
             // レート制限データディレクトリ
             'rate_limit_dir' => __DIR__ . '/../data/rate-limits',
         ],
@@ -229,7 +230,7 @@ return [
         // セキュリティログ設定
         'logging' => [
             'enabled' => true,
-            'log_file' => __DIR__ . '/../logs/security.log',
+            'log_file' => __DIR__ . '/../data/log/security.log',
             // ログに機密情報（パスワード、トークンなど）を含めない
             'sanitize' => true,
         ],
@@ -302,8 +303,8 @@ return [
     'app_logging' => [
         // ログ有効化
         'enabled' => true,
-        // ログファイルパス
-        'log_file' => __DIR__ . '/../logs/app.log',
+        // ログファイルパス（data/log に統合）
+        'log_file' => __DIR__ . '/../data/log/app.log',
         // ログレベル: 'debug', 'info', 'warning', 'error'
         'level' => 'error',
         // ログフォーマット
