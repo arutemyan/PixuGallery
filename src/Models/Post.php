@@ -314,10 +314,20 @@ class Post
     /**
      * 閲覧回数をインクリメント
      */
-    public function incrementViewCount(int $id): bool
+    public function incrementViewCount(int $id, ?string $visitorHash = null): bool
     {
-        // カウンターDBで閲覧数をインクリメント
-        $success = $this->viewCounter->increment($id, PostConstants::POST_TYPE_SINGLE);
+        // 投稿タイプを取得して適切なカウンターを使う
+        try {
+            $stmt = $this->db->prepare("SELECT post_type FROM posts WHERE id = ?");
+            $stmt->execute([$id]);
+            $row = $stmt->fetch();
+            $postType = ($row && isset($row['post_type'])) ? (int)$row['post_type'] : PostConstants::POST_TYPE_SINGLE;
+        } catch (\Exception $e) {
+            $postType = PostConstants::POST_TYPE_SINGLE;
+        }
+
+        // カウンターDBで閲覧数をインクリメント（visitorHash による重複抑制を行う）
+        $success = $this->viewCounter->increment($id, $postType, $visitorHash);
 
         // アクセスログが有効な場合は記録
         if ($this->accessLogger !== null) {

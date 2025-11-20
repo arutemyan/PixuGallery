@@ -198,6 +198,10 @@ return [
         // 環境変数 `APP_ID_SECRET` が優先されます。空の場合は Session キーの先頭要素をフォールバックで使用します。
         'id_secret' => getenv('APP_ID_SECRET') ?: '',
 
+        // 公開 API 用の別シークレット。優先順: 環境変数 `APP_PUBLIC_ID_SECRET` -> config.security.public_id_secret -> config.security.id_secret
+        // 本番では `APP_PUBLIC_ID_SECRET` を環境変数で明示的に設定することを推奨します。
+        'public_id_secret' => getenv('APP_PUBLIC_ID_SECRET') ?: '',
+
         // CORS設定（公開API用）
         'cors' => [
             // CORS を有効にするか

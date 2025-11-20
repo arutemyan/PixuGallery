@@ -50,7 +50,9 @@ try {
     }
 
     // 閲覧数をインクリメント
-    $model->incrementViewCount($id);
+    // Visitor ID を発行/取得して渡す（DB 側の重複抑止に使用）
+    $visitorId = \App\Security\VisitorIdHelper::getOrCreate();
+    $model->incrementViewCount($id, $visitorId);
 
 } catch (Exception $e) {
     Logger::getInstance()->error('Post Detail Error (' . $type . '): ' . $e->getMessage());

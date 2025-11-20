@@ -30,6 +30,12 @@ class IncrementViewPublicController extends PublicControllerBase
 
         $rateLimiter->record($clientIp, 'api_increment_view');
 
+        // Visitor ID をヘルパーに委譲して簡潔化
+        // VisitorIdHelper will resolve the correct public secret (env/config/id_secret fallback) if no arg provided
+        $visitorId = \App\Security\VisitorIdHelper::getOrCreate();
+
+        // DB側の visitorHash による重複抑止を使うので、ファイルベースの dedup は不要
+
         try {
             $postId = $_POST['id'] ?? $_GET['id'] ?? null;
             $viewType = $_POST['viewtype'] ?? $_GET['viewtype'] ?? 0;
@@ -43,7 +49,9 @@ class IncrementViewPublicController extends PublicControllerBase
             }
 
             $model = new Post();
-            $success = $model->incrementViewCount((int)$postId);
+
+            // visitorId を渡して DB 側での重複チェックを行う
+            $success = $model->incrementViewCount((int)$postId, $visitorId);
 
             if ($success) {
                 $this->sendSuccess();
