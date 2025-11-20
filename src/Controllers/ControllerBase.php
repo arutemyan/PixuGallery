@@ -48,6 +48,7 @@ abstract class ControllerBase
     protected function setJsonHeader(): void
     {
         header('Content-Type: application/json; charset=utf-8');
+        header('X-Content-Type-Options: nosniff');
     }
 
     /**
@@ -71,12 +72,9 @@ abstract class ControllerBase
             http_response_code($statusCode);
         }
 
+        $this->setJsonHeader();
         $response = array_merge(['success' => true], $data);
-        $opts = JSON_UNESCAPED_UNICODE;
-        if (self::$jsonPretty) {
-            $opts |= JSON_PRETTY_PRINT;
-        }
-        echo json_encode($response, $opts);
+        echo $this->safeJsonEncode($response);
         exit;
     }
 
@@ -86,13 +84,9 @@ abstract class ControllerBase
     protected function sendError(string $error, int $statusCode = 400, array $additionalData = []): void
     {
         http_response_code($statusCode);
-
+        $this->setJsonHeader();
         $response = array_merge(['success' => false, 'error' => $error], $additionalData);
-        $opts = JSON_UNESCAPED_UNICODE;
-        if (self::$jsonPretty) {
-            $opts |= JSON_PRETTY_PRINT;
-        }
-        echo json_encode($response, $opts);
+        echo $this->safeJsonEncode($response);
         exit;
     }
 
@@ -102,15 +96,12 @@ abstract class ControllerBase
     protected function handleError(Exception $e): void
     {
         http_response_code(500);
+        $this->setJsonHeader();
         $response = [
             'success' => false,
             'error' => 'Internal server error'
         ];
-        $opts = JSON_UNESCAPED_UNICODE;
-        if (self::$jsonPretty) {
-            $opts |= JSON_PRETTY_PRINT;
-        }
-        echo json_encode($response, $opts);
+        echo $this->safeJsonEncode($response);
 
         Logger::getInstance()->error(get_class($this) . ' Error: ' . $e->getMessage());
         exit;
@@ -122,8 +113,15 @@ abstract class ControllerBase
     protected function parseJsonInput(): array
     {
         $input = file_get_contents('php://input');
-        $data = json_decode($input, true);
-        return $data ?? [];
+        if ($input === false || $input === '') {
+            return [];
+        }
+        try {
+            $data = json_decode($input, true, 512, JSON_THROW_ON_ERROR);
+            return $data ?? [];
+        } catch (\JsonException $e) {
+            $this->sendError('Invalid JSON input', 400);
+        }
     }
 
     /**
@@ -134,6 +132,59 @@ abstract class ControllerBase
         $input = file_get_contents('php://input');
         parse_str($input, $data);
         return $data;
+    }
+
+    /**
+     * 安全に JSON をエンコードして返す。エンコードに失敗した場合はログ記録して 500 を返す。
+     *
+     * @param mixed $data
+     * @return string
+     */
+    protected function safeJsonEncode(mixed $data): string
+    {
+        try {
+            $opts = JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR;
+            if (self::$jsonPretty) {
+                $opts |= JSON_PRETTY_PRINT;
+            }
+            return json_encode($data, $opts);
+        } catch (\JsonException $e) {
+            Logger::getInstance()->error(get_class($this) . ' JSON encode error: ' . $e->getMessage());
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+            header('X-Content-Type-Options: nosniff');
+            echo '{"success":false,"error":"Internal server error"}';
+            exit;
+        }
+    }
+
+    /**
+     * リクエストが JSON であるかどうかを推定する。主に Content-Type を確認する。
+     */
+    protected function isJsonRequest(): bool
+    {
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
+        if ($contentType !== '' && stripos($contentType, 'application/json') !== false) {
+            return true;
+        }
+        $length = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+        return $length > 0;
+    }
+
+    /**
+     * JSON を期待するエンドポイントで呼び出す。期待に反する場合は 415 を返す。
+     */
+    protected function requireJson(bool $allowEmpty = false): void
+    {
+        if (!$this->isJsonRequest()) {
+            $this->sendError('Expected application/json', 415);
+        }
+        if (!$allowEmpty) {
+            $len = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+            if ($len === 0) {
+                $this->sendError('Empty JSON body', 400);
+            }
+        }
     }
 
     /**
