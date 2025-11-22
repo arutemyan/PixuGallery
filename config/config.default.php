@@ -110,6 +110,32 @@ return [
     ],
 
     /**
+     * 共通パス設定（data 以下のディレクトリ等を一元管理）
+     * 環境固有の上書きは config.local.php で行ってください。
+     */
+    'paths' => [
+        // data のルートディレクトリ
+        'data_dir'    => __DIR__ . '/../data',
+        // サブディレクトリ（必要に応じて個別に上書き可）
+        'cache'       => __DIR__ . '/../data/cache',
+        'log'         => __DIR__ . '/../data/log',
+        'rate_limits' => __DIR__ . '/../data/rate-limits',
+        // counters はファイルパス（SQLite の場合は .db へのパス）
+        'counters'    => __DIR__ . '/../data/counters.db',
+        'uploads'     => __DIR__ . '/../public/uploads',
+        // 公開側の uploads URL（ブラウザからアクセスするパス）
+        // 必要に応じて環境毎に上書きしてください（例: '/static/uploads'）
+        'uploads_url' => '/uploads',
+        // プレースホルダー画像の指定
+        // 値の例:
+        // - 相対パス (uploads 内を基準): 'thumbs/placeholder.webp'
+        // - ルート相対パス（推奨、明示的にフロントのパスを指定する場合）: '/uploads/thumbs/placeholder.webp'
+        // - 絶対URL: 'https://cdn.example.com/placeholder.webp'
+        // デフォルトはルート相対で明示的に `/uploads/...` を指す設定にします。
+        'uploads_placeholder' => '/uploads/thumbs/placeholder.webp',
+    ],
+
+    /**
      * キャッシュ設定
      */
     'cache' => [

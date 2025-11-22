@@ -16,9 +16,9 @@ if (file_exists(PROJECT_ROOT . '/vendor/autoload.php')) {
 
 // テスト用の定数設定
 define('TEST_ENV', true);
-// テストでのデフォルトキャッシュディレクトリを data/cache に変更
-define('CACHE_DIR', PROJECT_ROOT . '/data/cache');
-define('DATA_DIR', PROJECT_ROOT . '/data');
+// テストでのデフォルトキャッシュディレクトリを config/PathHelper 経由で取得
+define('CACHE_DIR', \App\Utils\PathHelper::getCacheDir());
+define('DATA_DIR', \App\Utils\PathHelper::getDataDir());
 
 // エラーレポーティングの設定
 error_reporting(E_ALL);

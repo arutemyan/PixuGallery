@@ -67,7 +67,7 @@ class PaintDeleteController extends AdminControllerBase
         }
 
         // Delete associated files
-        $uploadsDir = realpath(__DIR__ . '/../../../uploads/');
+        $uploadsDir = realpath(\App\Utils\PathHelper::getUploadsDir());
         $paintDir = realpath(__DIR__ . '/../../../paint/');
 
         // Helper function to safely delete files

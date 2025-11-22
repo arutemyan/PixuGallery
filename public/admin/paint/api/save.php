@@ -19,7 +19,7 @@ class IllustSaveController extends AdminControllerBase
     public function __construct()
     {
         $db = Connection::getInstance();
-        $this->illustService = new IllustService($db, __DIR__ . '/../../../uploads');
+        $this->illustService = new IllustService($db, \App\Utils\PathHelper::getUploadsDir());
     }
 
     protected function onProcess(string $method): void

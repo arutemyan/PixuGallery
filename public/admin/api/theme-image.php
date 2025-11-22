@@ -91,7 +91,7 @@ class ThemeImageController extends AdminControllerBase
         }
 
         // アップロードディレクトリ
-        $uploadDir = __DIR__ . '/../../uploads/theme/';
+        $uploadDir = \App\Utils\PathHelper::getUploadsDir() . '/theme/';
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }

@@ -87,8 +87,12 @@ if ($isGroupPost) {
             $shareImagePath = getNsfwImagePathForDetail($data['image_path']);
 
             // パスの検証（uploadsディレクトリ内であることを確認）
-            $fullPath = realpath(__DIR__ . '/' . $shareImagePath);
-            $uploadsDir = realpath(__DIR__ . '/uploads/');
+            $rel = ltrim($shareImagePath, '/');
+            if (strpos($rel, 'uploads/') === 0) {
+                $rel = substr($rel, strlen('uploads/'));
+            }
+            $fullPath = realpath(\App\Utils\PathHelper::getUploadsDir() . '/' . $rel);
+            $uploadsDir = realpath(\App\Utils\PathHelper::getUploadsDir());
 
             // NSFWフィルター版が存在しない、または不正なパスの場合はサムネイルのNSFWフィルター版を使用
             if (!$fullPath || !$uploadsDir || strpos($fullPath, $uploadsDir) !== 0 || !file_exists($fullPath)) {

@@ -17,7 +17,7 @@ use App\Services\Session;
 Session::start();
 
 // レート制限の初期化（15分間で5回まで）
-$rateLimiter = new RateLimiter(__DIR__ . '/../../data/rate-limits', 5, 900);
+$rateLimiter = new RateLimiter(PathHelper::getRateLimitDir(), 5, 900);
 $clientIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
 // すでにログイン済みの場合はダッシュボードへリダイレクト

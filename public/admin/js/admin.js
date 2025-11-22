@@ -623,7 +623,7 @@ function renderPosts(posts, hasMore = false) {
                     <input type="checkbox" class="form-check-input post-select-checkbox" data-post-id="${post.id}" onchange="updateBulkActionButtons()">
                 </div>
                 <div class="post-card-image">
-                    <img src="/${thumbPath}" alt="${escapeHtml(post.title)}" onerror="this.src='/uploads/thumbs/placeholder.webp'">
+                    <img src="/${thumbPath}" alt="${escapeHtml(post.title)}" onerror="this.src=(window.PLACEHOLDER_URL || '/uploads/thumbs/placeholder.webp')">
                     ${isGroupPost && post.image_count ? '<span class="badge bg-info position-absolute top-0 end-0 m-2"><i class="bi bi-images"></i> ' + post.image_count + '</span>' : ''}
                     <div class="post-card-overlay">
                         <div class="btn-group" role="group">

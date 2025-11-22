@@ -121,8 +121,8 @@ $router->post('/admin/api/posts', function () {
         }
 
         // 画像アップロード処理
-        $uploadDir = __DIR__ . '/../../../uploads/images/';
-        $thumbDir = __DIR__ . '/../../../uploads/thumbs/';
+        $uploadDir = \App\Utils\PathHelper::getUploadsDir() . '/images/';
+        $thumbDir = \App\Utils\PathHelper::getUploadsDir() . '/thumbs/';
         $imageUploader = new ImageUploader($uploadDir, $thumbDir);
 
         // ファイルの検証
@@ -246,8 +246,8 @@ $router->put('/admin/api/posts/:id', function (string $id) {
                     // 0→1: NSFWフィルター画像を生成
                     if (file_exists($thumbFullPath)) {
                         $imageUploader = new ImageUploader(
-                            __DIR__ . '/../../../public/uploads/images',
-                            __DIR__ . '/../../../public/uploads/thumbs'
+                            \App\Utils\PathHelper::getUploadsDir() . '/images',
+                            \App\Utils\PathHelper::getUploadsDir() . '/thumbs'
                         );
                         $imageUploader->createNsfwThumbnail($thumbFullPath, $nsfwPath, $filterSettings);
                     }
@@ -323,8 +323,8 @@ $router->post('/admin/api/bulk-upload', function () {
         $uploadedFiles = $_FILES['images'];
         $postModel = new Post();
         $imageUploader = new ImageUploader(
-            __DIR__ . '/../../../public/uploads/images',
-            __DIR__ . '/../../../public/uploads/thumbs'
+            \App\Utils\PathHelper::getUploadsDir() . '/images',
+            \App\Utils\PathHelper::getUploadsDir() . '/thumbs'
         );
 
         $results = [];
@@ -489,7 +489,7 @@ $router->post('/admin/api/theme/upload-image', function () {
         }
 
         // 画像アップロード
-        $uploadDir = __DIR__ . '/../../../uploads/theme/';
+        $uploadDir = \App\Utils\PathHelper::getUploadsDir() . '/theme/';
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }

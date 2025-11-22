@@ -51,7 +51,7 @@ class PostsPublicController extends PublicControllerBase
 {
     protected function onProcess(string $method): void
     {
-        $rateLimiter = new RateLimiter(__DIR__ . '/../../data/rate-limits', 100, 60);
+        $rateLimiter = new RateLimiter(\App\Utils\PathHelper::getRateLimitDir(), 100, 60);
         $clientIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
         if (!$rateLimiter->check($clientIp, 'api_posts')) {

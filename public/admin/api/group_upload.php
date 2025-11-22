@@ -79,8 +79,8 @@ class GroupUploadController extends AdminControllerBase
 
         // ImageUploaderを初期化
         $imageUploader = new ImageUploader(
-            __DIR__ . '/../../uploads/images',
-            __DIR__ . '/../../uploads/thumbs',
+            \App\Utils\PathHelper::getUploadsDir() . '/images',
+            \App\Utils\PathHelper::getUploadsDir() . '/thumbs',
             20 * 1024 * 1024 // 20MB
         );
 

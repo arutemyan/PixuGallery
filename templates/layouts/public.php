@@ -193,6 +193,11 @@
     </script>
     <?php endif; ?>
 
+    <!-- グローバル: アップロードURL と プレースホルダーURL (フロントエンドが参照するため) -->
+    <script nonce="<?= \App\Security\CspMiddleware::getInstance()->getNonce() ?>">
+        window.PLACEHOLDER_URL = <?= json_encode(\App\Utils\PathHelper::getUploadsPlaceholderUrl()) ?>;
+    </script>
+
     <!-- 追加JavaScript -->
     <?php if (!empty($additionalJs)): ?>
         <?php foreach ($additionalJs as $js): ?>

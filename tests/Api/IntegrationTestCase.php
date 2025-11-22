@@ -27,8 +27,8 @@ abstract class IntegrationTestCase extends TestCase
         }
 
         $repoPublic = $projectRoot . '/public';
-        @mkdir($repoPublic . '/uploads/images', 0777, true);
-        @mkdir($repoPublic . '/uploads/thumbs', 0777, true);
+        @mkdir(\App\Utils\PathHelper::getUploadsDir() . '/images', 0777, true);
+        @mkdir(\App\Utils\PathHelper::getUploadsDir() . '/thumbs', 0777, true);
 
         // backup existing config.local.php if present
         $configPath = $projectRoot . '/config/config.local.php';

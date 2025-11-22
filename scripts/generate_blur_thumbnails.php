@@ -38,8 +38,8 @@ try {
 
     // ImageUploaderのインスタンスを作成（ディレクトリパスはダミー）
     $imageUploader = new ImageUploader(
-        __DIR__ . '/../public/uploads/images',
-        __DIR__ . '/../public/uploads/thumbs'
+        \App\Utils\PathHelper::getUploadsDir() . '/images',
+        \App\Utils\PathHelper::getUploadsDir() . '/thumbs'
     );
 
     // is_sensitive=1の投稿を取得

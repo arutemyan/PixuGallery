@@ -8,7 +8,7 @@ if ($argc < 2) {
 }
 $id = (int)$argv[1];
 $sub = sprintf('%03d', $id % 1000);
-$imagesDir = $projectRoot . '/uploads/paintfiles/images/' . $sub;
+$imagesDir = \App\Utils\PathHelper::getUploadsDir() . '/paintfiles/images/' . $sub;
 $src = $imagesDir . '/illust_' . $id . '.png';
 // prefer webp if possible
 $useWebp = function_exists('imagewebp');

@@ -7,7 +7,7 @@ use App\Database\Connection;
 use App\Services\IllustService;
 
 $db = Connection::getInstance();
-$uploads = __DIR__ . '/../../uploads';
+$uploads = \App\Utils\PathHelper::getUploadsDir();
 $service = new IllustService($db, $uploads);
 
 // minimal .illust JSON

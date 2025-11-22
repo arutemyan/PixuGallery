@@ -73,7 +73,7 @@
                             alt="<?= escapeHtml($post['title']) ?>"
                             class="card-image"
                             loading="lazy"
-                            onerror="if(!this.dataset.errorHandled){this.dataset.errorHandled='1';this.src='/uploads/thumbs/placeholder.webp';}"
+                            onerror="if(!this.dataset.errorHandled){this.dataset.errorHandled='1';this.src='<?= \App\Utils\PathHelper::getUploadsPlaceholderUrl() ?>';}"
                             <?= !$isGroup ? 'data-full-image="/' . escapeHtml($post['image_path'] ?? $post['thumb_path'] ?? '') . '"' : '' ?>
                             data-is-sensitive="<?= $isSensitive ? '1' : '0' ?>"
                         >

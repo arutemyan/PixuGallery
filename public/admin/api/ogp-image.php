@@ -75,7 +75,7 @@ class OgpImageController extends AdminControllerBase
         }
 
         // アップロードディレクトリ
-        $uploadDir = __DIR__ . '/../../uploads/ogp';
+        $uploadDir = \App\Utils\PathHelper::getUploadsDir() . '/ogp';
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }

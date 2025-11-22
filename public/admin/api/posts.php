@@ -178,15 +178,15 @@ class PostsController extends AdminControllerBase
         if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
             // 新しい画像をアップロード
             $imageUploader = new ImageUploader(
-                __DIR__ . '/../../../public/uploads/images',
-                __DIR__ . '/../../../public/uploads/thumbs'
+                \App\Utils\PathHelper::getUploadsDir() . '/images',
+                \App\Utils\PathHelper::getUploadsDir() . '/thumbs'
             );
 
             $uploadResult = $imageUploader->upload($_FILES['image'], $isSensitive, $filterSettings);
 
             if ($uploadResult['success']) {
                 // 古い画像ファイルを削除
-                $uploadsDir = realpath(__DIR__ . '/../../uploads/');
+                $uploadsDir = realpath(\App\Utils\PathHelper::getUploadsDir());
 
                 if (!empty($existingPost['image_path'])) {
                     $oldImagePath = realpath(__DIR__ . '/../../' . $existingPost['image_path']);
@@ -234,8 +234,8 @@ class PostsController extends AdminControllerBase
                         // 0→1: NSFWフィルター画像を生成
                         if (file_exists($thumbFullPath)) {
                             $imageUploader = new ImageUploader(
-                                __DIR__ . '/../../../public/uploads/images',
-                                __DIR__ . '/../../../public/uploads/thumbs'
+                                \App\Utils\PathHelper::getUploadsDir() . '/images',
+                                \App\Utils\PathHelper::getUploadsDir() . '/thumbs'
                             );
                             $imageUploader->createNsfwThumbnail($thumbFullPath, $nsfwPath, $filterSettings);
                         }
@@ -279,10 +279,14 @@ class PostsController extends AdminControllerBase
         }
 
         // 画像ファイルを削除（パストラバーサル対策）
-        $uploadsDir = realpath(__DIR__ . '/../../uploads/');
+        $uploadsDir = realpath(\App\Utils\PathHelper::getUploadsDir());
 
         if (!empty($post['image_path'])) {
-            $imagePath = realpath(__DIR__ . '/../../' . $post['image_path']);
+            $rel = ltrim($post['image_path'], '/');
+            if (strpos($rel, 'uploads/') === 0) {
+                $rel = substr($rel, strlen('uploads/'));
+            }
+            $imagePath = $uploadsDir ? realpath($uploadsDir . '/' . $rel) : false;
 
             // パスがuploadsディレクトリ内にあることを検証
             if ($imagePath && $uploadsDir && strpos($imagePath, $uploadsDir) === 0 && file_exists($imagePath)) {
@@ -293,7 +297,11 @@ class PostsController extends AdminControllerBase
         }
 
         if (!empty($post['thumb_path'])) {
-            $thumbPath = realpath(__DIR__ . '/../../' . $post['thumb_path']);
+            $relThumb = ltrim($post['thumb_path'], '/');
+            if (strpos($relThumb, 'uploads/') === 0) {
+                $relThumb = substr($relThumb, strlen('uploads/'));
+            }
+            $thumbPath = $uploadsDir ? realpath($uploadsDir . '/' . $relThumb) : false;
 
             // パスがuploadsディレクトリ内にあることを検証
             if ($thumbPath && $uploadsDir && strpos($thumbPath, $uploadsDir) === 0 && file_exists($thumbPath)) {

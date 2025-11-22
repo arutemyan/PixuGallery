@@ -28,8 +28,12 @@ function createNsfwThumb($post) {
     $shareImagePath = getNsfwImagePath($imagePath);
 
     // パスの検証（uploadsディレクトリ内であることを確認）
-    $fullPath = realpath(__DIR__ . '/../../public/' . $shareImagePath);
-    $uploadsDir = realpath(__DIR__ . '/../../public/uploads/');
+    $rel = ltrim($shareImagePath, '/');
+    if (strpos($rel, 'uploads/') === 0) {
+        $rel = substr($rel, strlen('uploads/'));
+    }
+    $fullPath = realpath(\App\Utils\PathHelper::getUploadsDir() . '/' . $rel);
+    $uploadsDir = realpath(\App\Utils\PathHelper::getUploadsDir());
 
     // NSFWフィルター版が存在しない、または不正なパスの場合はサムネイルのNSFWフィルター版を使用
     if (!$fullPath || !$uploadsDir || strpos($fullPath, $uploadsDir) !== 0 || !file_exists($fullPath)) {
@@ -81,7 +85,16 @@ function createNsfwThumb($post) {
             <!-- 単一投稿：単一画像 -->
             <?php
             $isSensitive = isset($data['is_sensitive']) && $data['is_sensitive'] == 1;
-            $imagePath = '/' . escapeHtml($data['image_path'] ?? $data['thumb_path'] ?? '');
+            $rawPath = $data['image_path'] ?? $data['thumb_path'] ?? '';
+            if ($rawPath !== '' && (strpos($rawPath, 'uploads/') === 0 || strpos($rawPath, '/uploads/') === 0)) {
+                $rel = ltrim($rawPath, '/');
+                if (strpos($rel, 'uploads/') === 0) {
+                    $rel = substr($rel, strlen('uploads/'));
+                }
+                $imagePath = \App\Utils\PathHelper::getUploadsUrl($rel);
+            } else {
+                $imagePath = '/' . escapeHtml($rawPath);
+            }
             // センシティブ画像の場合、最初はNSFWフィルター版を表示
             if ($isSensitive) {
                 $displayPath = '/' . createNsfwThumb($data);

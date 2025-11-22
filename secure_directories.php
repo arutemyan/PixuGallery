@@ -8,14 +8,19 @@
 
 declare(strict_types=1);
 
+// Load autoload so PathHelper and other classes are available
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+}
+
 require_once __DIR__ . '/src/Security/SecurityUtil.php';
 
 // 保護すべきディレクトリのリスト
 $directories = [
-    __DIR__ . '/data',
+    \App\Utils\PathHelper::getDataDir(),
     // キャッシュとログを data 以下にまとめる
-    __DIR__ . '/data/cache',
-    __DIR__ . '/data/log',
+    \App\Utils\PathHelper::getCacheDir(),
+    \App\Utils\PathHelper::getLogDir(),
     __DIR__ . '/public/data',
 ];
 
