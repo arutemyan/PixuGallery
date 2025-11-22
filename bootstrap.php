@@ -17,6 +17,15 @@ require_once __DIR__ . '/src/Security/SecurityUtil.php';
 // 設定読み込み
 $config = \App\Config\ConfigManager::getInstance()->getConfig();
 
+// メンテナンスモードの強制表示（ページ向け）
+try {
+    if (class_exists('\App\\Utils\\Maintenance')) {
+        \App\Utils\Maintenance::enforceForPages();
+    }
+} catch (\Throwable $e) {
+    // ここでは何もしない — メンテナンス判定が失敗しても通常動作を継続
+}
+
 // タイムゾーン設定
 date_default_timezone_set('Asia/Tokyo');
 

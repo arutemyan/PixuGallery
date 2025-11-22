@@ -28,6 +28,15 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
+// API 呼び出し時もメンテナンスなら 503 を返す
+try {
+    if (class_exists('App\\Utils\\Maintenance')) {
+        \App\Utils\Maintenance::enforceForApi();
+    }
+} catch (\Throwable $e) {
+    // ignore
+}
+
 use App\Models\Tag;
 use App\Utils\Logger;
 use App\Controllers\PublicControllerBase;

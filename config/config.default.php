@@ -23,6 +23,10 @@ return [
 
         // 本番環境ではbundle版のアセット（JS/CSS）を使用
         'use_bundled_assets' => false,
+
+        // メンテナンスモード (0 = 通常, 1 = メンテナンス)
+        // `config.local.php` で `return [ 'app' => ['maintenance_mode' => 1] ];` のように上書きできます。
+        'maintenance_mode' => 0,
     ],
 
     /**
