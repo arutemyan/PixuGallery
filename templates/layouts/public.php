@@ -97,7 +97,14 @@
         --card-bg-color: <?= escapeHtml($theme['card_bg_color'] ?? '#252525') ?>;
         --card-shadow-opacity: <?= escapeHtml($theme['card_shadow_opacity'] ?? '0.3') ?>;
         --link-color: <?= escapeHtml($theme['link_color'] ?? '#8B5AFA') ?>;
-        --link-hover-color: <?= escapeHtml($theme['link_hover-color'] ?? '#a177ff') ?>;
+        --link-hover-color: <?= escapeHtml($theme['link_hover_color'] ?? '#a177ff') ?>;
+        --back-button-bg-color: <?= escapeHtml($theme['back_button_bg_color'] ?? 'rgba(0, 0, 0, 0.25)') ?>;
+        --back-button-text-color: <?= escapeHtml($theme['back_button_text_color'] ?? '#ffffff') ?>;
+        --back-button-border-color: <?= escapeHtml($theme['back_button_border_color'] ?? 'rgba(255, 255, 255, 0.3)') ?>;
+        /* 互換: 既存のバンドル・インラインCSSは古い変数名を使用しているため、ここでマッピングしておく */
+        --back-bg: var(--back-button-bg-color);
+        --back-color: var(--back-button-text-color);
+        --back-border: var(--back-button-border-color);
         --tag-bg-color: <?= escapeHtml($theme['tag_bg_color'] ?? '#8B5AFA') ?>;
         --tag-text-color: <?= escapeHtml($theme['tag_text_color'] ?? '#ffffff') ?>;
         --filter-active-bg-color: <?= escapeHtml($theme['filter_active_bg_color'] ?? '#8B5AFA') ?>;

@@ -28,8 +28,8 @@ class Theme
      */
     public function getCurrent(): array
     {
-        $stmt = $this->db->query("
-            SELECT
+        try {
+            $stmt = $this->db->query("SELECT
                 header_html,
                 footer_html,
                 site_title,
@@ -60,9 +60,13 @@ class Theme
                 updated_at
             FROM themes
             ORDER BY id DESC
-            LIMIT 1
-        ");
-        $result = $stmt->fetch();
+            LIMIT 1");
+
+            $result = $stmt->fetch();
+        } catch (\PDOException $e) {
+            \App\Utils\Logger::getInstance()->warning('Theme::getCurrent DB query failed: ' . $e->getMessage());
+            $result = false;
+        }
 
         if ($result === false) {
             return [

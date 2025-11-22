@@ -77,7 +77,7 @@
 .color-sliders-hidden{ display: none; }
 .form-group-hidden{ display: none; }
 .img-logo{ max-height: 80px; margin-bottom: 10px; }
-.header-back-button-inline{ display: inline-block; padding: 10px 20px; border-radius: 8px; cursor: pointer; background-color: var(--back-bg, #8B5AFA); color: var(--back-color, #FFFFFF); }
+.header-back-button-inline{ display: inline-block; padding: 10px 20px; border-radius: 8px; cursor: pointer; background-color: var(--back-button-bg-color, #8B5AFA); color: var(--back-button-text-color, #FFFFFF); border: 1.5px solid var(--back-button-border-color, rgba(255,255,255,0.3)); }
 .small-muted{ display: block; margin-top: 4px; color: #666; font-size: 0.85em; }
 .detail-nsfw-badge{ display: inline-block; padding: 6px 12px; background: #ff6b6b; color: white; border-radius: 4px; font-size: 0.9em; margin-bottom: 10px; }
 .mt-3{ margin-top: 15px; }

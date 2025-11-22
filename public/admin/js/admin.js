@@ -267,6 +267,9 @@ $(document).ready(function() {
     $('#themeForm').on('submit', function(e) {
         e.preventDefault();
 
+        // Ensure composed bg color is up-to-date before serializing
+        updateBackButtonPreview();
+
         const formData = $(this).serialize();
         const $submitBtn = $(this).find('button[type="submit"]');
         const originalText = $submitBtn.html();
@@ -313,7 +316,8 @@ $(document).ready(function() {
 
 
     // 一覧に戻るボタンのプレビュー更新
-    $('#backButtonText, #backButtonBgColor, #backButtonTextColor').on('input change', function() {
+    // 一覧に戻るボタンのプレビュー更新（カラー+アルファ対応）
+    $('#backButtonText, #backButtonBgColor, #backButtonBgAlpha, #backButtonTextColor').on('input change', function() {
         updateBackButtonPreview();
     });
 
@@ -770,7 +774,20 @@ function loadThemeSettings() {
 
                 // ナビゲーション設定（一覧に戻るボタン）
                 $('#backButtonText').val(theme.back_button_text || '一覧に戻る');
-                $('#backButtonBgColor').val(theme.back_button_bg_color || '#8B5AFA');
+                // 背景色は既存の保存値（hex, rgba, 8-digit hexなど）を解析して color + alpha に分解
+                const storedBg = theme.back_button_bg_color || '#8B5AFA';
+                const parsed = parseColorString(storedBg);
+                if (parsed) {
+                    $('#backButtonBgColor').val(parsed.hex);
+                    $('#backButtonBgAlpha').val(Math.round(parsed.alpha * 100));
+                    $('#backButtonBgAlphaValue').text(Math.round(parsed.alpha * 100) + '%');
+                    $('#backButtonBgComposed').val(composeRgba(parsed.hex, parsed.alpha));
+                } else {
+                    $('#backButtonBgColor').val('#8B5AFA');
+                    $('#backButtonBgAlpha').val(100);
+                    $('#backButtonBgAlphaValue').text('100%');
+                    $('#backButtonBgComposed').val('#8B5AFA');
+                }
                 $('#backButtonTextColor').val(theme.back_button_text_color || '#FFFFFF');
 
                 // 画像プレビュー
@@ -1498,15 +1515,71 @@ function saveSettings() {
  */
 function updateBackButtonPreview() {
     const text = $('#backButtonText').val() || '一覧に戻る';
-    const bgColor = $('#backButtonBgColor').val() || '#8B5AFA';
+    const colorHex = $('#backButtonBgColor').val() || '#8B5AFA';
+    const alphaPct = parseInt($('#backButtonBgAlpha').val() || '100', 10);
+    const alpha = Math.max(0, Math.min(100, alphaPct)) / 100;
     const textColor = $('#backButtonTextColor').val() || '#FFFFFF';
 
+    const composed = composeRgba(colorHex, alpha);
+    // set preview and hidden composed value for form submit
     $('#backButtonPreview')
         .text(text)
         .css({
-            'background-color': bgColor,
+            'background-color': composed,
             'color': textColor
         });
+    $('#backButtonBgComposed').val(composed);
+    // update alpha display
+    $('#backButtonBgAlphaValue').text(Math.round(alpha * 100) + '%');
+}
+
+/**
+ * 色文字列を解析して hex と alpha を返す
+ * サポート: #RRGGBB, #RRGGBBAA, rgb(...), rgba(...)
+ */
+function parseColorString(str) {
+    if (!str || typeof str !== 'string') return null;
+    str = str.trim();
+    // rgba() / rgb()
+    const rgbaMatch = str.match(/rgba?\s*\(([^)]+)\)/i);
+    if (rgbaMatch) {
+        const parts = rgbaMatch[1].split(',').map(p => p.trim());
+        const r = parseInt(parts[0], 10);
+        const g = parseInt(parts[1], 10);
+        const b = parseInt(parts[2], 10);
+        const a = parts.length >= 4 ? parseFloat(parts[3]) : 1;
+        return {hex: rgbToHex(r, g, b), alpha: isNaN(a) ? 1 : a};
+    }
+    // 8-digit hex #RRGGBBAA
+    const hex8 = str.match(/^#([0-9a-fA-F]{8})$/);
+    if (hex8) {
+        const hex = '#' + hex8[1].slice(0,6);
+        const aa = hex8[1].slice(6,8);
+        const alpha = parseInt(aa, 16) / 255;
+        return {hex: hex, alpha: alpha};
+    }
+    // 6-digit hex
+    const hex6 = str.match(/^#([0-9a-fA-F]{6})$/);
+    if (hex6) {
+        return {hex: '#' + hex6[1], alpha: 1};
+    }
+    return null;
+}
+
+function rgbToHex(r, g, b) {
+    const toHex = (n) => (Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0');
+    return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+function composeRgba(hex, alpha) {
+    // hex: #RRGGBB
+    const m = hex.match(/^#?([0-9a-fA-F]{6})$/);
+    if (!m) return hex;
+    const v = m[1];
+    const r = parseInt(v.slice(0,2), 16);
+    const g = parseInt(v.slice(2,4), 16);
+    const b = parseInt(v.slice(4,6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 /**

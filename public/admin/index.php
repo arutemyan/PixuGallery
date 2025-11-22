@@ -662,8 +662,16 @@ try {
                                                     <div class="row mb-3">
                                                         <div class="col-md-6">
                                                             <label for="backButtonBgColor" class="form-label">背景色</label>
-                                                            <input type="color" class="form-control form-control-color" id="backButtonBgColor" name="back_button_bg_color" value="#8B5AFA">
-                                                            <div class="form-text">ボタンの背景色</div>
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <input type="color" class="form-control form-control-color" id="backButtonBgColor" value="#8B5AFA">
+                                                                <div class="flex-grow-1">
+                                                                    <label for="backButtonBgAlpha" class="form-label small mb-1">透過 (Alpha)</label>
+                                                                    <input type="range" class="form-range" id="backButtonBgAlpha" min="0" max="100" step="1" value="100">
+                                                                    <div class="form-text small">現在: <span id="backButtonBgAlphaValue">100%</span></div>
+                                                                </div>
+                                                            </div>
+                                                            <input type="hidden" id="backButtonBgComposed" name="back_button_bg_color" value="#8B5AFA">
+                                                            <div class="form-text">背景色と透過を組み合わせて保存します</div>
                                                         </div>
                                                         <div class="col-md-6">
                                                             <label for="backButtonTextColor" class="form-label">テキスト色</label>
