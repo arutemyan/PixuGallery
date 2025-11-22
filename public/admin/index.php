@@ -687,6 +687,46 @@ try {
                                                             一覧に戻る
                                                         </div>
                                                     </div>
+                                                    
+                                                    <!-- 詳細ボタン設定 -->
+                                                    <div class="mt-4">
+                                                        <p class="text-muted small mb-2">カードやオーバーレイで使う「詳細表示」ボタンのスタイル</p>
+
+                                                        <div class="mb-3">
+                                                            <label for="detailButtonText" class="form-label">ボタンテキスト</label>
+                                                            <input type="text" class="form-control" id="detailButtonText" name="detail_button_text" placeholder="詳細表示" maxlength="20">
+                                                            <div class="form-text">詳細ボタンに表示するテキスト（空欄可）</div>
+                                                        </div>
+
+                                                        <div class="row mb-3">
+                                                            <div class="col-md-6">
+                                                                <label for="detailButtonBgColor" class="form-label">背景色</label>
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <input type="color" class="form-control form-control-color" id="detailButtonBgColor" value="#8B5AFA">
+                                                                    <div class="flex-grow-1">
+                                                                        <label for="detailButtonBgAlpha" class="form-label small mb-1">透過 (Alpha)</label>
+                                                                        <input type="range" class="form-range" id="detailButtonBgAlpha" min="0" max="100" step="1" value="100">
+                                                                        <div class="form-text small">現在: <span id="detailButtonBgAlphaValue">100%</span></div>
+                                                                    </div>
+                                                                </div>
+                                                                <input type="hidden" id="detailButtonBgComposed" name="detail_button_bg_color" value="#8B5AFA">
+                                                                <div class="form-text">背景色と透過を組み合わせて保存します</div>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label for="detailButtonTextColor" class="form-label">テキスト色</label>
+                                                                <input type="color" class="form-control form-control-color" id="detailButtonTextColor" name="detail_button_text_color" value="#FFFFFF">
+                                                                <div class="form-text">ボタンのテキスト色</div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- プレビュー -->
+                                                        <div class="mt-3 p-3 bg-light rounded">
+                                                            <label class="form-label small text-muted">プレビュー:</label>
+                                                            <div id="detailButtonPreview" class="header-back-button header-back-button--preview">
+                                                                詳細表示
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

@@ -92,6 +92,20 @@ class ThemeController extends AdminControllerBase
             $data['back_button_text_color'] = $_POST['back_button_text_color'];
         }
 
+        // 詳細ボタン設定
+        if (isset($_POST['detail_button_text'])) {
+            if (mb_strlen($_POST['detail_button_text']) > 20) {
+                $this->sendError('ボタンテキストは20文字以内で入力してください');
+            }
+            $data['detail_button_text'] = $_POST['detail_button_text'];
+        }
+        if (isset($_POST['detail_button_bg_color'])) {
+            $data['detail_button_bg_color'] = $_POST['detail_button_bg_color'];
+        }
+        if (isset($_POST['detail_button_text_color'])) {
+            $data['detail_button_text_color'] = $_POST['detail_button_text_color'];
+        }
+
         // カスタムHTML（XSS対策: HTMLタグを許可しない）
         if (isset($_POST['header_html'])) {
             if (mb_strlen($_POST['header_html']) > 5000) {

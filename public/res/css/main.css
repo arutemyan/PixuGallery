@@ -221,7 +221,7 @@ header p {
 
 .card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(var(--primary-color), var(--card-shadow-opacity));
+    box-shadow: 0 8px 25px rgba(var(--primary-color-rgb), var(--card-shadow-opacity));
 }
 
 .card-image {
@@ -266,13 +266,13 @@ header p {
     font-size: 0.95em;
     font-weight: 600;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(123, 97, 255, 0.4);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.4);
 }
 
 .card-hover-overlay .btn-detail:hover {
-    background: #6b4da8;
+    background: var(--primary-color-dark);
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(123, 97, 255, 0.6);
+    box-shadow: 0 6px 16px rgba(var(--primary-color-rgb), 0.6);
 }
 
 .card-content {
@@ -282,7 +282,7 @@ header p {
 .card-title {
     font-size: clamp(0.4em, 1.25vw, 0.8em);
     font-weight: 600;
-    color: var(--primary-color);
+    color: var(--card-text-color);
     margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1129,8 +1129,8 @@ body.hide-titles .card-content {
 .btn-detail {
     display: inline-block;
     padding: 10px 20px;
-    background-color: rgba(var(--primary-color), 0.8);
-    color: white;
+    background-color: var(--detail-button-bg-color, rgba(var(--primary-color-rgb), 0.8));
+    color: var(--detail-button-text-color, #ffffff);
     text-decoration: none;
     border-radius: 6px;
     font-size: 0.9em;
@@ -1138,13 +1138,12 @@ body.hide-titles .card-content {
     transition: all 0.3s ease;
     text-align: center;
     min-width: 500px;
-    display: inline-block;
 }
 
 .btn-detail:hover {
-    background-color: #6b4da8;
+    background-color: var(--primary-color-dark);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(123, 97, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.3);
 }
 
 @media (max-width: 768px) {

@@ -57,6 +57,9 @@ class Theme
                 back_button_text,
                 back_button_bg_color,
                 back_button_text_color,
+                detail_button_text,
+                detail_button_bg_color,
+                detail_button_text_color,
                 updated_at
             FROM themes
             ORDER BY id DESC
@@ -97,6 +100,9 @@ class Theme
                 'back_button_text' => '一覧に戻る',
                 'back_button_bg_color' => '#8B5AFA',
                 'back_button_text_color' => '#FFFFFF',
+                'detail_button_text' => '詳細表示',
+                'detail_button_bg_color' => '#8B5AFA',
+                'detail_button_text_color' => '#FFFFFF',
                 'updated_at' => null
             ];
         }
@@ -125,6 +131,7 @@ class Theme
             'card_bg_color', 'card_shadow_opacity', 'link_color', 'link_hover_color',
             'tag_bg_color', 'tag_text_color', 'filter_active_bg_color', 'filter_active_text_color',
             'back_button_text', 'back_button_bg_color', 'back_button_text_color'
+            , 'detail_button_text', 'detail_button_bg_color', 'detail_button_text_color'
         ];
 
         foreach ($allowedFields as $field) {

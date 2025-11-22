@@ -84,8 +84,49 @@
 
     <!-- 動的テーマカラー（CSS変数） -->
     <style>
+    <?php
+    // Prepare RGB fallback for colors that are used in rgba(...) contexts
+    $primaryHex = $theme['primary_color'] ?? '#8B5AFA';
+    $primaryHexClean = ltrim($primaryHex, '#');
+    if (strlen($primaryHexClean) === 3) {
+        $primaryHexClean = $primaryHexClean[0] . $primaryHexClean[0]
+                          . $primaryHexClean[1] . $primaryHexClean[1]
+                          . $primaryHexClean[2] . $primaryHexClean[2];
+    }
+    $primaryRgb = sprintf('%d, %d, %d', hexdec(substr($primaryHexClean, 0, 2)), hexdec(substr($primaryHexClean, 2, 2)), hexdec(substr($primaryHexClean, 4, 2)));
+
+    // Compute a darker variant of primary for hover/focus states (10% darker)
+    $darken = function(string $hex, float $percent) {
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+        $r = max(0, min(255, intval(hexdec(substr($hex,0,2)) * (1 - $percent))));
+        $g = max(0, min(255, intval(hexdec(substr($hex,2,2)) * (1 - $percent))));
+        $b = max(0, min(255, intval(hexdec(substr($hex,4,2)) * (1 - $percent))));
+        return sprintf('#%02x%02x%02x', $r, $g, $b);
+    };
+    $primaryDark = $darken($primaryHex, 0.12);
+
+    // Determine readable card text color based on card background luminance
+    $cardBg = $theme['card_bg_color'] ?? '#252525';
+    $cardHex = ltrim($cardBg, '#');
+    if (strlen($cardHex) === 3) {
+        $cardHex = $cardHex[0].$cardHex[0].$cardHex[1].$cardHex[1].$cardHex[2].$cardHex[2];
+    }
+    $r = hexdec(substr($cardHex,0,2));
+    $g = hexdec(substr($cardHex,2,2));
+    $b = hexdec(substr($cardHex,4,2));
+    // Perceived brightness formula
+    $brightness = ($r * 0.299) + ($g * 0.587) + ($b * 0.114);
+    // If card bg is light, use dark text; otherwise fall back to theme text color
+    $cardTextColor = $brightness > 186 ? '#000000' : ($theme['text_color'] ?? '#ffffff');
+    ?>
     :root {
-        --primary-color: <?= escapeHtml($theme['primary_color'] ?? '#8B5AFA') ?>;
+        --primary-color: <?= escapeHtml($primaryHex) ?>;
+        --primary-color-rgb: <?= escapeHtml($primaryRgb) ?>;
+        --primary-color-dark: <?= escapeHtml($primaryDark) ?>;
+        --card-text-color: <?= escapeHtml($cardTextColor) ?>;
         --secondary-color: <?= escapeHtml($theme['secondary_color'] ?? '#667eea') ?>;
         --accent-color: <?= escapeHtml($theme['accent_color'] ?? '#FFD700') ?>;
         --background-color: <?= escapeHtml($theme['background_color'] ?? '#1a1a1a') ?>;
@@ -100,8 +141,10 @@
         --link-hover-color: <?= escapeHtml($theme['link_hover_color'] ?? '#a177ff') ?>;
         --back-button-bg-color: <?= escapeHtml($theme['back_button_bg_color'] ?? 'rgba(0, 0, 0, 0.25)') ?>;
         --back-button-text-color: <?= escapeHtml($theme['back_button_text_color'] ?? '#ffffff') ?>;
+        --detail-button-bg-color: <?= escapeHtml($theme['detail_button_bg_color'] ?? 'rgba(0, 0, 0, 0.25)') ?>;
+        --detail-button-text-color: <?= escapeHtml($theme['detail_button_text_color'] ?? '#ffffff') ?>;
         --back-button-border-color: <?= escapeHtml($theme['back_button_border_color'] ?? 'rgba(255, 255, 255, 0.3)') ?>;
-        /* 互換: 既存のバンドル・インラインCSSは古い変数名を使用しているため、ここでマッピングしておく */
+        /* 互換 */
         --back-bg: var(--back-button-bg-color);
         --back-color: var(--back-button-text-color);
         --back-border: var(--back-button-border-color);

@@ -269,6 +269,7 @@ $(document).ready(function() {
 
         // Ensure composed bg color is up-to-date before serializing
         updateBackButtonPreview();
+        updateDetailButtonPreview();
 
         const formData = $(this).serialize();
         const $submitBtn = $(this).find('button[type="submit"]');
@@ -319,6 +320,11 @@ $(document).ready(function() {
     // 一覧に戻るボタンのプレビュー更新（カラー+アルファ対応）
     $('#backButtonText, #backButtonBgColor, #backButtonBgAlpha, #backButtonTextColor').on('input change', function() {
         updateBackButtonPreview();
+    });
+
+    // 詳細ボタン入力の変更を監視
+    $('#detailButtonText, #detailButtonBgColor, #detailButtonBgAlpha, #detailButtonTextColor').on('input change', function() {
+        updateDetailButtonPreview();
     });
 
     // リアルタイムプレビュー
@@ -773,7 +779,8 @@ function loadThemeSettings() {
                 $('#footerText').val(theme.footer_html || '');
 
                 // ナビゲーション設定（一覧に戻るボタン）
-                $('#backButtonText').val(theme.back_button_text || '一覧に戻る');
+                // 空欄（""）はそのまま反映できるように、null/undefined と空文字を区別して扱う
+                $('#backButtonText').val((theme.back_button_text !== undefined && theme.back_button_text !== null) ? theme.back_button_text : '一覧に戻る');
                 // 背景色は既存の保存値（hex, rgba, 8-digit hexなど）を解析して color + alpha に分解
                 const storedBg = theme.back_button_bg_color || '#8B5AFA';
                 const parsed = parseColorString(storedBg);
@@ -789,6 +796,23 @@ function loadThemeSettings() {
                     $('#backButtonBgComposed').val('#8B5AFA');
                 }
                 $('#backButtonTextColor').val(theme.back_button_text_color || '#FFFFFF');
+
+                // 詳細ボタン設定の読み込み（空欄は保存可能）
+                $('#detailButtonText').val((theme.detail_button_text !== undefined && theme.detail_button_text !== null) ? theme.detail_button_text : '詳細表示');
+                const storedDetailBg = theme.detail_button_bg_color || '#8B5AFA';
+                const parsedDetail = parseColorString(storedDetailBg);
+                if (parsedDetail) {
+                    $('#detailButtonBgColor').val(parsedDetail.hex);
+                    $('#detailButtonBgAlpha').val(Math.round(parsedDetail.alpha * 100));
+                    $('#detailButtonBgAlphaValue').text(Math.round(parsedDetail.alpha * 100) + '%');
+                    $('#detailButtonBgComposed').val(composeRgba(parsedDetail.hex, parsedDetail.alpha));
+                } else {
+                    $('#detailButtonBgColor').val('#8B5AFA');
+                    $('#detailButtonBgAlpha').val(100);
+                    $('#detailButtonBgAlphaValue').text('100%');
+                    $('#detailButtonBgComposed').val('#8B5AFA');
+                }
+                $('#detailButtonTextColor').val(theme.detail_button_text_color || '#FFFFFF');
 
                 // 画像プレビュー
                 if (theme.logo_image) {
@@ -809,6 +833,7 @@ function loadThemeSettings() {
                 // プレビューを更新
                 updateThemePreview();
                 updateBackButtonPreview();
+                updateDetailButtonPreview();
             }
         },
         error: function() {
@@ -1514,7 +1539,7 @@ function saveSettings() {
  * 一覧に戻るボタンのプレビューを更新
  */
 function updateBackButtonPreview() {
-    const text = $('#backButtonText').val() || '一覧に戻る';
+    const text = $('#backButtonText').val();
     const colorHex = $('#backButtonBgColor').val() || '#8B5AFA';
     const alphaPct = parseInt($('#backButtonBgAlpha').val() || '100', 10);
     const alpha = Math.max(0, Math.min(100, alphaPct)) / 100;
@@ -1531,6 +1556,29 @@ function updateBackButtonPreview() {
     $('#backButtonBgComposed').val(composed);
     // update alpha display
     $('#backButtonBgAlphaValue').text(Math.round(alpha * 100) + '%');
+}
+
+/**
+ * 詳細ボタンのプレビューを更新
+ */
+function updateDetailButtonPreview() {
+    const text = $('#detailButtonText').val();
+    const colorHex = $('#detailButtonBgColor').val() || '#8B5AFA';
+    const alphaPct = parseInt($('#detailButtonBgAlpha').val() || '100', 10);
+    const alpha = Math.max(0, Math.min(100, alphaPct)) / 100;
+    const textColor = $('#detailButtonTextColor').val() || '#FFFFFF';
+
+    const composed = composeRgba(colorHex, alpha);
+    // set preview and hidden composed value for form submit
+    $('#detailButtonPreview')
+        .text(text || '')
+        .css({
+            'background-color': composed,
+            'color': textColor
+        });
+    $('#detailButtonBgComposed').val(composed);
+    // update alpha display
+    $('#detailButtonBgAlphaValue').text(Math.round(alpha * 100) + '%');
 }
 
 /**
