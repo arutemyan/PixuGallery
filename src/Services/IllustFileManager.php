@@ -158,19 +158,27 @@ class IllustFileManager
      */
     public function toPublicPath(string $absPath): string
     {
-        $cwd = getcwd();
-        if (strpos($absPath, $cwd) === 0) {
-            $rel = substr($absPath, strlen($cwd));
-        } else {
-            $rel = $absPath;
+        // Prefer to return a path relative to the public directory (e.g. '/uploads/...').
+        $publicDir = realpath(__DIR__ . '/../../public');
+        $absReal = realpath($absPath) ?: $absPath;
+
+        if ($publicDir !== false && strpos($absReal, $publicDir) === 0) {
+            $rel = substr($absReal, strlen($publicDir));
+            $normalized = $this->normalizePath($rel);
+            return $normalized === '' ? '/' : $normalized;
         }
 
+        // Fallback: preserve previous behavior relative to cwd
+        $cwd = getcwd();
+        if (strpos($absReal, $cwd) === 0) {
+            $rel = substr($absReal, strlen($cwd));
+        } else {
+            $rel = $absReal;
+        }
         $normalized = $this->normalizePath($rel);
-
         if ($normalized === '' || $normalized[0] !== '/') {
             $normalized = '/' . ltrim($normalized, '/');
         }
-
         return $normalized;
     }
 
