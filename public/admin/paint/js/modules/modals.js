@@ -269,6 +269,9 @@ function initSaveModal(saveIllust) {
                 }
             }
 
+            // UX Design: 上書き保存時はタイムラプスをマージ（追記）、新規保存時は現在のセッションのみ保存
+            // replace_timelapse は送信しない（サーバ側デフォルトでマージ）
+
             closeSaveModal();
             if (saveIllust) {
                 // pass options as last param
@@ -300,16 +303,23 @@ export function openSaveModal() {
     try {
         if (elements.saveModeGroup) {
             if (state.currentIllustId) {
-                elements.saveModeGroup.style.display = '';
+                // 既存IDがある場合、選択肢を表示
+                elements.saveModeGroup.style.display = 'block';
+                elements.saveModeGroup.classList.remove('d-none');
+                // デフォルトは上書き保存
+                if (elements.saveModeOverwrite) elements.saveModeOverwrite.checked = true;
             } else {
+                // 新規の場合は非表示
                 elements.saveModeGroup.style.display = 'none';
+                elements.saveModeGroup.classList.add('d-none');
             }
         }
         // default NSFW/visible to unchecked/checked
         if (elements.saveNsfw) elements.saveNsfw.checked = false;
         if (elements.saveVisible) elements.saveVisible.checked = true;
-        if (elements.saveModeNew) elements.saveModeNew.checked = true;
-    } catch (e) {}
+    } catch (e) {
+        console.error('Failed to setup save modal:', e);
+    }
 }
 
 /**

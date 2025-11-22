@@ -494,15 +494,14 @@ async function sendSaveRequest(title, description, tags, compositeImage, illustD
             id: state.currentIllustId
         };
         // include optional flags
-            if (options) {
+        if (options) {
             if (typeof options.nsfw !== 'undefined') payload.nsfw = options.nsfw ? 1 : 0;
             if (typeof options.is_visible !== 'undefined') payload.is_visible = options.is_visible ? 1 : 0;
             if (typeof options.artist_name !== 'undefined') payload.artist_name = options.artist_name;
             // forceNew: if true, ensure we clear id so server creates new record
             if (options.forceNew) payload.id = null;
-        }
-
-        const res = await fetch('api/save.php', {
+            // タイムラプスは常にマージ（追記）する（replace_timelapse は送信しない）
+        }        const res = await fetch('api/save.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -800,6 +799,116 @@ export async function fetchIllustData(id) {
 }
 
 /**
+ * Load timelapse data from server (decompresses gzipped data)
+ * @param {string} timelapseDataUrl - Data URL or base64 encoded timelapse data
+ * @returns {Promise<void>}
+ */
+async function loadTimelapseData(timelapseDataUrl) {
+    if (!timelapseDataUrl || typeof timelapseDataUrl !== 'string') {
+        throw new Error('Invalid timelapse data');
+    }
+
+    try {
+        // Parse data URL
+        const base64Match = timelapseDataUrl.match(/^data:[^;]+;base64,(.+)$/);
+        if (!base64Match) {
+            throw new Error('Invalid data URL format');
+        }
+
+        const base64Data = base64Match[1];
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Decompress with pako
+        if (typeof pako === 'undefined') {
+            console.warn('pako not available, cannot decompress timelapse');
+            return;
+        }
+
+        const decompressed = pako.ungzip(bytes, { to: 'string' });
+        
+        // Try to parse as JSON package (with events and snapshots)
+        try {
+            const packageObj = JSON.parse(decompressed);
+            if (packageObj.version && packageObj.events) {
+                // New format with snapshots
+                state.timelapseEvents = packageObj.events || [];
+                state.timelapseSnapshots = packageObj.snapshots || [];
+                console.log(`Loaded timelapse: ${state.timelapseEvents.length} events, ${state.timelapseSnapshots.length} snapshots`);
+                return;
+            }
+        } catch (e) {
+            // Not JSON package, try CSV format
+        }
+
+        // Fallback: parse as CSV
+        const lines = decompressed.split('\n').filter(l => l.trim());
+        if (lines.length < 2) {
+            throw new Error('Empty timelapse data');
+        }
+
+        const headers = lines[0].split(',');
+        const events = [];
+
+        for (let i = 1; i < lines.length; i++) {
+            const values = parseCSVLine(lines[i]);
+            const event = {};
+            headers.forEach((h, idx) => {
+                if (values[idx] !== undefined && values[idx] !== '') {
+                    try {
+                        // Try to parse JSON values
+                        event[h] = JSON.parse(values[idx]);
+                    } catch (e) {
+                        event[h] = values[idx];
+                    }
+                }
+            });
+            events.push(event);
+        }
+
+        state.timelapseEvents = events.filter(e => e.type !== 'meta');
+        state.timelapseSnapshots = [];
+        console.log(`Loaded timelapse from CSV: ${state.timelapseEvents.length} events`);
+    } catch (error) {
+        console.error('Failed to load timelapse:', error);
+        throw error;
+    }
+}
+
+/**
+ * Parse CSV line (simple parser with quote handling)
+ */
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+                current += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (char === ',' && !inQuotes) {
+            result.push(current);
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    result.push(current);
+    
+    return result;
+}
+
+/**
  * Load illustration layers to canvas
  */
 export async function loadIllustLayers(illustData, renderLayers) {
@@ -817,7 +926,20 @@ export async function loadIllustLayers(illustData, renderLayers) {
     // Reset undo/redo stacks
     state.undoStacks = state.layers.map(() => []);
     state.redoStacks = state.layers.map(() => []);
-    state.timelapseEvents = [];
+    
+    // タイムラプス継承：サーバから既存のタイムラプスデータをロードして編集を継続できるようにする
+    if (illustData.timelapse_data) {
+        try {
+            await loadTimelapseData(illustData.timelapse_data);
+        } catch (err) {
+            console.warn('Failed to load timelapse data:', err);
+            state.timelapseEvents = [];
+            state.timelapseSnapshots = [];
+        }
+    } else {
+        state.timelapseEvents = [];
+        state.timelapseSnapshots = [];
+    }
 
     // Load layers
     if (illustData.layers && Array.isArray(illustData.layers)) {
@@ -957,6 +1079,12 @@ export async function importWorkingFile(file) {
 
         // Use restoreCanvasState (exported in this module)
         await restoreCanvasState(canvasState);
+
+        // インポート時はタイムラプスをリセット（新規セッションとして扱う）
+        state.timelapseEvents = [];
+        state.timelapseSnapshots = [];
+        state.lastSnapshotTime = 0;
+        console.log('Import: timelapse reset (starting new session)');
 
         if (elements && elements.statusText) elements.statusText.textContent = 'インポート完了: 作業状態を復元しました';
     } catch (err) {

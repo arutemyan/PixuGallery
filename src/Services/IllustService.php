@@ -73,6 +73,15 @@ class IllustService
             $paths = $this->fileManager->generatePaths($id);
             $this->fileManager->ensureDirectories($paths);
 
+            // If an existing JSON-packed timelapse was saved previously (e.g. .json.gz),
+            // prefer that path for updates so merge logic can find and merge events.
+            if ($isUpdate) {
+                $jsonPath = str_replace('.csv.gz', '.json.gz', $paths['timelapsePath']);
+                if (file_exists($jsonPath)) {
+                    $paths['timelapsePath'] = $jsonPath;
+                }
+            }
+
             // Create backups if updating
             if ($isUpdate) {
                 $backups = $this->fileManager->createBackups([
@@ -128,17 +137,19 @@ class IllustService
                     $createdFiles[] = $jsonPath;
                     $paths['timelapsePath'] = $jsonPath;
                 } else {
-                    // Merge with existing timelapse if present
-                    $mergedEvents = $incomingData;
-                    if (file_exists($paths['timelapsePath'])) {
-                        $existingData = @file_get_contents($paths['timelapsePath']);
-                        if ($existingData !== false) {
-                            $existingEvents = $this->timelapseProcessor->parseTimelapse($existingData);
-                            if (is_array($existingEvents)) {
-                                $mergedEvents = $this->timelapseProcessor->mergeTimelapse($existingEvents, $incomingData);
+                        // Merge with existing timelapse if present, unless client requested replacement.
+                        $replaceTimelapse = !empty($payload['replace_timelapse']) || !empty($payload['replaceTimelapse']) || !empty($payload['timelapse_replace']);
+
+                        $mergedEvents = $incomingData;
+                        if (!$replaceTimelapse && file_exists($paths['timelapsePath'])) {
+                            $existingData = @file_get_contents($paths['timelapsePath']);
+                            if ($existingData !== false) {
+                                $existingEvents = $this->timelapseProcessor->parseTimelapse($existingData);
+                                if (is_array($existingEvents)) {
+                                    $mergedEvents = $this->timelapseProcessor->mergeTimelapse($existingEvents, $incomingData);
+                                }
                             }
                         }
-                    }
 
                     // Convert to CSV and save
                     $gzData = $this->timelapseProcessor->convertToCSV($mergedEvents);
