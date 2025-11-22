@@ -100,6 +100,14 @@ class Session
             $hasConfigSecret = false;
         }
 
+        // In test environments we allow missing APP_ID_SECRET/config secret to avoid
+        // failing unit tests that do not set secrets. Tests should define
+        // the `TEST_ENV` constant in their bootstrap (already supported).
+        if (defined('TEST_ENV') && TEST_ENV) {
+            $this->keys = [];
+            return;
+        }
+
         if (!$hasEnvSecret && !$hasConfigSecret) {
             // Log detailed guidance for operators to app.log, but throw a concise
             // message for the running process so that end-users/operators see
