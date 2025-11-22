@@ -113,9 +113,21 @@ class Tag
         
         // プレースホルダに検索パターンを渡す（禁止文字は上ですでにチェック済み）
         $pattern = '%' . $trimmedName . '%';
-        $stmt = $this->db->prepare(
-            "SELECT t.id, t.name, t.created_at FROM tags t WHERE t.name LIKE ? ORDER BY t.name ASC"
-        );
+        // Choose DB-specific case-insensitive comparison to avoid applying
+        // a function to the column where possible (helps index usage).
+        $driver = \App\Database\DatabaseHelper::getDriver($this->db);
+        if ($driver === 'sqlite') {
+            // SQLite: use COLLATE NOCASE
+            $sql = "SELECT t.id, t.name, t.created_at FROM tags t WHERE t.name LIKE ? COLLATE NOCASE ORDER BY t.name ASC";
+        } elseif ($driver === 'postgresql') {
+            // PostgreSQL: use ILIKE
+            $sql = "SELECT t.id, t.name, t.created_at FROM tags t WHERE t.name ILIKE ? ORDER BY t.name ASC";
+        } else {
+            // MySQL and others: rely on column collation (most MySQL setups use ci collation)
+            $sql = "SELECT t.id, t.name, t.created_at FROM tags t WHERE t.name LIKE ? ORDER BY t.name ASC";
+        }
+
+        $stmt = $this->db->prepare($sql);
         $stmt->execute([$pattern]);
         $tags = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
