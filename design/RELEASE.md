@@ -1,4 +1,3 @@
-````markdown
 # リリースガイド
 
 PixuGallery のリリースパッケージを作成する方法
@@ -132,5 +131,3 @@ git push origin v1.1.0
 ### 必要なファイルが含まれていない場合
 
 `.gitattributes`の`export-ignore`設定を見直してください。
-
-````

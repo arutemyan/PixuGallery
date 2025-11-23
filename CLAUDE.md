@@ -1,8 +1,8 @@
-````markdown
 この開発メモは `design/CLAUDE.md` に移動しました。設計・実装の詳細は `design/` を参照してください。
 
-````
+```
 - カスタムHTML (header/footer)
+```
 
 ### 3. NSFWフィルター機能
 #### 設定場所: `config/nsfw.php`

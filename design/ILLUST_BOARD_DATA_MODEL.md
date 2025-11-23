@@ -1,4 +1,3 @@
-````markdown
 # お絵描き機能データモデル設計
 
 ## ハイブリッドストレージアプローチ
@@ -68,5 +67,3 @@ CREATE INDEX idx_illusts_created_at ON paint(created_at);
 - **形式**: ヘッダ付き CSV テキスト を gzip 圧縮
 - **拡張子**: `.csv.gz`
 - **構造**: 各行が1イベントを表すヘッダ付き CSV（各列は event オブジェクトのキー）
-
-````

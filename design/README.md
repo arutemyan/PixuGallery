@@ -1,4 +1,3 @@
-````markdown
 # Design & Implementation Docs
 
 このフォルダは開発者／設計者向けの資料をまとめます。
@@ -13,6 +12,4 @@
 - `design/CLAUDE.md` - 開発メモ
 - `design/SECURITY_AUDIT_ADMIN.md` - 監査レポート
 
-この情報は内部リアリティや実装方針を含むため、エンドユーザー向け `docs/` には含めていません。
-
-````
+この情報は内部資料や実装方針を含むため、エンドユーザー向け `docs/` には含めていません。

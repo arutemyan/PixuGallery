@@ -1,4 +1,3 @@
-````markdown
 # UPGRADE GUIDE — 次期バージョンの移行手順
 
 このガイドは、次のメジャー/マイナーリリースで導入した「ランタイムディレクトリの集約」と「フェイルファースト」動作に伴う移行手順をまとめたものです。
@@ -68,5 +67,3 @@ return [
 
 - 設定ガイド: `docs/CONFIG.md`
 - セキュリティとデプロイ: `docs/DEPLOYMENT_SECURITY.md`, `docs/SECURITY.md`
-
-````
