@@ -12,23 +12,6 @@ namespace App\Utils;
 class InputValidator
 {
     /**
-     * SQLインジェクションパターンをチェック（レガシー互換用）
-     *
-     * 注意: プリペアドステートメント使用時は基本的に不要
-     * この関数は後方互換性のために残していますが、
-     * プリペアドステートメントを使用することを推奨します
-     *
-     * @param string $input 検証する文字列
-     * @return bool インジェクションパターンが含まれている場合true
-     */
-    public static function hasInjectionPattern(string $input): bool
-    {
-        return str_contains($input, ';')
-            || str_contains($input, '"')
-            || str_contains($input, "'");
-    }
-
-    /**
      * タグIDを検証
      *
      * @param int|null $tagId タグID

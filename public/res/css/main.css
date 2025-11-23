@@ -289,6 +289,11 @@ header p {
     white-space: nowrap;
 }
 
+/* タグ表示が有効なときはカードタイトルを詳細ページの表題と同じ色にする */
+body:not(.hide-tags) .card-title {
+    color: var(--primary-color);
+}
+
 .card-tags {
     position: absolute;
     bottom: 0;

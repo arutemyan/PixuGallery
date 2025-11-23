@@ -25,17 +25,14 @@ class CacheManager
      *
      * @param string|null $cacheDir キャッシュディレクトリのパス（nullの場合は設定ファイルから読み込み）
      */
-    public function __construct(?string $cacheDir = null)
+    public function __construct()
     {
         // 設定ファイルを読み込み（ConfigManager 経由）
         $this->config = \App\Config\ConfigManager::getInstance()->get('cache', []);
         // キャッシュディレクトリのパスを決定
         $configured = $this->config['cache_dir'] ?? null;
 
-        if ($cacheDir !== null) {
-            // 引数で指定された場合はそれを使用（後方互換性）
-            $this->cacheDir = rtrim($cacheDir, '/');
-        } elseif ($configured !== null) {
+        if ($configured !== null) {
             // 設定ファイルから読み込み
             $this->cacheDir = rtrim($configured, '/');
         } else {
