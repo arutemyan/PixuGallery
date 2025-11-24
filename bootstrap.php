@@ -34,8 +34,12 @@ use App\Models\Theme;
 use App\Models\Setting;
 use App\Utils\Logger;
 
-// グローバルエラーハンドラー（必要に応じて）
-if ($config['app']['environment'] === 'production') {
+// グローバルエラーハンドラーの登録
+$isProduction = $config['app']['environment'] === 'production';
+\App\Error\ErrorHandler::register($isProduction);
+
+// エラー表示設定
+if ($isProduction) {
     error_reporting(0);
     ini_set('display_errors', '0');
 } else {
