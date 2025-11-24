@@ -44,6 +44,10 @@ return [
 
         // 管理画面の完全なURL（使用されていない場合は自動生成）
         // 'url' => '/admin',
+
+        // 設定確認タブの表示/非表示 (true = 表示する、false = 非表示)
+        // 本番環境では false にすることを推奨
+        'show_config_viewer' => true,
     ],
 
     /**

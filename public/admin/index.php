@@ -13,6 +13,12 @@ use App\Utils\PathHelper;
 \App\Controllers\AdminControllerBase::ensureAuthenticated(true);
 // (ensureAuthenticated がリダイレクトまたは継続する)
 
+// タブファイルの直接アクセス防止用の定数
+define('ADMIN_TABS_ALLOWED', true);
+
+// 設定確認タブの表示フラグ
+$showConfigViewer = $config['admin']['show_config_viewer'] ?? false;
+
 // CSRFトークンを生成
 $csrfToken = CsrfProtection::generateToken();
 $username = 'Admin';
@@ -97,841 +103,43 @@ try {
                     <i class="bi bi-gear me-2"></i>サイト設定
                 </button>
             </li>
+            <?php if ($showConfigViewer): ?>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="config-viewer-tab" data-bs-toggle="tab" data-bs-target="#config-viewer" type="button" role="tab" aria-controls="config-viewer" aria-selected="false">
+                    <i class="bi bi-gear-fill me-2"></i>設定確認
+                </button>
+            </li>
+            <?php endif; ?>
         </ul>
 
         <!-- タブコンテンツ -->
         <div class="tab-content" id="adminTabsContent">
             <!-- 投稿管理タブ -->
             <div class="tab-pane fade show active" id="posts" role="tabpanel" aria-labelledby="posts-tab">
-                <div class="row">
-                    <!-- 画像アップロードフォーム -->
-                    <div class="col-lg-5">
-                        <!-- クリップボードからアップロード -->
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-clipboard-check me-2"></i>クリップボードから投稿
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary" id="toggleClipboardUpload">
-                                    <i class="bi bi-chevron-down" id="clipboardToggleIcon"></i>
-                                </button>
-                            </div>
-                            <div class="card-body" id="clipboardUploadSection" style="display: none;">
-                                <div id="clipboardAlert" class="alert alert-success" role="alert" style="display: none;"></div>
-                                <div id="clipboardError" class="alert alert-danger" role="alert" style="display: none;"></div>
-
-                                <div class="alert alert-info mb-3">
-                                    <i class="bi bi-info-circle me-2"></i>
-                                    <strong>使い方:</strong> 下のエリアをクリックして <kbd>Ctrl+V</kbd> (Mac: <kbd>⌘+V</kbd>) で画像を貼り付けてください
-                                </div>
-
-                                <form id="clipboardUploadForm">
-                                    <input type="hidden" name="csrf_token" value="<?= escapeHtml($csrfToken) ?>">
-
-                                    <!-- ペーストエリア -->
-                                    <div class="mb-3">
-                                        <label class="form-label">画像を貼り付け</label>
-                                        <div id="clipboardPasteArea" class="clipboard-paste-area" tabindex="0">
-                                            <div id="clipboardPasteHint" class="text-center text-muted">
-                                                <i class="bi bi-clipboard2-plus icon-large"></i>
-                                                <p class="mt-2">クリックしてフォーカスし、Ctrl+V で画像を貼り付け</p>
-                                            </div>
-                                            <div id="clipboardPreview" class="clipboard-preview d-none-important">
-                                                <img id="clipboardPreviewImg" alt="プレビュー" class="clipboard-preview-img">
-                                                <button type="button" class="btn btn-sm btn-danger absolute-top-right" id="clearClipboardImage">
-                                                    <i class="bi bi-x-circle"></i> クリア
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="clipboardTitle" class="form-label">タイトル <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="clipboardTitle" name="title" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="clipboardTags" class="form-label">タグ（カンマ区切り）</label>
-                                        <input type="text" class="form-control" id="clipboardTags" name="tags" placeholder="例: R18, ファンタジー, ドラゴン">
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="clipboardDetail" class="form-label">詳細説明</label>
-                                        <textarea class="form-control" id="clipboardDetail" name="detail" rows="3"></textarea>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="clipboardIsSensitive" name="is_sensitive" value="1">
-                                            <label class="form-check-label" for="clipboardIsSensitive">
-                                                センシティブコンテンツ（18禁）
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="clipboardIsVisible" name="is_visible" value="1" checked>
-                                            <label class="form-check-label" for="clipboardIsVisible">
-                                                <strong>公開ページに表示する</strong>
-                                            </label>
-                                            <div class="form-text">オフにすると、この投稿は管理画面でのみ表示されます</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="clipboardFormat" class="form-label">保存形式</label>
-                                        <select class="form-select" id="clipboardFormat" name="format">
-                                            <option value="webp" selected>WebP（推奨・軽量）</option>
-                                            <option value="jpg">JPEG</option>
-                                            <option value="png">PNG</option>
-                                        </select>
-                                        <div class="form-text">WebPは高品質かつファイルサイズが小さいため推奨です</div>
-                                    </div>
-
-                                    <div class="d-flex gap-2">
-                                        <button type="submit" class="btn btn-primary" id="clipboardUploadBtn" disabled>
-                                            <i class="bi bi-upload me-2"></i>アップロード
-                                        </button>
-                                        <button type="button" class="btn btn-secondary" id="clipboardCancelBtn">
-                                            <i class="bi bi-x-circle me-2"></i>キャンセル
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-header">
-                                <i class="bi bi-cloud-upload me-2"></i>新規投稿
-                            </div>
-                            <div class="card-body">
-                                <div id="uploadAlert" class="alert alert-success d-none" role="alert"></div>
-                                <div id="uploadError" class="alert alert-danger d-none" role="alert"></div>
-
-                                <form id="uploadForm">
-                                    <input type="hidden" name="csrf_token" value="<?= escapeHtml($csrfToken) ?>">
-
-                                    <div class="mb-3">
-                                        <label for="title" class="form-label">タイトル <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="title" name="title" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="tags" class="form-label">タグ（カンマ区切り）</label>
-                                        <input type="text" class="form-control" id="tags" name="tags" placeholder="例: R18, ファンタジー, ドラゴン">
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="detail" class="form-label">詳細説明</label>
-                                        <textarea class="form-control" id="detail" name="detail" rows="3"></textarea>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="isSensitive" name="is_sensitive" value="1">
-                                            <label class="form-check-label" for="isSensitive">
-                                                センシティブコンテンツ（18禁）
-                                            </label>
-                                            <div class="form-text">18歳未満の閲覧に適さないコンテンツの場合はチェックしてください</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="isVisible" name="is_visible" value="1" checked>
-                                            <label class="form-check-label" for="isVisible">
-                                                <strong>公開ページに表示する</strong>
-                                            </label>
-                                            <div class="form-text">オフにすると、この投稿は管理画面でのみ表示されます</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="image" class="form-label">画像ファイル <span class="text-danger">*</span></label>
-                                        <input type="file" class="form-control" id="image" name="image" accept="image/jpeg,image/png,image/webp" required>
-                                        <div class="form-text">JPEG, PNG, WebP形式（最大10MB）</div>
-                                        <img id="imagePreview" alt="プレビュー">
-                                    </div>
-
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="bi bi-upload me-2"></i>アップロード
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-
-                        <!-- 一括アップロード -->
-                        <div class="card mt-4">
-                            <div class="card-header">
-                                <i class="bi bi-file-earmark-image me-2"></i>一括アップロード
-                            </div>
-                            <div class="card-body">
-                                <div id="bulkUploadAlert" class="alert alert-success d-none" role="alert"></div>
-                                <div id="bulkUploadError" class="alert alert-danger d-none" role="alert"></div>
-
-                                <form id="bulkUploadForm">
-                                    <input type="hidden" name="csrf_token" value="<?= escapeHtml($csrfToken) ?>">
-
-                                    <div class="mb-3">
-                                        <label for="bulkImages" class="form-label">画像を選択 (複数可)</label>
-                                        <input type="file" class="form-control" id="bulkImages" name="images[]" accept="image/*" multiple required>
-                                        <div class="form-text">
-                                            一括でアップロードした画像は<strong>すべて非表示状態</strong>で登録されます。<br>
-                                            タイトルやタグは後から編集画面で設定してください。
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <div id="bulkPreviewList" class="row g-2"></div>
-                                    </div>
-
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="bi bi-cloud-upload me-2"></i>一括アップロード
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 投稿一覧 -->
-                    <div class="col-lg-7">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-images me-2"></i>投稿一覧
-                                </div>
-                                <div class="d-flex align-items-center gap-2 d-none" id="bulkActionButtons">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllBtn">
-                                        <i class="bi bi-check-square me-1"></i>全選択
-                                    </button>
-                                    <span class="badge bg-secondary d-none" id="selectionCount">0件選択中</span>
-                                    <div class="btn-group" role="group">
-                                        <button type="button" class="btn btn-sm btn-success" id="bulkPublishBtn" disabled>
-                                            <i class="bi bi-eye me-1"></i>一括公開
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-warning" id="bulkUnpublishBtn" disabled>
-                                            <i class="bi bi-eye-slash me-1"></i>一括非公開
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-body p-0">
-                                <div id="postsList">
-                                    <div class="text-center p-4 text-muted">
-                                        <div class="spinner-border" role="status">
-                                            <span class="visually-hidden">読み込み中...</span>
-                                        </div>
-                                        <p class="mt-2">投稿を読み込み中...</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <?php require __DIR__ . '/tabs/posts.php'; ?>
             </div>
 
             <!-- グループ投稿管理タブ -->
             <div class="tab-pane fade" id="group-posts" role="tabpanel" aria-labelledby="group-posts-tab">
-                <div class="row">
-                    <!-- グループアップロードフォーム -->
-                    <div class="col-lg-5">
-                        <div class="card">
-                            <div class="card-header">
-                                <i class="bi bi-images me-2"></i>グループ投稿を作成
-                            </div>
-                            <div class="card-body">
-                                <div id="groupUploadAlert" class="alert alert-success d-none" role="alert"></div>
-                                <div id="groupUploadError" class="alert alert-danger d-none" role="alert"></div>
-
-                                <div class="alert alert-info mb-3">
-                                    <i class="bi bi-info-circle me-2"></i>
-                                    <strong>グループ投稿とは？</strong><br>
-                                    複数の画像を1つの投稿として管理します。漫画や連作イラストに最適です。
-                                </div>
-
-                                <form id="groupUploadForm">
-                                    <input type="hidden" name="csrf_token" value="<?= escapeHtml($csrfToken) ?>">
-
-                                    <div class="mb-3">
-                                        <label for="groupImages" class="form-label">画像を選択 (複数枚) <span class="text-danger">*</span></label>
-                                        <input type="file" class="form-control" id="groupImages" name="images[]" accept="image/*" multiple required>
-                                        <div class="form-text">選択した順番で画像が表示されます</div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <div id="groupPreviewList" class="row g-2"></div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="groupPostTitle" class="form-label">タイトル <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="groupPostTitle" name="title" required placeholder="例: 漫画タイトル 第1話">
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="groupPostTags" class="form-label">タグ（カンマ区切り）</label>
-                                        <input type="text" class="form-control" id="groupPostTags" name="tags" placeholder="例: 漫画, オリジナル">
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="groupPostDetail" class="form-label">詳細説明</label>
-                                        <textarea class="form-control" id="groupPostDetail" name="detail" rows="3"></textarea>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="groupPostIsSensitive" name="is_sensitive" value="1">
-                                            <label class="form-check-label" for="groupPostIsSensitive">
-                                                センシティブコンテンツ（18禁）
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="groupPostIsVisible" name="is_visible" value="1" checked>
-                                            <label class="form-check-label" for="groupPostIsVisible">
-                                                <strong>公開ページに表示する</strong>
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="bi bi-cloud-upload me-2"></i>グループ投稿を作成
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- グループ投稿一覧 -->
-                    <div class="col-lg-7">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-folder me-2"></i>グループ投稿一覧
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadGroupPosts()">
-                                    <i class="bi bi-arrow-clockwise me-1"></i>再読み込み
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <div id="groupPostsList">
-                                    <div class="text-center py-5">
-                                        <div class="spinner-border" role="status">
-                                            <span class="visually-hidden">読み込み中...</span>
-                                        </div>
-                                        <p class="mt-2">グループ投稿を読み込み中...</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <?php require __DIR__ . '/tabs/group_posts.php'; ?>
             </div>
 
             <!-- テーマ設定タブ -->
             <div class="tab-pane fade" id="theme" role="tabpanel" aria-labelledby="theme-tab">
-                <div class="row">
-                    <!-- 左側：設定フォーム -->
-                    <div class="col-lg-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <i class="bi bi-palette-fill me-2"></i>テーマ設定
-                            </div>
-                            <div class="card-body">
-                                <div id="themeAlert" class="alert alert-success d-none" role="alert"></div>
-                                <div id="themeError" class="alert alert-danger d-none" role="alert"></div>
-
-                                <form id="themeForm">
-                                    <input type="hidden" name="csrf_token" value="<?= escapeHtml($csrfToken) ?>">
-
-                                    <!-- アコーディオン形式のテーマ設定 -->
-                                    <div class="accordion" id="themeAccordion">
-
-                                        <!-- ========== ヘッダー設定 ========== -->
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header" id="headingHeader">
-                                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHeader" aria-expanded="true" aria-controls="collapseHeader">
-                                                    <i class="bi bi-layout-text-window me-2"></i>ヘッダー設定
-                                                </button>
-                                            </h2>
-                                            <div id="collapseHeader" class="accordion-collapse collapse show" aria-labelledby="headingHeader" data-bs-parent="#themeAccordion">
-                                                <div class="accordion-body">
-
-                                    <!-- サイト基本情報 -->
-                                    <div class="mb-3">
-                                        <label for="siteTitle" class="form-label">サイトタイトル</label>
-                                        <input type="text" class="form-control" id="siteTitle" name="site_title" placeholder="例: イラストポートフォリオ">
-                                        <div class="form-text">サイトのメインタイトル（ヘッダーに表示）</div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="siteSubtitle" class="form-label">サブタイトル</label>
-                                        <input type="text" class="form-control" id="siteSubtitle" name="site_subtitle" placeholder="例: Illustration Portfolio">
-                                        <div class="form-text">サイトのサブタイトル（英語表記など）</div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="siteDescription" class="form-label">サイト説明</label>
-                                        <textarea class="form-control" id="siteDescription" name="site_description" rows="2" placeholder="例: イラストレーターのポートフォリオサイト"></textarea>
-                                        <div class="form-text">SEO用のサイト説明文</div>
-                                    </div>
-
-                                    <!-- ヘッダー画像 -->
-                                    <div class="row mb-3">
-                                        <div class="col-md-6">
-                                            <label class="form-label">ロゴ画像</label>
-                                            <div id="logoImagePreview" class="mb-2">
-                                                <img src="" alt="ロゴプレビュー" class="img-preview d-none" id="logoPreviewImg">
-                                            </div>
-                                            <input type="file" class="form-control form-control-sm" id="logoImage" accept="image/*">
-                                            <div class="mt-2">
-                                                <button type="button" class="btn btn-primary" id="uploadLogo">
-                                                    <i class="bi bi-upload me-1"></i>アップロード
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-danger d-none" id="deleteLogo">
-                                                    <i class="bi bi-trash me-1"></i>削除
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label class="form-label">背景画像</label>
-                                            <div id="headerImagePreview" class="mb-2">
-                                                <img src="" alt="ヘッダー背景プレビュー" class="img-preview d-none" id="headerPreviewImg">
-                                            </div>
-                                            <input type="file" class="form-control form-control-sm" id="headerImage" accept="image/*">
-                                            <div class="mt-2">
-                                                <button type="button" class="btn btn-primary" id="uploadHeader">
-                                                    <i class="bi bi-upload me-1"></i>アップロード
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-danger d-none" id="deleteHeader">
-                                                    <i class="bi bi-trash me-1"></i>削除
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- ヘッダー色 -->
-                                    <div class="color-grid mb-3">
-                                        <div class="color-item">
-                                            <label for="primaryColor" class="form-label small mb-1">プライマリ色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="primaryColor" name="primary_color" value="#8B5AFA">
-                                        </div>
-                                        <div class="color-item">
-                                            <label for="secondaryColor" class="form-label small mb-1">セカンダリ色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="secondaryColor" name="secondary_color" value="#667eea">
-                                        </div>
-                                        <div class="color-item">
-                                            <label for="headingColor" class="form-label small mb-1">見出し色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="headingColor" name="heading_color" value="#ffffff">
-                                        </div>
-                                    </div>
-
-                                    <!-- カスタムHTML（上級者向け） -->
-                                    <div class="mb-4">
-                                        <label for="headerText" class="form-label small text-muted">
-                                            <i class="bi bi-code-slash me-1"></i>カスタムHTML（上級者向け）
-                                        </label>
-                                        <input type="text" class="form-control form-control-sm" id="headerText" name="header_html" placeholder="空欄の場合はサイトタイトルを表示">
-                                        <div class="form-text">空欄の場合は上記のサイトタイトルが自動表示されます</div>
-                                    </div>
-
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- ========== コンテンツ設定 ========== -->
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header" id="headingContent">
-                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseContent" aria-expanded="false" aria-controls="collapseContent">
-                                                    <i class="bi bi-file-earmark-text me-2"></i>コンテンツ設定
-                                                </button>
-                                            </h2>
-                                            <div id="collapseContent" class="accordion-collapse collapse" aria-labelledby="headingContent" data-bs-parent="#themeAccordion">
-                                                <div class="accordion-body">
-
-                                    <!-- 背景・テキスト色 -->
-                                    <div class="color-grid mb-3">
-                                        <div class="color-item">
-                                            <label for="backgroundColor" class="form-label small mb-1">背景色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="backgroundColor" name="background_color" value="#1a1a1a">
-                                        </div>
-                                        <div class="color-item">
-                                            <label for="textColor" class="form-label small mb-1">本文色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="textColor" name="text_color" value="#ffffff">
-                                        </div>
-                                        <div class="color-item">
-                                            <label for="accentColor" class="form-label small mb-1">アクセント色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="accentColor" name="accent_color" value="#FFD700">
-                                        </div>
-                                    </div>
-
-                                    <!-- リンク色 -->
-                                    <div class="color-grid mb-3">
-                                        <div class="color-item">
-                                            <label for="linkColor" class="form-label small mb-1">リンク色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="linkColor" name="link_color" value="#8B5AFA">
-                                        </div>
-                                        <div class="color-item">
-                                            <label for="linkHoverColor" class="form-label small mb-1">リンクホバー色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="linkHoverColor" name="link_hover_color" value="#a177ff">
-                                        </div>
-                                    </div>
-
-                                    <!-- タグ色 -->
-                                    <h6 class="mt-3 mb-2 small text-muted">タグ設定</h6>
-                                    <div class="color-grid mb-3">
-                                        <div class="color-item">
-                                            <label for="tagBgColor" class="form-label small mb-1">タグ背景色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="tagBgColor" name="tag_bg_color" value="#8B5AFA">
-                                        </div>
-                                        <div class="color-item">
-                                            <label for="tagTextColor" class="form-label small mb-1">タグ文字色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="tagTextColor" name="tag_text_color" value="#ffffff">
-                                        </div>
-                                            <div class="color-item col-span-2">
-                                            <label class="form-label small mb-1">プレビュー</label>
-                                            <div class="p-8">
-                                                <span id="tagColorPreview" class="badge badge-tag-sample">サンプルタグ</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- フィルタ設定 -->
-                                    <h6 class="mt-3 mb-2 small text-muted">フィルタ設定（選択時の色）</h6>
-                                    <div class="color-grid mb-3">
-                                        <div class="color-item">
-                                            <label for="filterActiveBgColor" class="form-label small mb-1">フィルタ選択時背景色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="filterActiveBgColor" name="filter_active_bg_color" value="#8B5AFA">
-                                        </div>
-                                        <div class="color-item">
-                                            <label for="filterActiveTextColor" class="form-label small mb-1">フィルタ選択時文字色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="filterActiveTextColor" name="filter_active_text_color" value="#ffffff">
-                                        </div>
-                                            <div class="color-item col-span-2">
-                                            <label class="form-label small mb-1">プレビュー</label>
-                                            <div class="p-8">
-                                                <span id="filterActiveColorPreview" class="badge badge-tag-sample">選択中フィルタ</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- カード設定 -->
-                                    <h6 class="mt-3 mb-2 small text-muted">カード設定</h6>
-                                    <div class="color-grid mb-3">
-                                        <div class="color-item">
-                                            <label for="cardBgColor" class="form-label small mb-1">カード背景色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="cardBgColor" name="card_bg_color" value="#252525">
-                                        </div>
-                                        <div class="color-item">
-                                            <label for="cardBorderColor" class="form-label small mb-1">カード枠線色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="cardBorderColor" name="card_border_color" value="#333333">
-                                        </div>
-                                        <div class="color-item col-span-2">
-                                            <label for="cardShadowOpacity" class="form-label small mb-1">カード影の濃さ</label>
-                                            <input type="range" class="form-range" id="cardShadowOpacity" name="card_shadow_opacity" min="0" max="1" step="0.1" value="0.3">
-                                            <div class="form-text small">現在: <span id="shadowValue">0.3</span></div>
-                                        </div>
-                                    </div>
-
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- ========== ナビゲーション設定 ========== -->
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header" id="headingThemeNavigation">
-                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThemeNavigation" aria-expanded="false" aria-controls="collapseThemeNavigation">
-                                                    <i class="bi bi-arrow-left-circle me-2"></i>ナビゲーション設定
-                                                </button>
-                                            </h2>
-                                            <div id="collapseThemeNavigation" class="accordion-collapse collapse" aria-labelledby="headingThemeNavigation" data-bs-parent="#themeAccordion">
-                                                <div class="accordion-body">
-                                                    <p class="text-muted small mb-3">
-                                                        詳細ページの「一覧に戻る」ボタンのデザインをカスタマイズできます
-                                                    </p>
-
-                                                    <div class="mb-3">
-                                                        <label for="backButtonText" class="form-label">ボタンテキスト</label>
-                                                        <input type="text" class="form-control" id="backButtonText" name="back_button_text" placeholder="一覧に戻る" maxlength="20">
-                                                        <div class="form-text">ボタンに表示するテキスト（20文字以内）</div>
-                                                    </div>
-
-                                                    <div class="row mb-3">
-                                                        <div class="col-md-6">
-                                                            <label for="backButtonBgColor" class="form-label">背景色</label>
-                                                            <div class="d-flex align-items-center gap-2">
-                                                                <input type="color" class="form-control form-control-color" id="backButtonBgColor" value="#8B5AFA">
-                                                                <div class="flex-grow-1">
-                                                                    <label for="backButtonBgAlpha" class="form-label small mb-1">透過 (Alpha)</label>
-                                                                    <input type="range" class="form-range" id="backButtonBgAlpha" min="0" max="100" step="1" value="100">
-                                                                    <div class="form-text small">現在: <span id="backButtonBgAlphaValue">100%</span></div>
-                                                                </div>
-                                                            </div>
-                                                            <input type="hidden" id="backButtonBgComposed" name="back_button_bg_color" value="#8B5AFA">
-                                                            <div class="form-text">背景色と透過を組み合わせて保存します</div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <label for="backButtonTextColor" class="form-label">テキスト色</label>
-                                                            <input type="color" class="form-control form-control-color" id="backButtonTextColor" name="back_button_text_color" value="#FFFFFF">
-                                                            <div class="form-text">ボタンのテキスト色</div>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- プレビュー -->
-                                                    <div class="mt-3 p-3 bg-light rounded">
-                                                        <label class="form-label small text-muted">プレビュー:</label>
-                                                        <div id="backButtonPreview" class="header-back-button header-back-button--preview">
-                                                            一覧に戻る
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <!-- 詳細ボタン設定 -->
-                                                    <div class="mt-4">
-                                                        <p class="text-muted small mb-2">カードやオーバーレイで使う「詳細表示」ボタンのスタイル</p>
-
-                                                        <div class="mb-3">
-                                                            <label for="detailButtonText" class="form-label">ボタンテキスト</label>
-                                                            <input type="text" class="form-control" id="detailButtonText" name="detail_button_text" placeholder="詳細表示" maxlength="20">
-                                                            <div class="form-text">詳細ボタンに表示するテキスト（空欄可）</div>
-                                                        </div>
-
-                                                        <div class="row mb-3">
-                                                            <div class="col-md-6">
-                                                                <label for="detailButtonBgColor" class="form-label">背景色</label>
-                                                                <div class="d-flex align-items-center gap-2">
-                                                                    <input type="color" class="form-control form-control-color" id="detailButtonBgColor" value="#8B5AFA">
-                                                                    <div class="flex-grow-1">
-                                                                        <label for="detailButtonBgAlpha" class="form-label small mb-1">透過 (Alpha)</label>
-                                                                        <input type="range" class="form-range" id="detailButtonBgAlpha" min="0" max="100" step="1" value="100">
-                                                                        <div class="form-text small">現在: <span id="detailButtonBgAlphaValue">100%</span></div>
-                                                                    </div>
-                                                                </div>
-                                                                <input type="hidden" id="detailButtonBgComposed" name="detail_button_bg_color" value="#8B5AFA">
-                                                                <div class="form-text">背景色と透過を組み合わせて保存します</div>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <label for="detailButtonTextColor" class="form-label">テキスト色</label>
-                                                                <input type="color" class="form-control form-control-color" id="detailButtonTextColor" name="detail_button_text_color" value="#FFFFFF">
-                                                                <div class="form-text">ボタンのテキスト色</div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- プレビュー -->
-                                                        <div class="mt-3 p-3 bg-light rounded">
-                                                            <label class="form-label small text-muted">プレビュー:</label>
-                                                            <div id="detailButtonPreview" class="header-back-button header-back-button--preview">
-                                                                詳細表示
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- ========== フッター設定 ========== -->
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header" id="headingFooter">
-                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFooter" aria-expanded="false" aria-controls="collapseFooter">
-                                                    <i class="bi bi-layout-text-window-reverse me-2"></i>フッター設定
-                                                </button>
-                                            </h2>
-                                            <div id="collapseFooter" class="accordion-collapse collapse" aria-labelledby="headingFooter" data-bs-parent="#themeAccordion">
-                                                <div class="accordion-body">
-
-                                    <!-- フッター色 -->
-                                    <div class="color-grid mb-3">
-                                        <div class="color-item">
-                                            <label for="footerBgColor" class="form-label small mb-1">背景色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="footerBgColor" name="footer_bg_color" value="#2a2a2a">
-                                        </div>
-                                        <div class="color-item">
-                                            <label for="footerTextColor" class="form-label small mb-1">文字色</label>
-                                            <input type="color" class="form-control form-control-color w-100" id="footerTextColor" name="footer_text_color" value="#cccccc">
-                                        </div>
-                                    </div>
-
-                                    <!-- フッターHTML -->
-                                    <div class="mb-4">
-                                        <label for="footerText" class="form-label">フッターテキスト</label>
-                                        <textarea class="form-control" id="footerText" name="footer_html" rows="3" placeholder="例: © 2025 Portfolio Site. All rights reserved."></textarea>
-                                        <div class="form-text">フッターに表示されるテキスト（HTMLタグも使用可）</div>
-                                    </div>
-
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                    </div>
-
-                                    <div class="mt-4">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="bi bi-save me-2"></i>すべて保存
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 右側：リアルタイムプレビュー -->
-                    <div class="col-lg-6">
-                        <div class="card sticky-preview">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-display me-2"></i>リアルタイムプレビュー
-                                </div>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-secondary active" data-preview-size="100%" title="デスクトップ">
-                                        <i class="bi bi-laptop"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary" data-preview-size="768px" title="タブレット">
-                                        <i class="bi bi-tablet"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary" data-preview-size="375px" title="モバイル">
-                                        <i class="bi bi-phone"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-body p-0 preview-bg">
-                                <div id="previewContainer" class="preview-container">
-                                    <div id="previewFrame" class="preview-frame">
-                                        <iframe
-                                            id="sitePreview"
-                                            src="/"
-                                            class="preview-iframe"
-                                            title="サイトプレビュー"
-                                        ></iframe>
-                                    </div>
-                                </div>
-                                <div class="card-footer text-muted small">
-                                    <i class="bi bi-info-circle me-1"></i>
-                                    色やテキストを変更すると、リアルタイムでプレビューに反映されます
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <?php require __DIR__ . '/tabs/theme.php'; ?>
             </div>
 
             <!-- サイト設定タブ -->
             <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
-                <div class="row justify-content-center">
-                    <div class="col-lg-8">
-                        <div class="card">
-                            <div class="card-header">
-                                <i class="bi bi-gear-fill me-2"></i>サイト設定
-                            </div>
-                            <div class="card-body">
-                                <div id="settingsAlert" class="alert d-none" role="alert"></div>
-
-                                <form id="settingsForm">
-                                    <input type="hidden" name="csrf_token" value="<?= escapeHtml($csrfToken) ?>">
-
-                                    <!-- アコーディオン形式の設定 -->
-                                    <div class="accordion" id="settingsAccordion">
-
-                                        <!-- コンテンツ表示設定 -->
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header" id="headingDisplay">
-                                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDisplay" aria-expanded="true" aria-controls="collapseDisplay">
-                                                    <i class="bi bi-eye me-2"></i>コンテンツ表示設定
-                                                </button>
-                                            </h2>
-                                            <div id="collapseDisplay" class="accordion-collapse collapse show" aria-labelledby="headingDisplay" data-bs-parent="#settingsAccordion">
-                                                <div class="accordion-body">
-                                                    <div class="form-check form-switch mb-3">
-                                                        <input class="form-check-input" type="checkbox" id="showViewCount" checked>
-                                                        <label class="form-check-label" for="showViewCount">
-                                                            <strong>閲覧回数を表示する</strong>
-                                                        </label>
-                                                        <div class="form-text mt-2">
-                                                            オフにすると、すべての投稿で閲覧回数が非表示になります
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- OGP/SNSシェア設定 -->
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header" id="headingOGP">
-                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOGP" aria-expanded="false" aria-controls="collapseOGP">
-                                                    <i class="bi bi-share me-2"></i>OGP/SNSシェア設定
-                                                </button>
-                                            </h2>
-                                            <div id="collapseOGP" class="accordion-collapse collapse" aria-labelledby="headingOGP" data-bs-parent="#settingsAccordion">
-                                                <div class="accordion-body">
-                                                    <p class="text-muted small mb-3">
-                                                        TwitterやFacebookなどのSNSでシェアされた際に表示される情報を設定します
-                                                    </p>
-
-                                                    <div class="mb-3">
-                                                        <label for="ogpTitle" class="form-label">OGPタイトル</label>
-                                                        <input type="text" class="form-control" id="ogpTitle" name="ogp_title" placeholder="空欄の場合はサイトタイトルを使用">
-                                                        <div class="form-text">SNSでシェアされた際のタイトル（60文字以内推奨）</div>
-                                                    </div>
-
-                                                    <div class="mb-3">
-                                                        <label for="ogpDescription" class="form-label">OGP説明文</label>
-                                                        <textarea class="form-control" id="ogpDescription" name="ogp_description" rows="3" placeholder="空欄の場合はサイト説明を使用"></textarea>
-                                                        <div class="form-text">SNSでシェアされた際の説明文（120文字以内推奨）</div>
-                                                    </div>
-
-                                                    <div class="mb-3">
-                                                        <label class="form-label">OGP画像</label>
-                                                        <div id="ogpImagePreview" class="mb-2">
-                                                            <img src="" alt="OGP画像プレビュー" id="ogpImagePreviewImg" class="ogp-image-preview">
-                                                        </div>
-                                                        <input type="file" class="form-control" id="ogpImageFile" accept="image/*">
-                                                        <div class="mt-2">
-                                                            <button type="button" class="btn btn-sm btn-primary" id="uploadOgpImage">
-                                                                <i class="bi bi-upload me-1"></i>アップロード
-                                                            </button>
-                                                            <button type="button" class="btn btn-sm btn-danger delete-ogp-button" id="deleteOgpImage">
-                                                                <i class="bi bi-trash me-1"></i>削除
-                                                            </button>
-                                                        </div>
-                                                        <div class="form-text">推奨サイズ: 1200x630px（横長）。Twitterでは2:1の比率が推奨されます</div>
-                                                    </div>
-
-                                                    <div class="row mb-3">
-                                                        <div class="col-md-6">
-                                                            <label for="twitterCard" class="form-label">Twitter Cardタイプ</label>
-                                                            <select class="form-select" id="twitterCard" name="twitter_card">
-                                                                <option value="summary">summary（正方形）</option>
-                                                                <option value="summary_large_image" selected>summary_large_image（大きな画像）</option>
-                                                            </select>
-                                                            <div class="form-text">Twitterでの表示タイプ</div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <label for="twitterSite" class="form-label">Twitterアカウント</label>
-                                                            <div class="input-group">
-                                                                <span class="input-group-text">@</span>
-                                                                <input type="text" class="form-control" id="twitterSite" name="twitter_site" placeholder="username">
-                                                            </div>
-                                                            <div class="form-text">@なしで入力</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                    </div>
-
-                                    <div class="mt-4">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="bi bi-save me-2"></i>すべて保存
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <?php require __DIR__ . '/tabs/settings.php'; ?>
             </div>
+
+            <?php if ($showConfigViewer): ?>
+            <!-- 設定確認タブ -->
+            <div class="tab-pane fade" id="config-viewer" role="tabpanel" aria-labelledby="config-viewer-tab">
+                <?php require __DIR__ . '/tabs/config_viewer.php'; ?>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -1054,9 +262,66 @@ try {
         </div>
     </div>
 
+    <!-- JavaScript読み込み（ハイブリッド方式） -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <?php echo \App\Utils\AssetHelper::scriptTag(PathHelper::getAdminUrl('js/admin.js')); ?>
+
+    <!-- 共通機能（常に読み込み） -->
+    <?php echo \App\Utils\AssetHelper::scriptTag(PathHelper::getAdminUrl('js/admin_common.js')); ?>
+
+    <!-- 投稿タブ（初期表示タブなので最初から読み込み） -->
+    <?php echo \App\Utils\AssetHelper::scriptTag(PathHelper::getAdminUrl('js/admin_posts.js')); ?>
+
+    <!-- その他のタブは動的読み込み -->
+    <script>
+    // スクリプト動的読み込みヘルパー
+    const loadedScripts = new Set();
+    function loadScript(src) {
+        if (loadedScripts.has(src)) {
+            return Promise.resolve();
+        }
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = () => {
+                loadedScripts.add(src);
+                resolve();
+            };
+            script.onerror = reject;
+            document.body.appendChild(script);
+        });
+    }
+
+    // タブ切り替え時に動的読み込み（one()で1回だけ実行）
+    $('#group-posts-tab').one('shown.bs.tab', function() {
+        loadScript('<?= PathHelper::getAdminUrl('js/admin_group_posts.js') ?>').then(() => {
+            // グループ投稿一覧を読み込み
+            if (typeof loadGroupPosts === 'function') {
+                loadGroupPosts();
+            }
+        });
+    });
+
+    $('#theme-tab').one('shown.bs.tab', function() {
+        loadScript('<?= PathHelper::getAdminUrl('js/admin_theme.js') ?>').then(() => {
+            // テーマ設定を読み込み
+            if (typeof loadThemeSettings === 'function') {
+                loadThemeSettings();
+            }
+            // プレビューを再読み込み
+            const iframe = document.getElementById('sitePreview');
+            if (iframe) {
+                iframe.src = iframe.src;
+            }
+        });
+    });
+
+    $('#settings-tab').one('shown.bs.tab', function() {
+        loadScript('<?= PathHelper::getAdminUrl('js/admin_settings.js') ?>');
+        // loadSettings()はadmin_settings.js内でDOM Ready時に自動実行される
+    });
+    </script>
+
     <?php echo \App\Utils\AssetHelper::scriptTag(PathHelper::getAdminUrl('js/sns-share.js')); ?>
 </body>
 </html>

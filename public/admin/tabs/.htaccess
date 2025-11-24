@@ -1,0 +1,4 @@
+# Deny direct access to tab files
+# These files should only be included by index.php
+Order Deny,Allow
+Deny from all
