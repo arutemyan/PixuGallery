@@ -4,9 +4,9 @@
  */
 
 :root {
-    --primary-color: #FF6B9D;
-    --secondary-color: #6BCF8E;
-    --accent-color: #FFD93D;
+    --primary-color: #D5577C;
+    --secondary-color: #5BA678;
+    --accent-color: #E8C547;
     --background-color: #1e1e1e;
     --text-color: #ffffff;
     --heading-color: #ffffff;
@@ -15,11 +15,11 @@
     --card-border-color: #3a3a3a;
     --card-bg-color: #2a2a2a;
     --card-shadow-opacity: 0.3;
-    --link-color: #FF6B9D;
-    --link-hover-color: #FF8DB3;
-    --tag-bg-color: #FF6B9D;
+    --link-color: #D5577C;
+    --link-hover-color: #E87A9B;
+    --tag-bg-color: #D5577C;
     --tag-text-color: #ffffff;
-    --filter-active-bg-color: #FF6B9D;
+    --filter-active-bg-color: #D5577C;
     --filter-active-text-color: #ffffff;
 }
 

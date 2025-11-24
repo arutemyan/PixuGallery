@@ -4,8 +4,8 @@
  */
 
 :root {
-    --primary-color: #FF6B9D;
-    --secondary-color: #6BCF8E;
+    --primary-color: #D5577C;
+    --secondary-color: #5BA678;
 }
 
 body {
@@ -13,7 +13,7 @@ body {
 }
 
 .navbar {
-    background: linear-gradient(135deg, #FF6B9D 0%, #FF8DB3 100%);
+    background: linear-gradient(135deg, #D5577C 0%, #E87A9B 100%);
 }
 
 .navbar-brand {
@@ -211,7 +211,7 @@ body {
 
 /* Edit modal */
 .modal-header {
-    background: linear-gradient(135deg, #FF6B9D 0%, #FF8DB3 100%);
+    background: linear-gradient(135deg, #D5577C 0%, #E87A9B 100%);
     color: white;
 }
 
@@ -262,7 +262,7 @@ body {
 /* カラーグリッドレイアウト */
 /* Section titles */
 .section-title {
-    border-bottom: 2px solid #FF6B9D;
+    border-bottom: 2px solid #D5577C;
     padding-bottom: 8px;
     color: #333;
     font-weight: 600;
@@ -365,7 +365,7 @@ body {
 
 /* クリップボードペーストエリア */
 .clipboard-paste-area {
-    border: 3px dashed #FF6B9D;
+    border: 3px dashed #D5577C;
     border-radius: 10px;
     padding: 30px;
     min-height: 200px;
@@ -379,14 +379,14 @@ body {
 
 .clipboard-paste-area:hover {
     background: #e9ecef;
-    border-color: #FF6B9D;
+    border-color: #D5577C;
 }
 
 .clipboard-paste-area:focus {
     outline: none;
-    border-color: #FF6B9D;
+    border-color: #D5577C;
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.2);
+    box-shadow: 0 0 0 3px rgba(213, 87, 124, 0.2);
 }
 
 #clipboardPreview {
