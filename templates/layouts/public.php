@@ -68,7 +68,6 @@
     <?php endif; ?>
 
     <!-- CSS -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
     <?php if (!empty($additionalCssFirst)): ?>
         <?php foreach ($additionalCssFirst as $css): ?>
             <?= \App\Utils\AssetHelper::linkTag($css) ?>
