@@ -3,6 +3,9 @@ Require all granted
 
 # Apache設定ファイル
 
+# カスタムエラーページ
+ErrorDocument 500 /error/500.html
+
 # PHPのエラー表示設定
 php_flag display_errors Off
 php_flag log_errors On
