@@ -605,12 +605,13 @@ function loadMorePosts() {
 function renderPosts(posts, hasMore = false) {
     if (posts.length === 0) {
         $('#postsList').html('<div class="text-center p-4 text-muted">投稿がありません</div>');
-        $('#bulkActionButtons').hide();
+        // Bootstrap の .d-none は !important なので、クラスで表示/非表示を切り替える
+        $('#bulkActionButtons').addClass('d-none');
         return;
     }
 
-    // 一括操作ボタンを表示
-    $('#bulkActionButtons').show();
+    // 一括操作ボタンを表示（d-none を外す）
+    $('#bulkActionButtons').removeClass('d-none');
 
     let html = '<div class="posts-grid">';
     posts.forEach(function(post) {

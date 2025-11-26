@@ -352,12 +352,14 @@ function loadMorePosts() {
 function renderPosts(posts, hasMore = false) {
     if (posts.length === 0) {
         $('#postsList').html('<div class="text-center p-4 text-muted">投稿がありません</div>');
-        $('#bulkActionButtons').hide();
+        // Bootstrap の .d-none は !important なので、display の直接操作では効かない。
+        // クラスで表示/非表示を切り替えることで確実に制御する。
+        $('#bulkActionButtons').addClass('d-none');
         return;
     }
 
-    // 一括操作ボタンを表示
-    $('#bulkActionButtons').show();
+    // 一括操作ボタンを表示（d-none を外す）
+    $('#bulkActionButtons').removeClass('d-none');
 
     let html = '<div class="posts-grid">';
     posts.forEach(function(post) {
@@ -377,20 +379,20 @@ function renderPosts(posts, hasMore = false) {
         html += `
             <div class="post-card ${!isVisible ? 'post-card-hidden' : ''}" data-id="${post.id}">
                 <div class="post-card-checkbox">
-                    <input type="checkbox" class="form-check-input post-select-checkbox" data-post-id="${post.id}" onchange="updateBulkActionButtons()">
+                    <input type="checkbox" class="form-check-input post-select-checkbox" data-post-id="${post.id}">
                 </div>
                 <div class="post-card-image">
                     <img src="/${thumbPath}" alt="${escapeHtml(post.title)}" onerror="this.src=(window.PLACEHOLDER_URL || '/uploads/thumbs/placeholder.webp')">
                     ${isGroupPost && post.image_count ? '<span class="badge bg-info position-absolute top-0 end-0 m-2"><i class="bi bi-images"></i> ' + post.image_count + '</span>' : ''}
                     <div class="post-card-overlay">
                         <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-primary" onclick="${editFunction}(${post.id})" title="編集">
+                            <button class="btn btn-sm btn-primary post-edit-btn" data-post-id="${post.id}" data-post-type="${isGroupPost ? 'group' : 'single'}" title="編集">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-sm btn-success" onclick="${shareFunction}(${post.id}, '${escapeHtml(post.title).replace(/'/g, "\\'")}', ${isSensitive})" title="SNS共有">
+                            <button class="btn btn-sm btn-success post-share-btn" data-post-id="${post.id}" data-post-title="${escapeHtml(post.title).replace(/\"/g, '&quot;')}" data-post-sensitive="${isSensitive}" title="SNS共有">
                                 <i class="bi bi-share"></i>
                             </button>
-                            <button class="btn btn-sm btn-danger" onclick="${deleteFunction}(${post.id}${isGroupPost ? ", '" + escapeHtml(post.title).replace(/'/g, "\\'") + "'" : ''})" title="削除">
+                            <button class="btn btn-sm btn-danger post-delete-btn" data-post-id="${post.id}" data-post-type="${isGroupPost ? 'group' : 'single'}" data-post-title="${escapeHtml(post.title).replace(/\"/g, '&quot;')}" title="削除">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -421,6 +423,58 @@ function renderPosts(posts, hasMore = false) {
     html += '</div>';
 
     $('#postsList').html(html);
+    // 各ボタン・チェックボックスのイベントを設定
+    if (typeof setupPostEventListeners === 'function') {
+        setupPostEventListeners();
+    }
+}
+
+/**
+ * 投稿カードのイベントリスナーを設定
+ */
+function setupPostEventListeners() {
+    // 編集ボタン
+    $('.post-edit-btn').off('click').on('click', function() {
+        const postId = $(this).data('post-id');
+        const postType = $(this).data('post-type');
+        if (postType === 'group') {
+            if (typeof editGroupPost === 'function') {
+                editGroupPost(postId);
+            }
+        } else {
+            editPost(postId);
+        }
+    });
+
+    // 共有ボタン
+    $('.post-share-btn').off('click').on('click', function() {
+        const postId = $(this).data('post-id');
+        const title = $(this).data('post-title');
+        const isSensitive = $(this).data('post-sensitive');
+        if (typeof shareToSNS === 'function') {
+            shareToSNS(postId, title, isSensitive);
+        }
+    });
+
+    // 削除ボタン
+    $('.post-delete-btn').off('click').on('click', function() {
+        const postId = $(this).data('post-id');
+        const postType = $(this).data('post-type');
+        const title = $(this).data('post-title');
+        if (postType === 'group') {
+            if (typeof deleteGroupPost === 'function') {
+                deleteGroupPost(postId, title);
+                return;
+            }
+        }
+        // 単一投稿の削除
+        deletePost(postId);
+    });
+
+    // チェックボックス（バルク操作）
+    $('.post-select-checkbox').off('change').on('change', function() {
+        updateBulkActionButtons();
+    });
 }
 
 /**
@@ -1054,3 +1108,9 @@ function convertImageFormat(file, targetFormat) {
         reader.readAsDataURL(file);
     });
 }
+
+// HTMLのonclick属性から呼び出せるようにグローバルスコープに公開
+window.loadPosts = loadPosts;
+window.loadMorePosts = loadMorePosts;
+window.deletePost = deletePost;
+window.editPost = editPost;
