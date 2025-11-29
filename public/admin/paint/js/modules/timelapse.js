@@ -306,6 +306,13 @@ function playTimelapse(events) {
     // Override updateSpeedButtons (not needed for admin)
     timelapsePlayer.updateSpeedButtons = function() {};
 
+    // モーダルのレイアウトが確定してからサイズを再計算
+    requestAnimationFrame(() => {
+        if (timelapsePlayer && timelapsePlayer.setupCanvas) {
+            timelapsePlayer.setupCanvas();
+        }
+    });
+
     // Start playback
     timelapsePlayer.play();
 }

@@ -59,13 +59,11 @@ try {
         <button class="header-btn secondary" id="btn-new">新規作成</button>
     <button class="header-btn secondary" id="btn-open">開く</button>
         <button class="header-btn secondary" id="btn-clear">クリア</button>
-        <button class="header-btn secondary" id="btn-resize">サイズ変更</button>
     </div>
 
     <div class="header-right">
     <button class="header-btn d-none" id="btn-save">保存</button>
         <button class="header-btn secondary" id="btn-save-as">名前を付けて保存</button>
-        <button class="header-btn secondary" id="btn-timelapse">タイムラプス</button>
         <button class="header-btn secondary" id="btn-export">エクスポート</button>
         <label class="header-btn secondary btn-import" for="import-file-input" id="btn-import">インポート</label>
         <input type="file" id="import-file-input" accept=".json,.gz,.json.gz,.paint" class="d-none" />
@@ -106,12 +104,12 @@ try {
 
     <!-- Canvas Area -->
     <div class="canvas-area">
-        <div id="canvas-wrap">
+        <div id="canvas-wrap" style="width: 512px; height: 512px;">
             <!-- 4 layers (from back to front) -->
-            <canvas class="layer" data-layer="0" width="512" height="512"></canvas>
-            <canvas class="layer" data-layer="1" width="512" height="512"></canvas>
-            <canvas class="layer" data-layer="2" width="512" height="512"></canvas>
-            <canvas class="layer" data-layer="3" width="512" height="512"></canvas>
+            <canvas class="layer" data-layer="0" width="512" height="512" style="width: 512px; height: 512px;"></canvas>
+            <canvas class="layer" data-layer="1" width="512" height="512" style="width: 512px; height: 512px;"></canvas>
+            <canvas class="layer" data-layer="2" width="512" height="512" style="width: 512px; height: 512px;"></canvas>
+            <canvas class="layer" data-layer="3" width="512" height="512" style="width: 512px; height: 512px;"></canvas>
             <div class="canvas-info">512 x 512 px</div>
         </div>
     </div>
@@ -302,69 +300,11 @@ try {
     </div>
 </div>
 
-<!-- Timelapse Modal Overlay -->
-<div class="timelapse-overlay" id="timelapse-overlay">
-    <div class="timelapse-modal">
-        <div class="timelapse-header">
-            <h2 class="timelapse-title">タイムラプス再生</h2>
-            <button class="timelapse-close" id="timelapse-close">×</button>
-        </div>
-
-        <div class="timelapse-canvas-container">
-            <div class="timelapse-canvas-wrap">
-                <canvas id="timelapse-canvas" width="512" height="512"></canvas>
-            </div>
-        </div>
-
-        <div class="timelapse-controls">
-            <div class="timelapse-buttons">
-                <button class="timelapse-btn" id="timelapse-restart" title="最初へ">⏮</button>
-                <button class="timelapse-btn primary" id="timelapse-play" title="再生/停止">▶️</button>
-                <button class="timelapse-btn" id="timelapse-stop" title="停止">⏹</button>
-            </div>
-
-            <div class="timelapse-seek-container">
-                <input type="range" id="timelapse-seek" class="timelapse-seek" min="0" max="100" value="0">
-                <div class="timelapse-time">
-                    <span id="timelapse-current-time">0:00</span> / <span id="timelapse-total-time">0:00</span>
-                </div>
-            </div>
-
-            <div class="timelapse-speed">
-                <label class="timelapse-speed-label">
-                    速度: <span id="timelapse-speed-value">1.0</span>x
-                </label>
-                <input type="range" id="timelapse-speed" class="timelapse-speed-slider" min="0.1" max="5" step="0.1" value="1">
-            </div>
-        </div>
-    </div>
-</div>
-
-            <div class="timelapse-speed-control">
-                <label class="timelapse-speed-label">再生速度:</label>
-                <input type="range" id="timelapse-speed" class="timelapse-speed setting-slider" min="0.25" max="4" step="0.25" value="1">
-                <span class="setting-value" id="timelapse-speed-value">1.0x</span>
-            </div>
-
-            <div class="timelapse-options">
-                <div class="timelapse-option">
-                    <input type="checkbox" id="timelapse-ignore-time">
-                    <label for="timelapse-ignore-time">時間を無視（等間隔再生）</label>
-                </div>
-                <div class="timelapse-option">
-                    <input type="checkbox" id="timelapse-real-time">
-                    <label for="timelapse-real-time">リアル時間再生（中断時間を除外）</label>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Resize Canvas Modal -->
 <div class="open-modal-overlay" id="resize-modal-overlay">
     <div class="open-modal">
         <div class="open-modal-header">
-            <h2 class="open-modal-title">キャンバスサイズ変更</h2>
+            <h2 class="open-modal-title" id="resize-modal-title">キャンバスサイズ選択</h2>
             <button class="timelapse-close" id="resize-modal-close">×</button>
         </div>
         <div class="open-modal-content">

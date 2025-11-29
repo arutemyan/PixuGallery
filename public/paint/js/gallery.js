@@ -33,13 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // 無限スクロール
     window.addEventListener('scroll', () => {
         if (isLoading || !hasMore) return;
-        
+
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         const scrollHeight = document.documentElement.scrollHeight;
         const clientHeight = document.documentElement.clientHeight;
-        
+
         if (scrollTop + clientHeight >= scrollHeight - 500) {
-            loadIllusts();
+            loadPaints();
         }
     });
 });

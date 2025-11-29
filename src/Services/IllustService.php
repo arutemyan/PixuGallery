@@ -107,8 +107,8 @@ class IllustService
                 }
                 $createdFiles[] = $paths['imagePath'];
 
-                // Generate thumbnail
-                if ($this->imageProcessor->generateThumbnail($paths['imagePath'], $paths['thumbPath'])) {
+                // Generate thumbnail (600px width for 5-column grid)
+                if ($this->imageProcessor->generateThumbnail($paths['imagePath'], $paths['thumbPath'], 600)) {
                     $thumbGenerated = true;
                     $createdFiles[] = $paths['thumbPath'];
                 } else {

@@ -90,7 +90,7 @@ class IllustImageProcessor
      * @param int $quality WebP品質（デフォルト: 80）
      * @return bool 成功時true
      */
-    public function generateThumbnail(string $sourcePath, string $outputPath, int $width = 320, int $quality = 80): bool
+    public function generateThumbnail(string $sourcePath, string $outputPath, int $width = 512, int $quality = 80): bool
     {
         $tmpFile = $outputPath . '.tmp';
         $ext = strtolower(pathinfo($outputPath, PATHINFO_EXTENSION));

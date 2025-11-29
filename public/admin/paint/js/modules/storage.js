@@ -550,9 +550,9 @@ async function sendSaveRequest(title, description, tags, compositeImage, illustD
 }
 
 /**
- * Create new illustration (clear canvas)
+ * Create new illustration (shows size selection modal)
  */
-export function newIllust(renderLayers, updateIllustDisplay, setStatus) {
+export function newIllust(openResizeModalForNew) {
     // Confirm if there are unsaved changes
     if (state.hasUnsavedChanges) {
         if (!confirm('未保存の変更があります。新規作成しますか？現在の作業内容は失われます。')) {
@@ -560,14 +560,17 @@ export function newIllust(renderLayers, updateIllustDisplay, setStatus) {
         }
     }
 
-    // Clear all layers
-    state.layers.forEach((canvas, i) => {
-        const ctx = state.contexts[i];
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        canvas.style.display = 'block';
-        canvas.style.opacity = '1';
-    });
+    // Open size selection modal for new illustration
+    if (openResizeModalForNew) {
+        openResizeModalForNew();
+    }
+}
 
+/**
+ * Create new illustration with specified size
+ * (Called after size selection)
+ */
+export function newIllustWithSize(width, height, renderLayers, updateIllustDisplay, setStatus, resizeCanvas) {
     // Reset state
     state.activeLayer = 3;
     state.undoStacks = state.layers.map(() => []);
@@ -590,6 +593,36 @@ export function newIllust(renderLayers, updateIllustDisplay, setStatus) {
         if (elements.btnSave) elements.btnSave.style.display = 'none';
     } catch (e) {}
 
+    // Resize canvas directly (no need to preserve existing data)
+    if (width !== state.layers[0].width || height !== state.layers[0].height) {
+        // Update canvas-wrap container size
+        if (elements.canvasWrap) {
+            elements.canvasWrap.style.width = `${width}px`;
+            elements.canvasWrap.style.height = `${height}px`;
+        }
+
+        // Resize all layers and clear them
+        state.layers.forEach((canvas, idx) => {
+            // Update both canvas internal size and CSS size
+            canvas.width = width;
+            canvas.height = height;
+            canvas.style.width = `${width}px`;
+            canvas.style.height = `${height}px`;
+            canvas.style.display = 'block';
+            canvas.style.opacity = '1';
+
+            // Clear the canvas (resizing already clears it, but explicit for clarity)
+            const ctx = state.contexts[idx];
+            ctx.clearRect(0, 0, width, height);
+        });
+
+        // Update canvas info display
+        const canvasInfo = document.querySelector('.canvas-info');
+        if (canvasInfo) {
+            canvasInfo.textContent = `${width} x ${height} px`;
+        }
+    }
+
     if (updateIllustDisplay) {
         updateIllustDisplay();
     }
@@ -597,7 +630,7 @@ export function newIllust(renderLayers, updateIllustDisplay, setStatus) {
         renderLayers();
     }
     if (setStatus) {
-        setStatus('新規作成しました');
+        setStatus(`新規作成しました (${width}x${height})`);
     }
 }
 

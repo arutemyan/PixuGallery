@@ -76,7 +76,6 @@ export const elements = {
     // Header buttons
     btnSave: null,
     btnSaveAs: null,
-    btnTimelapse: null,
     btnNew: null,
     btnOpen: null,
     btnClear: null,
@@ -158,6 +157,7 @@ export const elements = {
 
     // Resize modal
     resizeModalOverlay: null,
+    resizeModalTitle: null,
     resizeModalClose: null,
     resizeModalCancel: null,
     resizeModalApply: null,
@@ -165,19 +165,6 @@ export const elements = {
     resizeHeight: null,
     resizeKeepRatio: null,
 
-    // Timelapse modal
-    timelapseOverlay: null,
-    timelapseCanvas: null,
-    timelapseClose: null,
-    timelapsePlay: null,
-    timelapseStop: null,
-    timelapseRestart: null,
-    timelapseSeek: null,
-    timelapseCurrentTime: null,
-    timelapseTotalTime: null,
-    timelapseSpeed: null,
-    timelapseSpeedValue: null,
-    timelapseIgnoreTime: null,
 
     // Edit Color modal
     editColorModalOverlay: null,
@@ -205,7 +192,6 @@ export function initializeElements() {
     // Header buttons
     elements.btnSave = document.getElementById('btn-save');
     elements.btnSaveAs = document.getElementById('btn-save-as');
-    elements.btnTimelapse = document.getElementById('btn-timelapse');
     elements.btnNew = document.getElementById('btn-new');
     elements.btnOpen = document.getElementById('btn-open');
     elements.btnClear = document.getElementById('btn-clear');
@@ -298,27 +284,13 @@ export function initializeElements() {
 
     // Resize modal
     elements.resizeModalOverlay = document.getElementById('resize-modal-overlay');
+    elements.resizeModalTitle = document.getElementById('resize-modal-title');
     elements.resizeModalClose = document.getElementById('resize-modal-close');
     elements.resizeModalCancel = document.getElementById('resize-modal-cancel');
     elements.resizeModalApply = document.getElementById('resize-modal-apply');
     elements.resizeWidth = document.getElementById('resize-width');
     elements.resizeHeight = document.getElementById('resize-height');
     elements.resizeKeepRatio = document.getElementById('resize-keep-ratio');
-
-    // Timelapse modal
-    elements.timelapseOverlay = document.getElementById('timelapse-overlay');
-    elements.timelapseCanvas = document.getElementById('timelapse-canvas');
-    elements.timelapseClose = document.getElementById('timelapse-close');
-    elements.timelapsePlay = document.getElementById('timelapse-play');
-    elements.timelapseStop = document.getElementById('timelapse-stop');
-    elements.timelapseRestart = document.getElementById('timelapse-restart');
-    elements.timelapseSeek = document.getElementById('timelapse-seek');
-    elements.timelapseCurrentTime = document.getElementById('timelapse-current-time');
-    elements.timelapseTotalTime = document.getElementById('timelapse-total-time');
-    elements.timelapseSpeed = document.getElementById('timelapse-speed');
-    elements.timelapseSpeedValue = document.getElementById('timelapse-speed-value');
-    elements.timelapseIgnoreTime = document.getElementById('timelapse-ignore-time');
-        elements.timelapseRealTime = document.getElementById('timelapse-real-time');
 
     // Edit Color modal
     elements.editColorModalOverlay = document.getElementById('edit-color-modal-overlay');

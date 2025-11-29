@@ -101,8 +101,24 @@ export class TimelapsePlayer {
 
         // キャンバスサイズを設定（デフォルトは800x600）
         const firstFrame = this.frames[0];
-        this.canvas.width = firstFrame.width || 800;
-        this.canvas.height = firstFrame.height || 600;
+        const canvasWidth = firstFrame.width || 800;
+        const canvasHeight = firstFrame.height || 600;
+
+        this.canvas.width = canvasWidth;
+        this.canvas.height = canvasHeight;
+
+        // ビューポートに収まる表示サイズを計算
+        const maxWidth = Math.min(window.innerWidth * 0.9 - 60, canvasWidth);
+        const maxHeight = Math.min(window.innerHeight * 0.9 - 270, canvasHeight);
+
+        // アスペクト比を維持してスケール
+        const scale = Math.min(maxWidth / canvasWidth, maxHeight / canvasHeight);
+
+        const displayWidth = Math.floor(canvasWidth * scale);
+        const displayHeight = Math.floor(canvasHeight * scale);
+
+        this.canvas.style.width = displayWidth + 'px';
+        this.canvas.style.height = displayHeight + 'px';
 
         // Canvas size set
 

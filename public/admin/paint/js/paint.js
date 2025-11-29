@@ -47,15 +47,13 @@ import {
     importWorkingFile,
     saveIllust,
     newIllust,
+    newIllustWithSize,
     markAsChanged,
     fetchIllustData,
     loadIllustLayers
 } from './modules/storage.js';
 import {
-    recordTimelapse,
-    initTimelapseModal,
-    openTimelapseModal,
-    closeTimelapseModal
+    recordTimelapse
 } from './modules/timelapse.js';
 import {
     initModals,
@@ -63,7 +61,8 @@ import {
     closeOpenModal,
     getSelectedIllustId,
     openSaveModal,
-    openResizeModal
+    openResizeModal,
+    openResizeModalForNew
 } from './modules/modals.js';
 import { initPanels } from './modules/panels.js';
 
@@ -100,9 +99,12 @@ async function initCanvas() {
         canvas.getContext('2d', { willReadFrequently: true })
     );
 
-    // Set layer z-indexes
+    // Set layer z-indexes and ensure style size matches internal resolution
     state.layers.forEach((canvas, i) => {
         canvas.style.zIndex = i;
+        // Ensure CSS display size matches internal canvas resolution
+        canvas.style.width = `${canvas.width}px`;
+        canvas.style.height = `${canvas.height}px`;
     });
 
     // Load persisted state (do not auto-restore; no manual restore button present)
@@ -135,15 +137,16 @@ function initUI() {
     initTransformTools(setStatus, pushUndo);
     initCanvasPan(setToolWrapper, setStatus);
 
-    // Timelapse
-    initTimelapseModal(closeTimelapseModal);
-
     // Modals
     initModals(
         () => openOpenModal(setStatus),
         saveIllustWrapper,
         resizeCanvasWrapper,
-        setColor
+        setColor,
+        newIllustWithSize,
+        renderLayersWrapper,
+        updateIllustDisplay,
+        setStatus
     );
 
     // Keyboard shortcuts
@@ -182,12 +185,9 @@ function initHeaderButtons() {
     if (elements.btnSaveAs) {
         elements.btnSaveAs.addEventListener('click', openSaveModal);
     }
-    if (elements.btnTimelapse) {
-        elements.btnTimelapse.addEventListener('click', () => openTimelapseModal(setStatus));
-    }
     if (elements.btnNew) {
         elements.btnNew.addEventListener('click', () => {
-            newIllust(renderLayersWrapper, updateIllustDisplay, setStatus);
+            newIllust(openResizeModalForNew);
         });
     }
     

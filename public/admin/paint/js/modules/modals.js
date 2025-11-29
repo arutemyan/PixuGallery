@@ -9,13 +9,16 @@ import { ColorUtils } from './tools.js';
 // Selected illustration ID for open modal
 let selectedIllustId = null;
 
+// Resize modal mode ('resize' or 'new')
+let resizeModalMode = 'resize';
+
 /**
  * Initialize all modal event listeners
  */
-export function initModals(openOpenModal, saveIllust, resizeCanvas, setColor) {
+export function initModals(openOpenModal, saveIllust, resizeCanvas, setColor, newIllustWithSize, renderLayers, updateIllustDisplay, setStatus) {
     initOpenModal(openOpenModal);
     initSaveModal(saveIllust);
-    initResizeModal(resizeCanvas);
+    initResizeModal(resizeCanvas, newIllustWithSize, renderLayers, updateIllustDisplay, setStatus);
     initEditColorModal(setColor);
 }
 
@@ -332,7 +335,7 @@ function closeSaveModal() {
 /**
  * Initialize Resize modal
  */
-function initResizeModal(resizeCanvas) {
+function initResizeModal(resizeCanvas, newIllustWithSize, renderLayers, updateIllustDisplay, setStatus) {
     if (!elements.resizeModalOverlay) return;
 
     if (elements.resizeModalClose) {
@@ -348,7 +351,7 @@ function initResizeModal(resizeCanvas) {
         elements.resizeKeepRatio.addEventListener('change', () => {
             if (elements.resizeKeepRatio.checked) {
                 // Lock aspect ratio when width changes
-                if (elements.resizeWidth) {
+                if (elements.resizeWidth && state.layers && state.layers[0]) {
                     elements.resizeWidth.dataset.aspectRatio = (state.layers[0].height / state.layers[0].width).toString();
                 }
             }
@@ -398,8 +401,16 @@ function initResizeModal(resizeCanvas) {
                 return;
             }
 
-            if (resizeCanvas) {
-                resizeCanvas(newWidth, newHeight);
+            if (resizeModalMode === 'new') {
+                // 新規作成モード
+                if (newIllustWithSize) {
+                    newIllustWithSize(newWidth, newHeight, renderLayers, updateIllustDisplay, setStatus, resizeCanvas);
+                }
+            } else {
+                // リサイズモード（今は使われない）
+                if (resizeCanvas) {
+                    resizeCanvas(newWidth, newHeight);
+                }
             }
             closeResizeModal();
         });
@@ -626,4 +637,26 @@ async function deleteIllustration(id, title) {
         console.error('Failed to delete illustration:', e);
         alert('削除中にエラーが発生しました');
     }
+}
+
+/**
+ * Open resize modal for new illustration
+ * (新規作成時のキャンバスサイズ選択)
+ */
+export function openResizeModalForNew() {
+    resizeModalMode = 'new';
+
+    if (elements.resizeModalTitle) {
+        elements.resizeModalTitle.textContent = '新規作成 - キャンバスサイズ選択';
+    }
+
+    // デフォルトサイズを512x512に設定
+    if (elements.resizeWidth) elements.resizeWidth.value = 512;
+    if (elements.resizeHeight) elements.resizeHeight.value = 512;
+    if (elements.resizeKeepRatio) {
+        elements.resizeKeepRatio.checked = true;
+        elements.resizeWidth.dataset.aspectRatio = '1';
+    }
+
+    elements.resizeModalOverlay.classList.add('active');
 }

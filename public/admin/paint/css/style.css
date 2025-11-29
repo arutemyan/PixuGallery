@@ -204,8 +204,7 @@ body {
 
 #canvas-wrap {
     position: relative;
-    width: 512px;
-    height: 512px;
+    /* Size is set via inline styles to match canvas resolution */
     box-shadow: 0 0 0 2px #333, var(--shadow-lg);
     border-radius: 2px;
     background: white;
@@ -226,8 +225,7 @@ canvas.layer {
     position: absolute;
     left: 0;
     top: 0;
-    width: 512px;
-    height: 512px;
+    /* Size is set via inline styles to match internal canvas resolution */
     border: none;
     background: transparent;
     touch-action: none;
@@ -903,234 +901,6 @@ canvas.layer {
     font-size: 14px;
 }
 
-/* ===== Timelapse Modal Overlay ===== */
-.timelapse-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.9);
-    z-index: 10000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.3s ease;
-}
-
-.timelapse-overlay.active {
-    display: flex;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-.timelapse-modal {
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    box-shadow: var(--shadow-lg);
-    max-width: 90vw;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-    from {
-        transform: translateY(30px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-.timelapse-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.timelapse-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.timelapse-close {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 24px;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.timelapse-close:hover {
-    background: #F0F0F0;
-    color: var(--text-primary);
-}
-
-.timelapse-canvas-container {
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #F9F9F9;
-    min-height: 400px;
-}
-
-.timelapse-canvas-wrap {
-    position: relative;
-    box-shadow: var(--shadow-md);
-    background: white;
-}
-
-#timelapse-canvas {
-    display: block;
-    max-width: 100%;
-    height: auto;
-}
-
-.timelapse-controls {
-    padding: 16px 20px;
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.timelapse-buttons {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-}
-
-.timelapse-btn {
-    width: 40px;
-    height: 40px;
-    border: 1px solid var(--border-color);
-    border-radius: 50%;
-    background: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    transition: all 0.2s;
-}
-
-.timelapse-btn:hover {
-    background: #F0F0F0;
-    border-color: var(--accent-primary);
-    transform: scale(1.05);
-}
-
-.timelapse-btn.primary {
-    background: var(--accent-primary);
-    color: white;
-    border-color: var(--accent-primary);
-}
-
-.timelapse-btn.primary:hover {
-    background: #005fa3;
-}
-
-.timelapse-seek-container {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.timelapse-seek {
-    flex: 1;
-    height: 6px;
-    border-radius: 3px;
-    background: #E0E0E0;
-    outline: none;
-    -webkit-appearance: none;
-}
-
-.timelapse-seek::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--accent-primary);
-    cursor: pointer;
-}
-
-.timelapse-seek::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--accent-primary);
-    cursor: pointer;
-    border: none;
-}
-
-.timelapse-time {
-    font-size: 13px;
-    color: var(--text-secondary);
-    min-width: 80px;
-    text-align: right;
-}
-
-.timelapse-speed-control {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    justify-content: center;
-}
-
-.timelapse-speed-label {
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-.timelapse-speed {
-    width: 120px;
-}
-
-.timelapse-options {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 8px;
-    background: #F9F9F9;
-    border-radius: 4px;
-}
-
-.timelapse-option {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-.timelapse-option input[type="checkbox"] {
-    cursor: pointer;
-}
-
 /* ===== Status Bar ===== */
 .status-bar {
     position: fixed;
@@ -1242,15 +1012,13 @@ canvas.layer {
     }
 
     #canvas-wrap {
-        width: 512px;
-        height: 512px;
+        /* Size is set via inline styles to match canvas resolution */
         max-width: calc(100vw - 24px);
         max-height: calc(100vh - 200px);
     }
 
     canvas.layer {
-        width: 100%;
-        height: 100%;
+        /* Size is set via inline styles to match internal canvas resolution */
     }
 
     .right-panel {
@@ -1265,16 +1033,6 @@ canvas.layer {
         left: 0;
         right: 0;
         display: none;
-    }
-
-    .timelapse-modal {
-        max-width: 95vw;
-        max-height: 95vh;
-    }
-
-    .timelapse-canvas-container {
-        padding: 12px;
-        min-height: 300px;
     }
 }
 
