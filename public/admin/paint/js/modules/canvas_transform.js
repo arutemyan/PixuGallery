@@ -9,49 +9,116 @@ import { state, elements } from './state.js';
  * Zoom in/out by delta
  * @param {number} delta - Amount to zoom (positive = in, negative = out)
  * @param {Function} setStatus - Callback to update status bar
+ * @param {Object} options - Optional {centerX, centerY} for zoom center point
  */
-export function zoom(delta, setStatus) {
-    state.zoomLevel = Math.max(0.25, Math.min(4, state.zoomLevel + delta));
-    applyZoom();
+export function zoom(delta, setStatus, options = {}) {
+    const oldZoom = state.zoomLevel;
+    const newZoom = Math.max(0.1, Math.min(8, state.zoomLevel + delta));
+
+    if (newZoom === oldZoom) return;
+
+    // If center point is provided, adjust pan to keep that point steady
+    if (options.centerX !== undefined && options.centerY !== undefined) {
+        const canvasArea = elements.canvasWrap.parentElement;
+        const areaRect = canvasArea.getBoundingClientRect();
+
+        // Mouse position relative to viewport center (screen coordinates)
+        const mouseX = (options.centerX - areaRect.left) - areaRect.width / 2;
+        const mouseY = (options.centerY - areaRect.top) - areaRect.height / 2;
+
+        // Zoom factor
+        const factor = newZoom / oldZoom;
+
+        // Adjust pan to keep the point under mouse steady
+        // New pan = mouse * (1 - factor) + old pan * factor
+        state.panOffset.x = mouseX * (1 - factor) + state.panOffset.x * factor;
+        state.panOffset.y = mouseY * (1 - factor) + state.panOffset.y * factor;
+    }
+
+    state.zoomLevel = newZoom;
+    applyTransform();
     setStatus(`ズーム: ${Math.round(state.zoomLevel * 100)}%`);
+    updateZoomDisplay();
 }
 
 /**
- * Reset zoom to 1:1
+ * Reset zoom and pan to default (centered, 100%)
+ */
+export function resetView() {
+    state.zoomLevel = 1;
+    state.panOffset = { x: 0, y: 0 };
+    applyTransform();
+    updateZoomDisplay();
+}
+
+/**
+ * Fit canvas to viewport with optimal zoom
  */
 export function zoomFit() {
-    state.zoomLevel = 1;
-    applyZoom();
+    const canvasArea = elements.canvasWrap.parentElement;
+    const canvasWidth = state.layers[0].width;
+    const canvasHeight = state.layers[0].height;
+
+    const areaWidth = canvasArea.clientWidth - 40; // padding
+    const areaHeight = canvasArea.clientHeight - 40;
+
+    const scaleX = areaWidth / canvasWidth;
+    const scaleY = areaHeight / canvasHeight;
+
+    state.zoomLevel = Math.min(scaleX, scaleY, 1); // Don't zoom beyond 100%
+    state.panOffset = { x: 0, y: 0 };
+    applyTransform();
+    updateZoomDisplay();
 }
 
 /**
- * Apply current zoom level to canvas
+ * Apply current zoom level and pan offset to canvas
+ * @param {boolean} instant - If true, apply without transition
  */
-function applyZoom() {
+function applyTransform(instant = false) {
     const scale = state.zoomLevel;
-    const transform = `scale(${scale}) translate(${state.panOffset.x / scale}px, ${state.panOffset.y / scale}px)`;
-    elements.canvasWrap.style.transform = transform;
+    // Use matrix for precise control: translate first, then scale around center
+    // This keeps pan in screen coordinates
+    const transform = `translate(${state.panOffset.x}px, ${state.panOffset.y}px) scale(${scale})`;
+
+    if (instant) {
+        elements.canvasWrap.style.transition = 'none';
+        elements.canvasWrap.style.transform = transform;
+        // Force reflow
+        void elements.canvasWrap.offsetHeight;
+        elements.canvasWrap.style.transition = '';
+    } else {
+        elements.canvasWrap.style.transform = transform;
+    }
 }
 
 /**
- * Apply current pan offset to canvas
+ * Update zoom display in UI
  */
-function applyPan() {
-    const transform = `scale(${state.zoomLevel}) translate(${state.panOffset.x / state.zoomLevel}px, ${state.panOffset.y / state.zoomLevel}px)`;
-    elements.canvasWrap.style.transform = transform;
+function updateZoomDisplay() {
+    const canvasInfo = document.querySelector('.canvas-info');
+    if (canvasInfo) {
+        const width = state.layers[0].width;
+        const height = state.layers[0].height;
+        const zoomPercent = Math.round(state.zoomLevel * 100);
+        canvasInfo.textContent = `${width} x ${height} px | ${zoomPercent}%`;
+    }
 }
 
 /**
- * Initialize canvas panning with spacebar
+ * Initialize canvas panning and zooming with mouse
  * @param {Function} setTool - Callback to set current tool
+ * @param {Function} setStatus - Callback to update status bar
  */
-export function initCanvasPan(setTool) {
+export function initCanvasPan(setTool, setStatus) {
+    // Spacebar panning
     document.addEventListener('keydown', (e) => {
-        if (e.code === 'Space' && !state.spaceKeyPressed) {
+        if (e.code === 'Space' && !state.spaceKeyPressed && !e.target.matches('input, textarea')) {
             state.spaceKeyPressed = true;
             state.layers.forEach(canvas => {
                 canvas.style.cursor = 'grab';
             });
+            e.preventDefault();
         }
     });
 
@@ -63,19 +130,49 @@ export function initCanvasPan(setTool) {
         }
     });
 
-    elements.canvasWrap.addEventListener('mousedown', (e) => {
-        if (state.spaceKeyPressed) {
+    // Mouse wheel zoom (Ctrl + wheel or just wheel over canvas)
+    const canvasArea = elements.canvasWrap.parentElement;
+    canvasArea.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            zoom(delta, setStatus, { centerX: e.clientX, centerY: e.clientY });
+        }
+    }, { passive: false });
+
+    // Middle mouse button panning
+    let middleButtonPanning = false;
+
+    // Handle mousedown on canvas area (for both space+click and middle button)
+    canvasArea.addEventListener('mousedown', (e) => {
+        // Space + left click OR middle mouse button
+        if ((state.spaceKeyPressed && e.button === 0) || e.button === 1) {
             state.isPanning = true;
+            middleButtonPanning = e.button === 1;
             state.panStart = { x: e.clientX, y: e.clientY };
+
+            // Set cursor
             state.layers.forEach(canvas => {
                 canvas.style.cursor = 'grabbing';
             });
+            canvasArea.classList.add('panning');
+            canvasArea.style.cursor = 'grabbing';
+
             e.preventDefault();
+            e.stopPropagation();
         }
-    });
+    }, { passive: false });
+
+    // Also prevent default behavior for auxclick (middle button)
+    canvasArea.addEventListener('auxclick', (e) => {
+        if (e.button === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, { passive: false });
 
     document.addEventListener('mousemove', (e) => {
-        if (state.isPanning && state.spaceKeyPressed) {
+        if (state.isPanning) {
             const dx = e.clientX - state.panStart.x;
             const dy = e.clientY - state.panStart.y;
 
@@ -83,19 +180,34 @@ export function initCanvasPan(setTool) {
             state.panOffset.y += dy;
             state.panStart = { x: e.clientX, y: e.clientY };
 
-            applyPan();
+            applyTransform(true); // Instant during panning for smooth feedback
             e.preventDefault();
         }
     });
 
-    document.addEventListener('mouseup', () => {
-        if (state.isPanning) {
+    document.addEventListener('mouseup', (e) => {
+        if (state.isPanning && (e.button === 0 || e.button === 1)) {
             state.isPanning = false;
-            if (state.spaceKeyPressed) {
+            canvasArea.classList.remove('panning');
+            canvasArea.style.cursor = '';
+
+            if (middleButtonPanning) {
+                middleButtonPanning = false;
+                setTool(state.currentTool);
+            } else if (state.spaceKeyPressed) {
                 state.layers.forEach(canvas => {
                     canvas.style.cursor = 'grab';
                 });
+            } else {
+                setTool(state.currentTool);
             }
+        }
+    });
+
+    // Prevent context menu on canvas area when panning
+    canvasArea.addEventListener('contextmenu', (e) => {
+        if (state.isPanning || middleButtonPanning) {
+            e.preventDefault();
         }
     });
 }
@@ -116,7 +228,10 @@ export function initTransformTools(setStatus, pushUndo) {
     }
 
     if (elements.toolZoomFit) {
-        elements.toolZoomFit.addEventListener('click', zoomFit);
+        elements.toolZoomFit.addEventListener('click', () => {
+            zoomFit();
+            setStatus('キャンバスをフィット表示');
+        });
     }
 
     // Rotation and flip
@@ -135,6 +250,26 @@ export function initTransformTools(setStatus, pushUndo) {
     if (elements.toolFlipV) {
         elements.toolFlipV.addEventListener('click', () => flipCanvas('vertical', setStatus, pushUndo));
     }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Ctrl+0 or Cmd+0: Reset view
+        if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+            e.preventDefault();
+            resetView();
+            setStatus('ビューをリセット (100%)');
+        }
+        // Ctrl+= or Ctrl++: Zoom in
+        else if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+            e.preventDefault();
+            zoom(0.25, setStatus);
+        }
+        // Ctrl+-: Zoom out
+        else if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+            e.preventDefault();
+            zoom(-0.25, setStatus);
+        }
+    });
 }
 
 /**
@@ -196,10 +331,12 @@ export function rotateCanvas(degrees, setStatus, pushUndo) {
                 elements.canvasWrap.style.width = `${newW}px`;
                 elements.canvasWrap.style.height = `${newH}px`;
             }
-            const canvasInfo = document.querySelector('.canvas-info');
-            if (canvasInfo) canvasInfo.textContent = `${newW} x ${newH} px`;
-            if (elements.timelapseCanvas) { elements.timelapseCanvas.width = newW; elements.timelapseCanvas.height = newH; }
+            if (elements.timelapseCanvas) {
+                elements.timelapseCanvas.width = newW;
+                elements.timelapseCanvas.height = newH;
+            }
 
+            updateZoomDisplay();
             setStatus(`${deg}度回転しました`);
         }).catch((err) => { console.error('rotateCanvas error', err); setStatus('回転に失敗しました'); });
     } catch (err) { console.error('rotateCanvas exception', err); setStatus('回転に失敗しました'); }
@@ -253,6 +390,7 @@ export function flipCanvas(direction, setStatus, pushUndo) {
                 img.onload = () => { try { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); } catch (e) { console.warn('flip draw failed', e); } };
                 img.src = dataUrl;
             });
+            updateZoomDisplay();
             setStatus(`${direction === 'horizontal' ? '左右' : '上下'}反転しました`);
         }).catch((err) => { console.error('flipCanvas error', err); setStatus('反転に失敗しました'); });
     } catch (err) { console.error('flipCanvas exception', err); setStatus('反転に失敗しました'); }
@@ -266,7 +404,7 @@ export function flipCanvas(direction, setStatus, pushUndo) {
  */
 export function resizeCanvas(newWidth, newHeight, savePersistedState) {
     // Save current layer data
-    const layerData = state.layers.map((canvas, idx) => {
+    const layerData = state.layers.map((canvas) => {
         return canvas.toDataURL();
     });
 
@@ -292,17 +430,13 @@ export function resizeCanvas(newWidth, newHeight, savePersistedState) {
         img.src = layerData[idx];
     });
 
-    // Update canvas info
-    const canvasInfo = document.querySelector('.canvas-info');
-    if (canvasInfo) {
-        canvasInfo.textContent = `${newWidth} x ${newHeight} px`;
-    }
-
     // Update timelapse canvas
     if (elements.timelapseCanvas) {
         elements.timelapseCanvas.width = newWidth;
         elements.timelapseCanvas.height = newHeight;
     }
+
+    updateZoomDisplay();
 
     if (savePersistedState) {
         savePersistedState();

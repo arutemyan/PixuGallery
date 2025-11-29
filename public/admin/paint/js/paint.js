@@ -133,7 +133,7 @@ function initUI() {
 
     // Transform tools
     initTransformTools(setStatus, pushUndo);
-    initCanvasPan(setToolWrapper);
+    initCanvasPan(setToolWrapper, setStatus);
 
     // Timelapse
     initTimelapseModal(closeTimelapseModal);

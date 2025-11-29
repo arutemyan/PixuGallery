@@ -513,27 +513,23 @@ function handleDrawEnd(e, recordTimelapse, savePersistedState, markAsChanged) {
  * Get pointer position relative to canvas
  */
 function getPointerPos(e, canvas) {
-    const rect = canvas.getBoundingClientRect();
     const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
     const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
 
-    // Get position relative to the bounding rect
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    // getBoundingClientRect returns the actual position after transform is applied
+    const rect = canvas.getBoundingClientRect();
 
-    // The canvas is scaled and translated by canvas-wrap
-    // Transform: scale(zoom) translate(panOffset.x/zoom, panOffset.y/zoom)
-    // To get canvas pixel coordinates, we need to reverse this:
-    // 1. Undo the scale: divide by zoom
-    // 2. Undo the translate: subtract the pan offset
+    // Mouse position relative to the transformed canvas
+    const screenX = clientX - rect.left;
+    const screenY = clientY - rect.top;
 
-    const canvasX = (x / state.zoomLevel) - (state.panOffset.x / state.zoomLevel);
-    const canvasY = (y / state.zoomLevel) - (state.panOffset.y / state.zoomLevel);
+    // Scale from screen pixels to canvas pixels
+    // rect.width/height = canvas size in screen pixels (after zoom)
+    // canvas.width/height = canvas size in canvas pixels (internal resolution)
+    const x = screenX * (canvas.width / rect.width);
+    const y = screenY * (canvas.height / rect.height);
 
-    return {
-        x: canvasX,
-        y: canvasY
-    };
+    return { x, y };
 }
 
 /**

@@ -182,7 +182,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 20px;
-    overflow: auto;
+    overflow: hidden;
     position: relative;
     background: #E0E0E0;
     background-image:
@@ -192,6 +192,14 @@ body {
         linear-gradient(-45deg, transparent 75%, #D0D0D0 75%);
     background-size: 20px 20px;
     background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.canvas-area.panning {
+    cursor: grabbing !important;
+}
+
+.canvas-area.panning * {
+    cursor: grabbing !important;
 }
 
 #canvas-wrap {
@@ -209,6 +217,9 @@ body {
     background-size: 16px 16px;
     background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
     flex-shrink: 0;
+    transform-origin: center center;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
 }
 
 canvas.layer {
@@ -228,12 +239,16 @@ canvas.layer {
     position: absolute;
     bottom: 8px;
     right: 8px;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.8);
     color: white;
-    padding: 4px 8px;
-    border-radius: 3px;
+    padding: 6px 10px;
+    border-radius: 4px;
     font-size: 11px;
+    font-weight: 500;
     pointer-events: none;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 }
 
 /* ===== Right Panel ===== */
