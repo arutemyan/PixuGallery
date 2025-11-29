@@ -64,6 +64,22 @@ class Post
     }
 
     /**
+     * 次の投稿を取得
+     */
+    public function getNextPost(int $currentId, ?int $postType): ?array
+    {
+        return $this->repository->getNextPost($currentId, $postType);
+    }
+
+    /**
+     * 前の投稿を取得
+     */
+    public function getPreviousPost(int $currentId, ?int $postType): ?array
+    {
+        return $this->repository->getPreviousPost($currentId, $postType);
+    }
+
+    /**
      * 管理画面用: すべての投稿を取得（非表示含む）
      */
     public function getAllForAdmin(int $limit = 100, int $offset = 0): array

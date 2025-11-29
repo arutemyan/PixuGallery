@@ -383,4 +383,102 @@ class PostRepository
 
         return $posts;
     }
+
+    /**
+     * 次の投稿を取得
+     *
+     * @param int $currentId 現在の投稿ID
+     * @param int $postType 投稿タイプ
+     * @return array|null 次の投稿データ、なければnull
+     */
+    /**
+     * 隣接投稿を取得する共通メソッド
+     *
+     * @param int $currentId 現在の投稿ID
+     * @param int|null $postType 投稿タイプ（nullの場合は全タイプから検索）
+     * @param string $direction 'next' または 'previous'
+     * @return array|null 隣接投稿データ、なければnull
+     */
+    private function getAdjacentPost(int $currentId, ?int $postType, string $direction): ?array
+    {
+        // 現在の投稿情報を取得
+        $stmt = $this->db->prepare("SELECT sort_order, created_at FROM posts WHERE id = ?");
+        $stmt->execute([$currentId]);
+        $current = $stmt->fetch();
+        if (!$current) {
+            return null;
+        }
+
+        // NULL値をPHP側で処理
+        $curSort = $current['sort_order'] !== null ? (int)$current['sort_order'] : 0;
+        $curCreated = $current['created_at'] ?? '1970-01-01 00:00:00';
+
+        // 比較演算子とソート順を決定
+        if ($direction === 'next') {
+            $compareOp = '>';
+            $order = 'ASC';
+        } else {
+            $compareOp = '<';
+            $order = 'DESC';
+        }
+
+        // シンプルなクエリ構築
+        $sql = "
+            SELECT 
+                p.id, 
+                p.post_type, 
+                p.title, 
+                p.image_path, 
+                p.thumb_path,
+                IFNULL(p.sort_order, 0) as sort_val,
+                IFNULL(p.created_at, '1970-01-01 00:00:00') as created_val
+            FROM posts p
+            WHERE p.is_visible = 1
+        ";
+
+        $params = [];
+
+        // post_type絞り込み（オプション）
+        if ($postType !== null) {
+            $sql .= " AND p.post_type = :postType";
+            $params[':postType'] = $postType;
+        }
+
+        $sql .= " AND p.id {$compareOp} :curId
+            ORDER BY IFNULL(p.sort_order, 0) {$order}, IFNULL(p.created_at, '1970-01-01 00:00:00') {$order}, p.id {$order}
+            LIMIT 1
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $params[':curId'] = $currentId;
+        $stmt->execute($params);
+        $post = $stmt->fetch();
+
+        return $post ?: null;
+    }
+
+    /**
+     * 次の投稿を取得
+     *
+     * @param int $currentId 現在の投稿ID
+     * @param int|null $postType 投稿タイプ（nullの場合は全タイプから検索）
+     * @return array|null 次の投稿データ、なければnull
+     */
+    public function getNextPost(int $currentId, ?int $postType): ?array
+    {
+        return $this->getAdjacentPost($currentId, $postType, 'next');
+    }
+
+    /**
+     * 前の投稿を取得
+     *
+     * @param int $currentId 現在の投稿ID
+     * @param int|null $postType 投稿タイプ（nullの場合は全タイプから検索）
+     * @return array|null 前の投稿データ、なければnull
+     */
+    public function getPreviousPost(int $currentId, ?int $postType): ?array
+    {
+        return $this->getAdjacentPost($currentId, $postType, 'previous');
+    }
 }
+

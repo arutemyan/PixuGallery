@@ -49,6 +49,10 @@ try {
         $data['images'] = $groupPostImageModel->getImagesByPostId($id);
     }
 
+    // 前後の投稿を取得（post_type を問わず全投稿から検索）
+    $nextPost = $model->getNextPost($id, null);
+    $previousPost = $model->getPreviousPost($id, null);
+
     // 閲覧数をインクリメント
     // Visitor ID を発行/取得して渡す（DB 側の重複抑止に使用）
     $visitorId = \App\Security\VisitorIdHelper::getOrCreate();
@@ -146,32 +150,69 @@ $additionalJs = ['/res/js/detail.js'];
 $groupGalleryScript = '';
 if ($isGroupPost) {
     $groupGalleryScript = <<<'JS'
-let currentImageIndex = 0;
-const images = document.querySelectorAll('.gallery-image');
-const totalImages = images.length;
+// DOMロード後に初期化
+document.addEventListener('DOMContentLoaded', function() {
+    let currentImageIndex = 0;
+    const images = document.querySelectorAll('.gallery-image');
+    const totalImages = images.length;
 
-function showImage(index) {
-    images.forEach((img, i) => {
-        img.classList.toggle('active', i === index);
+    window.showImage = function(index) {
+        images.forEach((img, i) => {
+            img.classList.toggle('active', i === index);
+        });
+        const counterEl = document.getElementById('currentImageIndex');
+        if (counterEl) {
+            counterEl.textContent = index + 1;
+        }
+        currentImageIndex = index;
+    }
+
+    window.nextImage = function() {
+        const nextIndex = (currentImageIndex + 1) % totalImages;
+        window.showImage(nextIndex);
+    }
+
+    window.previousImage = function() {
+        const prevIndex = (currentImageIndex - 1 + totalImages) % totalImages;
+        window.showImage(prevIndex);
+    }
+
+    // キーボードナビゲーション
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') window.nextImage();
+        if (e.key === 'ArrowLeft') window.previousImage();
     });
-    document.getElementById('currentImageIndex').textContent = index + 1;
-    currentImageIndex = index;
-}
 
-function nextImage() {
-    const nextIndex = (currentImageIndex + 1) % totalImages;
-    showImage(nextIndex);
-}
+    // スワイプ機能
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const gallery = document.querySelector('.image-gallery');
 
-function previousImage() {
-    const prevIndex = (currentImageIndex - 1 + totalImages) % totalImages;
-    showImage(prevIndex);
-}
+    if (gallery) {
+        gallery.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
 
-// キーボードナビゲーション
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight') nextImage();
-    if (e.key === 'ArrowLeft') previousImage();
+        gallery.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const swipeThreshold = 50; // 最小スワイプ距離（px）
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // 左スワイプ -> 次の画像
+                    window.nextImage();
+                } else {
+                    // 右スワイプ -> 前の画像
+                    window.previousImage();
+                }
+            }
+        }
+    }
 });
 JS;
 }
@@ -216,6 +257,32 @@ JS,
 );
 
 // 詳細ページ初期化スクリプト
+// 単一投稿の場合のみ、投稿間キーボードナビゲーションを有効化
+// （グループ投稿は画像間ナビゲーションが優先）
+$postNavigationScript = '';
+if (!$isGroupPost) {
+    $nextUrl = $nextPost ? sprintf('/detail.php?id=%d&viewtype=%d', $nextPost['id'], $nextPost['post_type']) : '';
+    $prevUrl = $previousPost ? sprintf('/detail.php?id=%d&viewtype=%d', $previousPost['id'], $previousPost['post_type']) : '';
+
+    $postNavigationScript = sprintf(
+        <<<'JS'
+// 単一投稿のキーボードナビゲーション（投稿間）
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' && '%s') {
+        window.location.href = '%s';
+    }
+    if (e.key === 'ArrowLeft' && '%s') {
+        window.location.href = '%s';
+    }
+});
+JS,
+        $nextUrl,
+        $nextUrl,
+        $prevUrl,
+        $prevUrl
+    );
+}
+
 $detailInitScript = sprintf(
     <<<'JS'
 // DOMロード後に初期化
@@ -228,12 +295,14 @@ JS,
     $type
 );
 
-$inlineScripts = array_filter([$groupGalleryScript, $snsShareScript, $detailInitScript]);
+$inlineScripts = array_filter([$groupGalleryScript, $snsShareScript, $postNavigationScript, $detailInitScript]);
 
 // Viewでレンダリング
 View::render('detail', [
     'data' => $data,
     'isGroupPost' => $isGroupPost,
+    'nextPost' => $nextPost,
+    'previousPost' => $previousPost,
     'pageTitle' => $pageTitle,
     'pageDescription' => $pageDescription,
     'bodyAttributes' => $bodyAttributes,

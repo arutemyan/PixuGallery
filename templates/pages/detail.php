@@ -49,37 +49,76 @@ function createNsfwThumb($post) {
         <?php if ($isGroupPost): ?>
             <!-- グループ投稿：画像ギャラリー -->
             <?php if (!empty($data['images'])): ?>
-                <div class="image-gallery">
-                    <?php foreach ($data['images'] as $index => $image):
-                        $isSensitive = isset($data['is_sensitive']) && $data['is_sensitive'] == 1;
-                        $imagePath = '/' . escapeHtml($image['image_path']);
-                        // センシティブ画像の場合、すべての画像でNSFWフィルター版を表示
-                        if ($isSensitive) {
-                            $displayPath = '/' . createNsfwThumb($image);
-                        } else {
-                            $displayPath = $imagePath;
-                        }
-                    ?>
-                        <img
-                            class="gallery-image nsfw-image<?= $index === 0 ? ' active' : '' ?>"
-                            src="<?= $displayPath ?>"
-                            <?= $isSensitive ? 'data-original="' . $imagePath . '"' : '' ?>
-                            alt="<?= escapeHtml($data['title']) ?> - <?= $index + 1 ?>"
-                            data-index="<?= $index ?>"
-                        >
-                    <?php endforeach; ?>
+                <div class="image-gallery-container">
+                    <div class="image-gallery">
+                        <?php foreach ($data['images'] as $index => $image):
+                            $isSensitive = isset($data['is_sensitive']) && $data['is_sensitive'] == 1;
+                            $imagePath = '/' . escapeHtml($image['image_path']);
+                            // センシティブ画像の場合、すべての画像でNSFWフィルター版を表示
+                            if ($isSensitive) {
+                                $displayPath = '/' . createNsfwThumb($image);
+                            } else {
+                                $displayPath = $imagePath;
+                            }
+                        ?>
+                            <img
+                                class="gallery-image nsfw-image<?= $index === 0 ? ' active' : '' ?>"
+                                src="<?= $displayPath ?>"
+                                <?= $isSensitive ? 'data-original="' . $imagePath . '"' : '' ?>
+                                alt="<?= escapeHtml($data['title']) ?> - <?= $index + 1 ?>"
+                                data-index="<?= $index ?>"
+                            >
+                        <?php endforeach; ?>
+                    </div>
+
+                    <!-- 画像間ナビゲーションボタン（マルチ画像用） -->
+                    <?php if (count($data['images']) > 1): ?>
+                        <button class="gallery-nav-btn gallery-nav-prev" onclick="previousImage()" title="前の画像" aria-label="前の画像">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+                            </svg>
+                        </button>
+                        <button class="gallery-nav-btn gallery-nav-next" onclick="nextImage()" title="次の画像" aria-label="次の画像">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+                            </svg>
+                        </button>
+                    <?php endif; ?>
                 </div>
 
-                <!-- ギャラリーナビゲーション -->
-                <?php if (count($data['images']) > 1): ?>
-                    <div class="gallery-nav">
-                        <button class="gallery-prev" onclick="previousImage()">&lt; 前へ</button>
-                        <span class="gallery-counter">
-                            <span id="currentImageIndex">1</span> / <?= count($data['images']) ?>
-                        </span>
-                        <button class="gallery-next" onclick="nextImage()">次へ &gt;</button>
-                    </div>
-                <?php endif; ?>
+                <!-- ギャラリーコントロール（カウンター） -->
+                <div class="gallery-controls">
+                    <?php if (count($data['images']) > 1): ?>
+                        <div class="gallery-counter">
+                            <span id="currentImageIndex">1</span> / <?= count($data['images']) ?> 枚
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- 投稿間ナビゲーション（シングル投稿と同じ位置に揃える） -->
+                <div class="post-navigation single-post-nav">
+                    <?php if (!empty($previousPost)): ?>
+                        <a href="/detail.php?id=<?= $previousPost['id'] ?>&viewtype=<?= $previousPost['post_type'] ?>"
+                           class="post-nav-link post-nav-link-prev"
+                           title="前の投稿: <?= escapeHtml($previousPost['title']) ?>">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+                            </svg>
+                            前の投稿
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if (!empty($nextPost)): ?>
+                        <a href="/detail.php?id=<?= $nextPost['id'] ?>&viewtype=<?= $nextPost['post_type'] ?>"
+                           class="post-nav-link post-nav-link-next"
+                           title="次の投稿: <?= escapeHtml($nextPost['title']) ?>">
+                            次の投稿
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+                            </svg>
+                        </a>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
         <?php else: ?>
             <!-- 単一投稿：単一画像 -->
@@ -102,12 +141,39 @@ function createNsfwThumb($post) {
                 $displayPath = $imagePath;
             }
             ?>
-            <img
-                src="<?= $displayPath ?>"
-                <?= $isSensitive ? 'data-original="' . $imagePath . '"' : '' ?>
-                alt="<?= escapeHtml($data['title']) ?>"
-                class="detail-image<?= $isSensitive ? ' nsfw-image' : '' ?>"
-            >
+            <div class="single-image-container">
+                <img
+                    src="<?= $displayPath ?>"
+                    <?= $isSensitive ? 'data-original="' . $imagePath . '"' : '' ?>
+                    alt="<?= escapeHtml($data['title']) ?>"
+                    class="detail-image<?= $isSensitive ? ' nsfw-image' : '' ?>"
+                >
+            </div>
+
+            <!-- 投稿間ナビゲーション（シングル投稿用） -->
+            <div class="post-navigation single-post-nav">
+                <?php if (!empty($previousPost)): ?>
+                    <a href="/detail.php?id=<?= $previousPost['id'] ?>&viewtype=<?= $previousPost['post_type'] ?>"
+                       class="post-nav-link post-nav-link-prev"
+                       title="前の投稿: <?= escapeHtml($previousPost['title']) ?>">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+                        </svg>
+                        前の投稿
+                    </a>
+                <?php endif; ?>
+
+                <?php if (!empty($nextPost)): ?>
+                    <a href="/detail.php?id=<?= $nextPost['id'] ?>&viewtype=<?= $nextPost['post_type'] ?>"
+                       class="post-nav-link post-nav-link-next"
+                       title="次の投稿: <?= escapeHtml($nextPost['title']) ?>">
+                        次の投稿
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+                        </svg>
+                    </a>
+                <?php endif; ?>
+            </div>
         <?php endif; ?>
 
         <div class="detail-content">
