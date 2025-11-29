@@ -67,6 +67,14 @@ export function parseTimelapseCSV(csv) {
             if (event.opacity !== undefined && event.opacity !== '') {
                 event.opacity = parseFloat(event.opacity);
             }
+            if (event.watercolorOpacity !== undefined && event.watercolorOpacity !== '') {
+                const wOpacity = parseFloat(event.watercolorOpacity);
+                if (!Number.isNaN(wOpacity)) event.watercolorOpacity = wOpacity;
+            }
+            if (event.watercolorHardness !== undefined && event.watercolorHardness !== '') {
+                const wHardness = parseFloat(event.watercolorHardness);
+                if (!Number.isNaN(wHardness)) event.watercolorHardness = wHardness;
+            }
             if (event.visible !== undefined && event.visible !== '') {
                 // Convert string "true"/"false" to boolean
                 event.visible = (event.visible === 'true' || event.visible === true || event.visible === '1' || event.visible === 1);
@@ -137,7 +145,14 @@ export function convertEventsToStrokes(events) {
             };
             if (event.tool === 'watercolor') {
                 if (event.watercolorHardness !== undefined) currentStroke.watercolorHardness = event.watercolorHardness;
-                if (event.watercolorOpacity !== undefined) currentStroke.watercolorOpacity = event.watercolorOpacity;
+                if (event.watercolorOpacity !== undefined) {
+                    currentStroke.watercolorOpacity = event.watercolorOpacity;
+                }
+            } else {
+                // For non-water strokes, if an explicit opacity was recorded, propagate it
+                if (event.opacity !== undefined) {
+                    currentStroke.opacity = event.opacity;
+                }
             }
             lastEventTime = event.t !== undefined ? event.t : lastEventTime;
         } else if (event.type === 'move' && currentStroke) {

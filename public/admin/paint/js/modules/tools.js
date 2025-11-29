@@ -378,6 +378,17 @@ function handleDrawStart(e, layerIndex, recordTimelapse, pushUndo, setColor) {
 
     // Record timelapse
     if (recordTimelapse) {
+        // Record an explicit size value per tool to ensure playback uses the
+        // intended brush/eraser sizes rather than relying on context defaults.
+        let recordedSize = ctx.lineWidth || 5;
+        if (state.currentTool === 'watercolor') {
+            recordedSize = state.watercolorMaxSize;
+        } else if (state.currentTool === 'pen') {
+            recordedSize = state.penSize;
+        } else if (state.currentTool === 'eraser') {
+            recordedSize = state.eraserSize;
+        }
+
         recordTimelapse({
             t: Date.now(),
             type: 'start',
@@ -385,7 +396,7 @@ function handleDrawStart(e, layerIndex, recordTimelapse, pushUndo, setColor) {
             x: pos.x,
             y: pos.y,
             color: state.currentColor,
-            size: state.currentTool === 'watercolor' ? state.watercolorMaxSize : ctx.lineWidth,
+            size: recordedSize,
             pressure: state.lastPressure,
             tool: state.currentTool,
             ...(state.currentTool === 'watercolor' ? {

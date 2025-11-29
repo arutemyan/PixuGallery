@@ -339,6 +339,31 @@ export class TimelapsePlayer {
         const frame = this.frames[frameIndex];
         // ストロークを描画
         if (frame.type === 'stroke') {
+            // Debug: optionally log frame details when debugging playback
+            try {
+                if (typeof window !== 'undefined' && window.DEBUG_TIMELAPSE) {
+                    const pressures = (frame.path || []).slice(0, 5).map(p => p.pressure !== undefined ? p.pressure : null);
+                    const basic = { index: frameIndex, tool: frame.tool, size: frame.size, opacity: frame.opacity, watercolorOpacity: frame.watercolorOpacity, pressures };
+                    console.debug('[TimelapsePlayer] render stroke basic', basic);
+
+                    // Print full frame keys to inspect what's present
+                    try {
+                        const keys = Object.keys(frame).sort();
+                        console.debug('[TimelapsePlayer] render stroke keys', keys);
+                    } catch (e) {}
+
+                    // For watercolor/eraser, show the whole frame (stringified small)
+                    if (frame.tool === 'watercolor' || frame.tool === 'eraser') {
+                        try {
+                            console.debug('[TimelapsePlayer] render stroke frame', JSON.parse(JSON.stringify(frame, (k, v) => (k === 'path' ? v.slice(0,8) : v))));
+                        } catch (e) {
+                            console.debug('[TimelapsePlayer] render stroke frame (raw)', frame);
+                        }
+                    }
+                }
+            } catch (e) {
+                // ignore logging errors
+            }
             const li = typeof frame.layer === 'number' ? frame.layer : 0;
             const layerState = this.layerStates[li];
             // Skip drawing to hidden layers
