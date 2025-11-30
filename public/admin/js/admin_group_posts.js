@@ -159,16 +159,16 @@ function renderGroupPosts(posts) {
                     </div>
                     <div class="col-md-4 text-end">
                         <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-outline-primary" onclick="editGroupPost(${post.id})" title="編集">
+                            <button class="btn btn-sm btn-outline-primary group-edit-btn" data-post-id="${post.id}" title="編集">
                                 <i class="bi bi-pencil"></i> 編集
                             </button>
-                            <button class="btn btn-sm btn-outline-info" onclick="addImagesToGroup(${post.id})" title="画像追加">
+                            <button class="btn btn-sm btn-outline-info group-add-images-btn" data-post-id="${post.id}" title="画像追加">
                                 <i class="bi bi-plus-circle"></i> 画像追加
                             </button>
-                            <button class="btn btn-sm btn-outline-success" onclick="shareGroupPostToSNS(${post.id}, '${escapeHtml(post.title).replace(/'/g, "\\'")}', ${post.is_sensitive})" title="SNS共有">
+                            <button class="btn btn-sm btn-outline-success group-share-btn" data-post-id="${post.id}" data-post-title="${escapeHtml(post.title).replace(/'/g, "\\'")}" data-post-sensitive="${post.is_sensitive}" title="SNS共有">
                                 <i class="bi bi-share"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteGroupPost(${post.id}, '${escapeHtml(post.title).replace(/'/g, "\\'")}')">
+                            <button class="btn btn-sm btn-outline-danger group-delete-btn" data-post-id="${post.id}" data-post-title="${escapeHtml(post.title).replace(/'/g, "\\'")}">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -176,6 +176,44 @@ function renderGroupPosts(posts) {
                 </div>
             </div>
         `);
+    });
+    // レンダリング後にイベントを設定
+    try {
+        setupGroupPostEventListeners();
+    } catch (e) {
+        console.warn('Failed to setup group post event listeners:', e);
+    }
+}
+
+/**
+ * グループ投稿のイベントリスナーを設定
+ */
+function setupGroupPostEventListeners() {
+    // 編集
+    $('.group-edit-btn').off('click').on('click', function() {
+        const postId = $(this).data('post-id');
+        editGroupPost(postId);
+    });
+
+    // 画像追加
+    $('.group-add-images-btn').off('click').on('click', function() {
+        const postId = $(this).data('post-id');
+        addImagesToGroup(postId);
+    });
+
+    // 共有
+    $('.group-share-btn').off('click').on('click', function() {
+        const postId = $(this).data('post-id');
+        const title = $(this).data('post-title');
+        const isSensitive = $(this).data('post-sensitive');
+        shareGroupPostToSNS(postId, title, isSensitive);
+    });
+
+    // 削除
+    $('.group-delete-btn').off('click').on('click', function() {
+        const postId = $(this).data('post-id');
+        const title = $(this).data('post-title');
+        deleteGroupPost(postId, title);
     });
 }
 
@@ -223,7 +261,7 @@ function editGroupPost(groupPostId) {
         success: function(response) {
             if (response.success && response.data) {
                 const post = response.data;
-
+                try {
                 // 編集モーダルHTMLを生成
                 const modalHtml = `
                     <div class="modal fade" id="editGroupModal" tabindex="-1">
@@ -279,7 +317,7 @@ function editGroupPost(groupPostId) {
                                         <div class="mb-3">
                                             <label class="form-label">グループ内の画像（${post.image_count}枚）</label>
                                             <div class="row g-2" id="editGroupImagesList">
-                                                ${post.images.map(img => `
+                                                ${(post.images || []).map(img => `
                                                     <div class="col-md-3 col-sm-4 col-6" data-image-id="${img.id}">
                                                         <div class="card">
                                                             <img src="/${img.thumb_path}" class="card-img-top" data-inline-style="aspect-ratio: 1; object-fit: cover;" alt="画像${img.display_order}">
@@ -311,7 +349,6 @@ function editGroupPost(groupPostId) {
                         </div>
                     </div>
                 `;
-
                 // 既存のモーダルを削除
                 $('#editGroupModal').remove();
 
@@ -332,6 +369,10 @@ function editGroupPost(groupPostId) {
                 $('#saveGroupPostBtn').on('click', function() {
                     saveGroupPost();
                 });
+                } catch (e) {
+                    console.error('Failed to render editGroupModal:', e);
+                    window.showAdminAlert({type: 'error', message: '編集モーダルの表示に失敗しました。コンソールを確認してください。'});
+                }
             } else {
                 window.showAdminAlert({type: 'error', message: 'グループ投稿の取得に失敗しました', target: '#groupPostsList'});
             }
@@ -776,3 +817,4 @@ function deleteGroupImage(imageId, groupPostId) {
             }
     });
 }
+

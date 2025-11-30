@@ -14,6 +14,85 @@ const CSRF_TOKEN = window.CSRF_TOKEN;
 const escapeHtml = window.escapeHtml;
 // editModalはDOMロード後に初期化されるため、window.editModal経由でアクセスする
 
+/**
+ * 管理画面用の遅延スクリプトローダー（グループ投稿スクリプト用）
+ * callback はスクリプト読み込み後に呼ばれる
+ */
+function ensureAdminGroupScriptLoaded(callback) {
+    const src = '/' + ADMIN_PATH + '/js/admin_group_posts.js';
+    if (typeof window.editGroupPost === 'function') {
+        callback();
+        return;
+    }
+
+    window._adminLazyLoadedScripts = window._adminLazyLoadedScripts || {};
+    if (window._adminLazyLoadedScripts[src] === 'loaded') {
+        let waited = 0;
+        const iv = setInterval(() => {
+            if (typeof window.editGroupPost === 'function') {
+                clearInterval(iv);
+                callback();
+            }
+            waited += 50;
+            if (waited > 2000) {
+                clearInterval(iv);
+                console.warn('Group script loaded but editGroupPost not available');
+                callback();
+            }
+        }, 50);
+        return;
+    }
+
+    if (window._adminLazyLoadedScripts[src] === 'loading') {
+        let waited = 0;
+        const iv = setInterval(() => {
+            if (typeof window.editGroupPost === 'function') {
+                clearInterval(iv);
+                callback();
+            }
+            waited += 50;
+            if (waited > 3000) {
+                clearInterval(iv);
+                console.warn('Timeout waiting for group script to load');
+                callback();
+            }
+        }, 50);
+        return;
+    }
+
+    window._adminLazyLoadedScripts[src] = 'loading';
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = function() {
+        window._adminLazyLoadedScripts[src] = 'loaded';
+        try {
+            if (typeof window.editGroupPost === 'function') {
+                callback();
+                return;
+            }
+        } catch (e) {}
+        let waited = 0;
+        const iv = setInterval(() => {
+            if (typeof window.editGroupPost === 'function') {
+                clearInterval(iv);
+                callback();
+            }
+            waited += 50;
+            if (waited > 2000) {
+                clearInterval(iv);
+                console.warn('Group script loaded but editGroupPost not available after wait');
+                callback();
+            }
+        }, 50);
+    };
+    script.onerror = function() {
+        window._adminLazyLoadedScripts[src] = 'error';
+        console.error('Failed to load admin_group_posts.js');
+        callback();
+    };
+    document.body.appendChild(script);
+}
+
 // クリップボードから貼り付けた画像を保持
 let clipboardImageFile = null;
 
@@ -438,9 +517,13 @@ function setupPostEventListeners() {
         const postId = $(this).data('post-id');
         const postType = $(this).data('post-type');
         if (postType === 'group') {
-            if (typeof editGroupPost === 'function') {
-                editGroupPost(postId);
-            }
+            ensureAdminGroupScriptLoaded(function() {
+                if (typeof editGroupPost === 'function') {
+                    editGroupPost(postId);
+                } else {
+                    console.warn('editGroupPost not available after loading group script');
+                }
+            });
         } else {
             editPost(postId);
         }
@@ -462,10 +545,16 @@ function setupPostEventListeners() {
         const postType = $(this).data('post-type');
         const title = $(this).data('post-title');
         if (postType === 'group') {
-            if (typeof deleteGroupPost === 'function') {
-                deleteGroupPost(postId, title);
-                return;
-            }
+            ensureAdminGroupScriptLoaded(function() {
+                if (typeof deleteGroupPost === 'function') {
+                    deleteGroupPost(postId, title);
+                    return;
+                } else {
+                    // fallback to single post delete if group delete not available
+                    console.warn('deleteGroupPost not available after loading group script');
+                }
+            });
+            return;
         }
         // 単一投稿の削除
         deletePost(postId);

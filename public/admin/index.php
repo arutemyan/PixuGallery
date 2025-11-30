@@ -294,7 +294,7 @@ try {
 
     // タブ切り替え時に動的読み込み（one()で1回だけ実行）
     $('#group-posts-tab').one('shown.bs.tab', function() {
-        loadScript('<?= \App\Utils\AssetHelper::scriptTag(PathHelper::getAdminUrl('js/admin_group_posts.js')) ?>').then(() => {
+        loadScript('<?= \App\Utils\AssetHelper::js('js/admin_group_posts.js') ?>').then(() => {
             // グループ投稿一覧を読み込み
             if (typeof loadGroupPosts === 'function') {
                 loadGroupPosts();
@@ -303,7 +303,7 @@ try {
     });
 
     $('#theme-tab').one('shown.bs.tab', function() {
-        loadScript('<?= \App\Utils\AssetHelper::scriptTag(PathHelper::getAdminUrl('js/admin_theme.js')) ?>').then(() => {
+        loadScript('<?= \App\Utils\AssetHelper::js('js/admin_theme.js') ?>').then(() => {
             // テーマ設定を読み込み
             if (typeof loadThemeSettings === 'function') {
                 loadThemeSettings();
@@ -317,7 +317,7 @@ try {
     });
 
     $('#settings-tab').one('shown.bs.tab', function() {
-        loadScript('<?= \App\Utils\AssetHelper::scriptTag(PathHelper::getAdminUrl('js/admin_settings.js')) ?>');
+        loadScript('<?= \App\Utils\AssetHelper::js('js/admin_settings.js') ?>');
         // loadSettings()はadmin_settings.js内でDOM Ready時に自動実行される
     });
     </script>
