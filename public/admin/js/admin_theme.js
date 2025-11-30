@@ -141,6 +141,58 @@ $(document).ready(function() {
             reader.readAsDataURL(file);
         }
     });
+
+    // テーマフォーム送信
+    $('#themeForm').on('submit', function(e) {
+        e.preventDefault();
+
+        // Ensure composed bg color is up-to-date before serializing
+        updateBackButtonPreview();
+        updateDetailButtonPreview();
+
+        const formData = $(this).serialize();
+        const $submitBtn = $(this).find('button[type="submit"]');
+        const originalText = $submitBtn.html();
+
+        // ボタンを無効化
+        $submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>保存中...');
+        $('#themeAlert').addClass('d-none');
+        $('#themeError').addClass('d-none');
+
+        $.ajax({
+            url: '/' + ADMIN_PATH + '/api/theme.php',
+            type: 'POST',
+            data: formData + '&_method=PUT',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // 成功メッセージ
+                    $('#themeAlert').text(response.message || 'テーマ設定が保存されました').removeClass('d-none');
+
+                    // プレビューを更新
+                    updateThemePreview();
+
+                    // 3秒後にメッセージを消す
+                    setTimeout(function() {
+                        $('#themeAlert').addClass('d-none');
+                    }, 3000);
+                } else {
+                    $('#themeError').text(response.error || '保存に失敗しました').removeClass('d-none');
+                }
+            },
+            error: function(xhr) {
+                let errorMsg = 'サーバーエラーが発生しました';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                }
+                $('#themeError').text(errorMsg).removeClass('d-none');
+            },
+            complete: function() {
+                // ボタンを有効化
+                $submitBtn.prop('disabled', false).html(originalText);
+            }
+        });
+    });
 });
 
 /**
