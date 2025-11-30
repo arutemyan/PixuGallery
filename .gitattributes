@@ -26,6 +26,11 @@ public/admin/paint/js/modules/ export-ignore
 public/admin/paint/js/paint.js export-ignore
 public/admin/js/admin.js export-ignore
 public/admin/js/sns-share.js export-ignore
+public/admin/js/admin_common.js export-ignore
+public/admin/js/admin_posts.js export-ignore
+public/admin/js/admin_group_posts.js export-ignore
+public/admin/js/admin_theme.js export-ignore
+public/admin/js/admin_settings.js export-ignore
 public/res/js/main.js export-ignore
 public/res/js/detail.js export-ignore
 public/paint/js/gallery.js export-ignore

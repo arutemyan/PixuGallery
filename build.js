@@ -93,6 +93,38 @@ const builds = [
     entryPoints: ['public/admin/js/sns-share.js'],
     outfile: 'public/admin/js/sns-share.bundle.js',
   },
+  // Additional admin script bundles: ensure per-tab scripts are built so
+  // templates that reference them (or dynamic loaders) can use .bundle.js
+  {
+    name: 'Admin Common',
+    entryPoints: ['public/admin/js/admin_common.js'],
+    outfile: 'public/admin/js/admin_common.bundle.js',
+  },
+  {
+    name: 'Admin Posts',
+    entryPoints: ['public/admin/js/admin_posts.js'],
+    outfile: 'public/admin/js/admin_posts.bundle.js',
+  },
+  {
+    name: 'Admin Group Posts',
+    entryPoints: ['public/admin/js/admin_group_posts.js'],
+    outfile: 'public/admin/js/admin_group_posts.bundle.js',
+  },
+  {
+    name: 'Admin Theme',
+    entryPoints: ['public/admin/js/admin_theme.js'],
+    outfile: 'public/admin/js/admin_theme.bundle.js',
+  },
+  {
+    name: 'Admin Settings',
+    entryPoints: ['public/admin/js/admin_settings.js'],
+    outfile: 'public/admin/js/admin_settings.bundle.js',
+  },
+  {
+    name: 'Paint Init',
+    entryPoints: ['public/admin/paint/js/paint-init.js'],
+    outfile: 'public/admin/paint/js/paint-init.bundle.js',
+  },
 ];
 
 // 共通のビルド設定
