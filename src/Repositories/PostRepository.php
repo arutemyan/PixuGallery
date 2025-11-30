@@ -444,14 +444,43 @@ class PostRepository
             $params[':postType'] = $postType;
         }
 
-        $sql .= " AND p.id {$compareOp} :curId
-            ORDER BY IFNULL(p.sort_order, 0) {$order}, IFNULL(p.created_at, '1970-01-01 00:00:00') {$order}, p.id {$order}
-            LIMIT 1
-        ";
+        // Use UNION approach to make the comparator clearer and index-friendly.
+        // We build three subqueries and UNION them in priority order, then pick the first
+        // matching row according to the overall ordering.
 
-        $stmt = $this->db->prepare($sql);
-        $params[':curId'] = $currentId;
-        $stmt->execute($params);
+        // Base WHERE for visibility and optional post_type
+        $baseWhere = 'p.is_visible = 1';
+        if ($postType !== null) {
+            $baseWhere .= ' AND p.post_type = :postType';
+        }
+
+        $selectParams = "p.id, p.post_type, p.title, p.image_path, p.thumb_path, IFNULL(p.sort_order,0) AS sort_val, IFNULL(p.created_at,'1970-01-01 00:00:00') AS created_val";
+
+        if ($direction === 'next') {
+            // Next: prefer higher sort_order, then higher created_at, then higher id
+            $sub1 = "SELECT {$selectParams} FROM posts p WHERE {$baseWhere} AND IFNULL(p.sort_order,0) > :curSort";
+            $sub2 = "SELECT {$selectParams} FROM posts p WHERE {$baseWhere} AND IFNULL(p.sort_order,0) = :curSort AND IFNULL(p.created_at,'1970-01-01 00:00:00') > :curCreated";
+            $sub3 = "SELECT {$selectParams} FROM posts p WHERE {$baseWhere} AND IFNULL(p.sort_order,0) = :curSort AND IFNULL(p.created_at,'1970-01-01 00:00:00') = :curCreated AND p.id > :curId";
+
+            // Do not wrap each SELECT in parentheses — SQLite does not accept a leading parenthesis
+            $unionSql = "{$sub1} UNION ALL {$sub2} UNION ALL {$sub3} ORDER BY sort_val ASC, created_val ASC, id ASC LIMIT 1";
+        } else {
+            // Previous: prefer lower sort_order, then lower created_at, then lower id
+            $sub1 = "SELECT {$selectParams} FROM posts p WHERE {$baseWhere} AND IFNULL(p.sort_order,0) < :curSort";
+            $sub2 = "SELECT {$selectParams} FROM posts p WHERE {$baseWhere} AND IFNULL(p.sort_order,0) = :curSort AND IFNULL(p.created_at,'1970-01-01 00:00:00') < :curCreated";
+            $sub3 = "SELECT {$selectParams} FROM posts p WHERE {$baseWhere} AND IFNULL(p.sort_order,0) = :curSort AND IFNULL(p.created_at,'1970-01-01 00:00:00') = :curCreated AND p.id < :curId";
+
+            $unionSql = "{$sub1} UNION ALL {$sub2} UNION ALL {$sub3} ORDER BY sort_val DESC, created_val DESC, id DESC LIMIT 1";
+        }
+
+        $stmt = $this->db->prepare($unionSql);
+        if ($postType !== null) {
+            $stmt->bindValue(':postType', $postType, PDO::PARAM_INT);
+        }
+        $stmt->bindValue(':curSort', $curSort, PDO::PARAM_INT);
+        $stmt->bindValue(':curCreated', $curCreated, PDO::PARAM_STR);
+        $stmt->bindValue(':curId', $currentId, PDO::PARAM_INT);
+        $stmt->execute();
         $post = $stmt->fetch();
 
         return $post ?: null;
