@@ -108,5 +108,9 @@ try {
             </script>
         <?php endforeach; ?>
     <?php endif; ?>
+    <!-- Toast コンテナ（Bootstrap）: 管理画面の非同期通知用 -->
+    <div aria-live="polite" aria-atomic="true" class="position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+        <div id="adminToastContainer" class="toast-container"></div>
+    </div>
 </body>
 </html>

@@ -56,37 +56,36 @@ $(document).ready(function() {
         $('#groupUploadAlert').addClass('d-none');
         $('#groupUploadError').addClass('d-none');
 
-        $.ajax({
+        // Use ajaxAdmin wrapper to centralize alerts; keep form-specific UI updates here.
+        window.ajaxAdmin({
             url: '/' + ADMIN_PATH + '/api/group_upload.php',
             type: 'POST',
             data: formData,
             processData: false,
             contentType: false,
+            target: '#groupUploadAlert',
             success: function(response) {
-                if (response.success) {
-                    $('#groupUploadAlert').text(response.message || 'グループ投稿を作成しました').removeClass('d-none');
-
-                    // フォームをリセット
+                if (response && response.success) {
+                    // form reset + preview clear
                     $('#groupUploadForm')[0].reset();
                     $('#groupPreviewList').empty();
 
-                    // 一覧を再読み込み
+                    // reload list
                     loadGroupPosts();
 
-                    // 5秒後にメッセージを消す
-                    setTimeout(function() {
-                        $('#groupUploadAlert').addClass('d-none');
-                    }, 5000);
+                    // ensure any custom alert element is shown briefly
+                    window.showAdminAlert({type: 'success', message: response.message || 'グループ投稿を作成しました', target: '#groupUploadAlert', timeout: window.ADMIN_ALERT_TIMEOUT_INFO});
                 } else {
-                    $('#groupUploadError').text(response.error || 'アップロードに失敗しました').removeClass('d-none');
+                    const err = response && response.error ? response.error : 'アップロードに失敗しました';
+                    window.showAdminAlert({type: 'error', message: err, target: '#groupUploadError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
                 }
             },
-            error: function(xhr) {
+            error: function(jqXHR) {
                 let errorMsg = 'サーバーエラーが発生しました';
-                if (xhr.responseJSON && xhr.responseJSON.error) {
-                    errorMsg = xhr.responseJSON.error;
-                }
-                $('#groupUploadError').text(errorMsg).removeClass('d-none');
+                try {
+                    if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.error) errorMsg = jqXHR.responseJSON.error;
+                } catch (e) {}
+                window.showAdminAlert({type: 'error', message: errorMsg, target: '#groupUploadError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
             },
             complete: function() {
                 $submitBtn.prop('disabled', false).html(originalText);
@@ -198,18 +197,18 @@ function deleteGroupPost(id, title) {
         },
         dataType: 'json',
         success: function(response) {
-            if (response.success) {
-                alert('グループ投稿を削除しました');
-                loadGroupPosts();
-            } else {
-                alert('削除に失敗しました: ' + response.error);
-            }
+                if (response.success) {
+                    window.showAdminAlert({type: 'success', message: response.message || 'グループ投稿を削除しました'});
+                    loadGroupPosts();
+                } else {
+                    window.showAdminAlert({type: 'error', message: '削除に失敗しました: ' + (response.error || '')});
+                }
         },
-        error: function(xhr) {
-            let msg = 'サーバーエラーが発生しました';
-            if (xhr && xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
-            alert(msg);
-        }
+            error: function(xhr) {
+                let msg = 'サーバーエラーが発生しました';
+                if (xhr && xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+                window.showAdminAlert({type: 'error', message: msg});
+            }
     });
 }
 
@@ -334,11 +333,11 @@ function editGroupPost(groupPostId) {
                     saveGroupPost();
                 });
             } else {
-                alert('グループ投稿の取得に失敗しました');
+                window.showAdminAlert({type: 'error', message: 'グループ投稿の取得に失敗しました', target: '#groupPostsList'});
             }
         },
         error: function() {
-            alert('サーバーエラーが発生しました');
+            window.showAdminAlert({type: 'error', message: 'サーバーエラーが発生しました', target: '#groupPostsList'});
         }
     });
 }
@@ -355,32 +354,28 @@ function saveGroupPost() {
     $('#editGroupAlert').addClass('d-none');
     $('#editGroupError').addClass('d-none');
 
-    $.ajax({
+    window.ajaxAdmin({
         url: '/' + ADMIN_PATH + '/api/group_posts.php',
         type: 'POST',
         data: formData + '&_method=PUT',
         dataType: 'json',
+        target: '#editGroupAlert',
         success: function(response) {
-            if (response.success) {
-                $('#editGroupAlert').text(response.message || 'グループ投稿が更新されました').removeClass('d-none');
-
-                // 一覧を再読み込み
+            if (response && response.success) {
+                // reload list and close modal
                 loadGroupPosts();
-
-                // 2秒後にモーダルを閉じる
                 setTimeout(function() {
                     $('#editGroupModal').modal('hide');
                 }, 1500);
             } else {
-                $('#editGroupError').text(response.error || '保存に失敗しました').removeClass('d-none');
+                const err = response && response.error ? response.error : '保存に失敗しました';
+                window.showAdminAlert({type: 'error', message: err, target: '#editGroupError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
             }
         },
-        error: function(xhr) {
+        error: function(jqXHR) {
             let errorMsg = 'サーバーエラーが発生しました';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMsg = xhr.responseJSON.error;
-            }
-            $('#editGroupError').text(errorMsg).removeClass('d-none');
+            try { if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.error) errorMsg = jqXHR.responseJSON.error; } catch (e) {}
+            window.showAdminAlert({type: 'error', message: errorMsg, target: '#editGroupError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
         },
         complete: function() {
             $saveBtn.prop('disabled', false).html(originalText);
@@ -498,38 +493,33 @@ function uploadGroupImages() {
     $('#addGroupImagesAlert').addClass('d-none');
     $('#addGroupImagesError').addClass('d-none');
 
-    $.ajax({
-        url: '/' + ADMIN_PATH + '/api/group_upload.php',
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function(response) {
-            if (response.success) {
-                $('#addGroupImagesAlert').text(response.message || '画像を追加しました').removeClass('d-none');
-
-                // 一覧を再読み込み
-                loadGroupPosts();
-
-                // 2秒後にモーダルを閉じる
-                setTimeout(function() {
-                    $('#addGroupImagesModal').modal('hide');
-                }, 1500);
-            } else {
-                $('#addGroupImagesError').text(response.error || 'アップロードに失敗しました').removeClass('d-none');
+        window.ajaxAdmin({
+            url: '/' + ADMIN_PATH + '/api/group_upload.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            target: '#addGroupImagesAlert',
+            success: function(response) {
+                if (response && response.success) {
+                    loadGroupPosts();
+                    setTimeout(function() {
+                        $('#addGroupImagesModal').modal('hide');
+                    }, 1500);
+                    window.showAdminAlert({type: 'success', message: response.message || '画像を追加しました', target: '#addGroupImagesAlert', timeout: window.ADMIN_ALERT_TIMEOUT_SUCCESS});
+                } else {
+                    window.showAdminAlert({type: 'error', message: response && response.error ? response.error : 'アップロードに失敗しました', target: '#addGroupImagesError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
+                }
+            },
+            error: function(jqXHR) {
+                let errorMsg = 'サーバーエラーが発生しました';
+                try { if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.error) errorMsg = jqXHR.responseJSON.error; } catch (e) {}
+                window.showAdminAlert({type: 'error', message: errorMsg, target: '#addGroupImagesError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
+            },
+            complete: function() {
+                $uploadBtn.prop('disabled', false).html(originalText);
             }
-        },
-        error: function(xhr) {
-            let errorMsg = 'サーバーエラーが発生しました';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMsg = xhr.responseJSON.error;
-            }
-            $('#addGroupImagesError').text(errorMsg).removeClass('d-none');
-        },
-        complete: function() {
-            $uploadBtn.prop('disabled', false).html(originalText);
-        }
-    });
+        });
 }
 
 /**
@@ -686,20 +676,14 @@ function replaceGroupImage(imageId, groupPostId) {
                     $img.attr('src', '/' + response.thumb_path + '?' + timestamp);
 
                     // 成功メッセージ
-                    $('#editGroupAlert')
-                        .text(response.message || '画像を差し替えました')
-                        .removeClass('d-none');
-
-                    setTimeout(function() {
-                        $('#editGroupAlert').addClass('d-none');
-                    }, 3000);
+                    window.showAdminAlert({type: 'success', message: response.message || '画像を差し替えました', target: '#editGroupAlert', timeout: window.ADMIN_ALERT_TIMEOUT_SUCCESS});
 
                     // グループ投稿一覧を再読み込み（バックグラウンドで）
                     loadGroupPosts();
                 } else {
                     const errorMsg = response.error || '不明なエラー';
                     const debugInfo = response.debug ? '\n\nデバッグ情報:\n' + response.debug : '';
-                    alert('差し替えに失敗しました: ' + errorMsg + debugInfo);
+                    window.showAdminAlert({type: 'error', message: '差し替えに失敗しました: ' + errorMsg + debugInfo});
                     console.error('Replace error:', response);
                     $img.attr('src', originalSrc);
                 }
@@ -716,7 +700,7 @@ function replaceGroupImage(imageId, groupPostId) {
                 } else if (xhr.responseText) {
                     errorMsg = xhr.responseText.substring(0, 200);
                 }
-                alert('差し替えに失敗しました: ' + errorMsg);
+                window.showAdminAlert({type: 'error', message: '差し替えに失敗しました: ' + errorMsg});
                 $img.attr('src', originalSrc);
             },
             complete: function() {
@@ -770,31 +754,25 @@ function deleteGroupImage(imageId, groupPostId) {
                 });
 
                 // 成功メッセージ
-                $('#editGroupAlert')
-                    .text(response.message || '画像を削除しました')
-                    .removeClass('d-none');
-
-                setTimeout(function() {
-                    $('#editGroupAlert').addClass('d-none');
-                }, 3000);
+                window.showAdminAlert({type: 'success', message: response.message || '画像を削除しました', target: '#editGroupAlert', timeout: window.ADMIN_ALERT_TIMEOUT_SUCCESS});
 
                 // グループ投稿一覧を再読み込み（バックグラウンドで）
                 loadGroupPosts();
-            } else {
-                const errorMsg = response.error || '不明なエラー';
-                const debugInfo = response.debug ? '\n\nデバッグ情報:\n' + response.debug : '';
-                alert('削除に失敗しました: ' + errorMsg + debugInfo);
-                console.error('Delete error:', response);
+                } else {
+                    const errorMsg = response.error || '不明なエラー';
+                    const debugInfo = response.debug ? '\n\nデバッグ情報:\n' + response.debug : '';
+                    window.showAdminAlert({type: 'error', message: '削除に失敗しました: ' + errorMsg + debugInfo});
+                    console.error('Delete error:', response);
+                    $imageCard.find('button').prop('disabled', false);
+                }
+        },
+            error: function(xhr) {
+                let errorMsg = 'サーバーエラーが発生しました';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                }
+                window.showAdminAlert({type: 'error', message: '削除に失敗しました: ' + errorMsg});
                 $imageCard.find('button').prop('disabled', false);
             }
-        },
-        error: function(xhr) {
-            let errorMsg = 'サーバーエラーが発生しました';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMsg = xhr.responseJSON.error;
-            }
-            alert('削除に失敗しました: ' + errorMsg);
-            $imageCard.find('button').prop('disabled', false);
-        }
     });
 }

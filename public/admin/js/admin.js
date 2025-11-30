@@ -157,7 +157,7 @@ $(document).ready(function() {
                     // 3秒後にメッセージを消す
                     setTimeout(function() {
                         $('#uploadAlert').addClass('d-none');
-                    }, 3000);
+                    }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
                 } else {
                     $('#uploadError').text(response.error || 'アップロードに失敗しました').removeClass('d-none');
                 }
@@ -240,11 +240,11 @@ $(document).ready(function() {
                     // 投稿一覧を再読み込み
                     loadPosts();
 
-                    // 5秒後にメッセージを消す
+                    // 3秒後にメッセージを消す
                     setTimeout(function() {
                         $('#bulkUploadAlert').addClass('d-none');
                         $('#bulkUploadError').addClass('d-none');
-                    }, 5000);
+                    }, window.ADMIN_ALERT_TIMEOUT_INFO);
                 } else {
                     $('#bulkUploadError').text(response.error || '一括アップロードに失敗しました').removeClass('d-none');
                 }
@@ -296,7 +296,7 @@ $(document).ready(function() {
                     // 3秒後にメッセージを消す
                     setTimeout(function() {
                         $('#themeAlert').addClass('d-none');
-                    }, 3000);
+                    }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
                 } else {
                     $('#themeError').text(response.error || '保存に失敗しました').removeClass('d-none');
                 }
@@ -687,7 +687,7 @@ function deletePost(postId) {
 
     const csrfToken = $('input[name="csrf_token"]').val();
 
-    $.ajax({
+    window.ajaxAdmin({
         url: '/' + ADMIN_PATH + '/api/posts.php?id=' + postId,
         type: 'POST',
         data: {
@@ -695,26 +695,21 @@ function deletePost(postId) {
             csrf_token: csrfToken
         },
         dataType: 'json',
+        target: '#uploadAlert',
         success: function(response) {
-            if (response.success) {
-                // 投稿一覧を再読み込み
+                if (response && response.success) {
                 loadPosts();
-
-                // 成功メッセージ
-                $('#uploadAlert').text(response.message || '投稿が削除されました').removeClass('d-none');
-                setTimeout(function() {
-                    $('#uploadAlert').addClass('d-none');
-                }, 3000);
+                window.showAdminAlert({type: 'success', message: response.message || '投稿が削除されました', target: '#uploadAlert', timeout: window.ADMIN_ALERT_TIMEOUT_SUCCESS});
             } else {
-                alert(response.error || '削除に失敗しました');
+                window.showAdminAlert({type: 'error', message: response && response.error ? response.error : '削除に失敗しました'});
             }
         },
-        error: function(xhr) {
+        error: function(jqXHR) {
             let errorMsg = 'サーバーエラーが発生しました';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMsg = xhr.responseJSON.error;
+            if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.error) {
+                errorMsg = jqXHR.responseJSON.error;
             }
-            alert(errorMsg);
+            window.showAdminAlert({type: 'error', message: errorMsg});
         }
     });
 }
@@ -979,7 +974,7 @@ function editPost(postId) {
                     editModal.show();
                 }
             } else {
-                alert('投稿データの取得に失敗しました');
+                window.showAdminAlert({type: 'error', message: '投稿データの取得に失敗しました'});
             }
         },
         error: function(xhr) {
@@ -987,7 +982,7 @@ function editPost(postId) {
             if (xhr.responseJSON && xhr.responseJSON.error) {
                 errorMsg = xhr.responseJSON.error;
             }
-            alert(errorMsg);
+            window.showAdminAlert({type: 'error', message: errorMsg});
         }
     });
 }
@@ -1172,7 +1167,7 @@ function savePost() {
                 $('#uploadAlert').text(response.message || '投稿が更新されました').removeClass('d-none');
                 setTimeout(function() {
                     $('#uploadAlert').addClass('d-none');
-                }, 3000);
+                }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
             } else {
                 $('#editError').text(response.error || '保存に失敗しました').removeClass('d-none');
             }
@@ -1238,7 +1233,7 @@ function uploadThemeImage(imageType) {
     const file = $(fileInputId)[0].files[0];
 
     if (!file) {
-        alert('画像ファイルを選択してください');
+        window.showAdminAlert({type: 'error', message: '画像ファイルを選択してください', target: '#themeError'});
         return;
     }
 
@@ -1253,38 +1248,29 @@ function uploadThemeImage(imageType) {
     // ボタンを無効化
     $uploadBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>アップロード中...');
 
-    $.ajax({
+    window.ajaxAdmin({
         url: '/' + ADMIN_PATH + '/api/theme-image.php',
         type: 'POST',
         data: formData,
         processData: false,
         contentType: false,
+        target: '#themeAlert',
         success: function(response) {
-            if (response.success) {
-                // 成功メッセージ
-                $('#themeAlert').text(response.message || '画像がアップロードされました').removeClass('d-none');
-
-                // プレビュー画像を更新
+            if (response && response.success) {
                 const previewImgId = imageType === 'logo' ? '#logoPreviewImg' : '#headerPreviewImg';
                 $(previewImgId).attr('src', '/' + response.image_path).show();
-
-                // テーマ設定を再読み込み
                 loadThemeSettings();
-
-                // 3秒後にメッセージを消す
-                setTimeout(function() {
-                    $('#themeAlert').addClass('d-none');
-                }, 3000);
+                window.showAdminAlert({type: 'success', message: response.message || '画像がアップロードされました', target: '#themeAlert', timeout: window.ADMIN_ALERT_TIMEOUT_SUCCESS});
             } else {
-                $('#themeError').text(response.error || 'アップロードに失敗しました').removeClass('d-none');
+                window.showAdminAlert({type: 'error', message: response && response.error ? response.error : 'アップロードに失敗しました', target: '#themeError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
             }
         },
-        error: function(xhr) {
+        error: function(jqXHR) {
             let errorMsg = 'サーバーエラーが発生しました';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMsg = xhr.responseJSON.error;
+            if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.error) {
+                errorMsg = jqXHR.responseJSON.error;
             }
-            $('#themeError').text(errorMsg).removeClass('d-none');
+            window.showAdminAlert({type: 'error', message: errorMsg, target: '#themeError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
         },
         complete: function() {
             // ボタンを有効化
@@ -1328,7 +1314,7 @@ function deleteThemeImage(imageType) {
                 // 3秒後にメッセージを消す
                 setTimeout(function() {
                     $('#themeAlert').addClass('d-none');
-                }, 3000);
+                }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
             } else {
                 $('#themeError').text(response.error || '削除に失敗しました').removeClass('d-none');
             }
@@ -1354,7 +1340,7 @@ function uploadOgpImage() {
     const file = $('#ogpImageFile')[0].files[0];
 
     if (!file) {
-        alert('画像ファイルを選択してください');
+        window.showAdminAlert({type: 'error', message: '画像ファイルを選択してください', target: '#settingsAlert'});
         return;
     }
 
@@ -1393,7 +1379,7 @@ function uploadOgpImage() {
                 // 3秒後にメッセージを消す
                 setTimeout(function() {
                     $('#settingsAlert').addClass('d-none');
-                }, 3000);
+                }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
             } else {
                 $('#settingsAlert')
                     .addClass('alert-danger')
@@ -1455,7 +1441,7 @@ function deleteOgpImage() {
                 // 3秒後にメッセージを消す
                 setTimeout(function() {
                     $('#settingsAlert').addClass('d-none');
-                }, 3000);
+                }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
             } else {
                 $('#settingsAlert')
                     .addClass('alert-danger')
@@ -1484,6 +1470,13 @@ function deleteOgpImage() {
  * サイト設定を保存
  */
 function saveSettings() {
+    // Prevent multiple concurrent saves
+    if (window._settingsSaveInProgress) {
+        console.warn('Settings save already in progress; ignoring duplicate call');
+        return;
+    }
+    window._settingsSaveInProgress = true;
+
     const showViewCount = $('#showViewCount').is(':checked') ? '1' : '0';
     const ogpTitle = $('#ogpTitle').val();
     const ogpDescription = $('#ogpDescription').val();
@@ -1515,7 +1508,7 @@ function saveSettings() {
                 // 3秒後にメッセージを消す
                 setTimeout(function() {
                     $('#settingsAlert').addClass('d-none');
-                }, 3000);
+                }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
             } else {
                 $('#settingsAlert')
                     .addClass('alert-danger')
@@ -1533,6 +1526,8 @@ function saveSettings() {
                 .text(errorMsg)
                 .removeClass('d-none');
         }
+    }).always(function() {
+        window._settingsSaveInProgress = false;
     });
 }
 
@@ -1673,7 +1668,7 @@ function bulkUpdateVisibility(visibility) {
     });
 
     if (postIds.length === 0) {
-        alert('投稿を選択してください');
+        window.showAdminAlert({type: 'error', message: '投稿を選択してください', target: '#uploadError'});
         return;
     }
 
@@ -1714,12 +1709,12 @@ function bulkUpdateVisibility(visibility) {
                 // 3秒後にメッセージを消す
                 setTimeout(function() {
                     $('#uploadAlert').addClass('d-none');
-                }, 3000);
+                }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
             } else {
                 $('#uploadError').text(response.error || '一括更新に失敗しました').removeClass('d-none');
                 setTimeout(function() {
                     $('#uploadError').addClass('d-none');
-                }, 3000);
+                }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
             }
         },
         error: function(xhr) {
@@ -1730,7 +1725,7 @@ function bulkUpdateVisibility(visibility) {
             $('#uploadError').text(errorMsg).removeClass('d-none');
             setTimeout(function() {
                 $('#uploadError').addClass('d-none');
-            }, 3000);
+            }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
         },
         complete: function() {
             // ボタンを有効化
@@ -1852,13 +1847,13 @@ function uploadClipboardImage() {
                     // 3秒後にメッセージを消す
                     setTimeout(function() {
                         $('#clipboardAlert').addClass('d-none');
-                    }, 3000);
+                    }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
 
                     // 成功メッセージをトップにも表示
                     $('#uploadAlert').text(response.message || '投稿が作成されました').removeClass('d-none');
                     setTimeout(function() {
                         $('#uploadAlert').addClass('d-none');
-                    }, 3000);
+                    }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
                 } else {
                     $('#clipboardError').text(response.error || 'アップロードに失敗しました').removeClass('d-none');
                 }
@@ -2053,16 +2048,16 @@ function deleteGroupPost(id, title) {
         dataType: 'json',
         success: function(response) {
             if (response.success) {
-                alert('グループ投稿を削除しました');
+                window.showAdminAlert({type: 'success', message: response.message || 'グループ投稿を削除しました', target: '#groupPostsList'});
                 loadGroupPosts();
             } else {
-                alert('削除に失敗しました: ' + response.error);
+                window.showAdminAlert({type: 'error', message: '削除に失敗しました: ' + (response.error || ''), target: '#groupPostsList'});
             }
         },
         error: function(xhr) {
             let msg = 'サーバーエラーが発生しました';
             if (xhr && xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
-            alert(msg);
+            window.showAdminAlert({type: 'error', message: msg, target: '#groupPostsList'});
         }
     });
 }
@@ -2126,10 +2121,10 @@ $('#groupUploadForm').on('submit', function(e) {
                 // 一覧を再読み込み
                 loadGroupPosts();
 
-                // 5秒後にメッセージを消す
-                setTimeout(function() {
-                    $('#groupUploadAlert').addClass('d-none');
-                }, 5000);
+                    // 5秒後にメッセージを消す
+                    setTimeout(function() {
+                        $('#groupUploadAlert').addClass('d-none');
+                    }, window.ADMIN_ALERT_TIMEOUT_INFO);
             } else {
                 $('#groupUploadError').text(response.error || 'アップロードに失敗しました').removeClass('d-none');
             }
@@ -2273,11 +2268,11 @@ function editGroupPost(groupPostId) {
                     saveGroupPost();
                 });
             } else {
-                alert('グループ投稿の取得に失敗しました');
+                window.showAdminAlert({type: 'error', message: 'グループ投稿の取得に失敗しました', target: '#groupPostsList'});
             }
         },
         error: function() {
-            alert('サーバーエラーが発生しました');
+            window.showAdminAlert({type: 'error', message: 'サーバーエラーが発生しました', target: '#groupPostsList'});
         }
     });
 }
@@ -2294,36 +2289,27 @@ function saveGroupPost() {
     $('#editGroupAlert').addClass('d-none');
     $('#editGroupError').addClass('d-none');
 
-    $.ajax({
+    window.ajaxAdmin({
         url: '/' + ADMIN_PATH + '/api/group_posts.php',
         type: 'POST',
         data: formData + '&_method=PUT',
         dataType: 'json',
+        target: '#editGroupAlert',
         success: function(response) {
-            if (response.success) {
-                $('#editGroupAlert').text(response.message || 'グループ投稿が更新されました').removeClass('d-none');
-
-                // 一覧を再読み込み
+            if (response && response.success) {
                 loadGroupPosts();
-
-                // 2秒後にモーダルを閉じる
-                setTimeout(function() {
-                    $('#editGroupModal').modal('hide');
-                }, 1500);
+                setTimeout(function() { $('#editGroupModal').modal('hide'); }, 1500);
             } else {
-                $('#editGroupError').text(response.error || '保存に失敗しました').removeClass('d-none');
+                const err = response && response.error ? response.error : '保存に失敗しました';
+                window.showAdminAlert({type: 'error', message: err, target: '#editGroupError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
             }
         },
-        error: function(xhr) {
+        error: function(jqXHR) {
             let errorMsg = 'サーバーエラーが発生しました';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMsg = xhr.responseJSON.error;
-            }
-            $('#editGroupError').text(errorMsg).removeClass('d-none');
+            if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.error) errorMsg = jqXHR.responseJSON.error;
+            window.showAdminAlert({type: 'error', message: errorMsg, target: '#editGroupError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
         },
-        complete: function() {
-            $saveBtn.prop('disabled', false).html(originalText);
-        }
+        complete: function() { $saveBtn.prop('disabled', false).html(originalText); }
     });
 }
 
@@ -2437,37 +2423,28 @@ function uploadGroupImages() {
     $('#addGroupImagesAlert').addClass('d-none');
     $('#addGroupImagesError').addClass('d-none');
 
-    $.ajax({
+    window.ajaxAdmin({
         url: '/' + ADMIN_PATH + '/api/group_upload.php',
         type: 'POST',
         data: formData,
         processData: false,
         contentType: false,
+        target: '#addGroupImagesAlert',
         success: function(response) {
-            if (response.success) {
-                $('#addGroupImagesAlert').text(response.message || '画像を追加しました').removeClass('d-none');
-
-                // 一覧を再読み込み
+            if (response && response.success) {
                 loadGroupPosts();
-
-                // 2秒後にモーダルを閉じる
-                setTimeout(function() {
-                    $('#addGroupImagesModal').modal('hide');
-                }, 1500);
+                setTimeout(function() { $('#addGroupImagesModal').modal('hide'); }, 1500);
+                window.showAdminAlert({type: 'success', message: response.message || '画像を追加しました', target: '#addGroupImagesAlert', timeout: window.ADMIN_ALERT_TIMEOUT_SUCCESS});
             } else {
-                $('#addGroupImagesError').text(response.error || 'アップロードに失敗しました').removeClass('d-none');
+                window.showAdminAlert({type: 'error', message: response && response.error ? response.error : 'アップロードに失敗しました', target: '#addGroupImagesError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
             }
         },
-        error: function(xhr) {
+        error: function(jqXHR) {
             let errorMsg = 'サーバーエラーが発生しました';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMsg = xhr.responseJSON.error;
-            }
-            $('#addGroupImagesError').text(errorMsg).removeClass('d-none');
+            if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.error) errorMsg = jqXHR.responseJSON.error;
+            window.showAdminAlert({type: 'error', message: errorMsg, target: '#addGroupImagesError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
         },
-        complete: function() {
-            $uploadBtn.prop('disabled', false).html(originalText);
-        }
+        complete: function() { $uploadBtn.prop('disabled', false).html(originalText); }
     });
 }
 
@@ -2624,21 +2601,14 @@ function replaceGroupImage(imageId, groupPostId) {
                     const timestamp = new Date().getTime();
                     $img.attr('src', '/' + response.thumb_path + '?' + timestamp);
 
-                    // 成功メッセージ
-                    $('#editGroupAlert')
-                        .text(response.message || '画像を差し替えました')
-                        .removeClass('d-none');
-
-                    setTimeout(function() {
-                        $('#editGroupAlert').addClass('d-none');
-                    }, 3000);
+                    window.showAdminAlert({type: 'success', message: response.message || '画像を差し替えました', target: '#editGroupAlert', timeout: window.ADMIN_ALERT_TIMEOUT_SUCCESS});
 
                     // グループ投稿一覧を再読み込み（バックグラウンドで）
                     loadGroupPosts();
                 } else {
                     const errorMsg = response.error || '不明なエラー';
                     const debugInfo = response.debug ? '\n\nデバッグ情報:\n' + response.debug : '';
-                    alert('差し替えに失敗しました: ' + errorMsg + debugInfo);
+                    window.showAdminAlert({type: 'error', message: '差し替えに失敗しました: ' + errorMsg + debugInfo});
                     console.error('Replace error:', response);
                     $img.attr('src', originalSrc);
                 }
@@ -2655,7 +2625,7 @@ function replaceGroupImage(imageId, groupPostId) {
                 } else if (xhr.responseText) {
                     errorMsg = xhr.responseText.substring(0, 200);
                 }
-                alert('差し替えに失敗しました: ' + errorMsg);
+                window.showAdminAlert({type: 'error', message: '差し替えに失敗しました: ' + errorMsg});
                 $img.attr('src', originalSrc);
             },
             complete: function() {
@@ -2708,32 +2678,25 @@ function deleteGroupImage(imageId, groupPostId) {
                     }
                 });
 
-                // 成功メッセージ
-                $('#editGroupAlert')
-                    .text(response.message || '画像を削除しました')
-                    .removeClass('d-none');
-
-                setTimeout(function() {
-                    $('#editGroupAlert').addClass('d-none');
-                }, 3000);
+                window.showAdminAlert({type: 'success', message: response.message || '画像を削除しました', target: '#editGroupAlert', timeout: window.ADMIN_ALERT_TIMEOUT_SUCCESS});
 
                 // グループ投稿一覧を再読み込み（バックグラウンドで）
                 loadGroupPosts();
-            } else {
-                const errorMsg = response.error || '不明なエラー';
-                const debugInfo = response.debug ? '\n\nデバッグ情報:\n' + response.debug : '';
-                alert('削除に失敗しました: ' + errorMsg + debugInfo);
-                console.error('Delete error:', response);
+                } else {
+                    const errorMsg = response.error || '不明なエラー';
+                    const debugInfo = response.debug ? '\n\nデバッグ情報:\n' + response.debug : '';
+                    window.showAdminAlert({type: 'error', message: '削除に失敗しました: ' + errorMsg + debugInfo});
+                    console.error('Delete error:', response);
+                    $imageCard.find('button').prop('disabled', false);
+                }
+        },
+            error: function(xhr) {
+                let errorMsg = 'サーバーエラーが発生しました';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                }
+                window.showAdminAlert({type: 'error', message: '削除に失敗しました: ' + errorMsg});
                 $imageCard.find('button').prop('disabled', false);
             }
-        },
-        error: function(xhr) {
-            let errorMsg = 'サーバーエラーが発生しました';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMsg = xhr.responseJSON.error;
-            }
-            alert('削除に失敗しました: ' + errorMsg);
-            $imageCard.find('button').prop('disabled', false);
-        }
     });
 }

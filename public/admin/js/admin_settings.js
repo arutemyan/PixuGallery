@@ -93,7 +93,7 @@ function uploadOgpImage() {
     const file = $('#ogpImageFile')[0].files[0];
 
     if (!file) {
-        alert('画像ファイルを選択してください');
+        window.showAdminAlert({type: 'error', message: '画像ファイルを選択してください', target: '#settingsAlert'});
         return;
     }
 
@@ -108,47 +108,29 @@ function uploadOgpImage() {
     $uploadBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>アップロード中...');
     $('#settingsAlert').addClass('d-none');
 
-    $.ajax({
+    window.ajaxAdmin({
         url: '/' + ADMIN_PATH + '/api/ogp-image.php',
         type: 'POST',
         data: formData,
         processData: false,
         contentType: false,
+        target: '#settingsAlert',
         success: function(response) {
-            if (response.success) {
-                // 成功メッセージ
-                $('#settingsAlert')
-                    .addClass('alert-success')
-                    .text(response.message || 'OGP画像がアップロードされました')
-                    .removeClass('d-none');
-
-                // プレビュー画像を更新
+            if (response && response.success) {
                 $('#ogpImagePreviewImg').attr('src', '/' + response.image_path).show();
                 $('#deleteOgpImage').show();
-
-                // 設定を再読み込み
                 loadSettings();
-
-                // 3秒後にメッセージを消す
-                setTimeout(function() {
-                    $('#settingsAlert').addClass('d-none');
-                }, 3000);
+                window.showAdminAlert({type: 'success', message: response.message || 'OGP画像がアップロードされました', target: '#settingsAlert', timeout: window.ADMIN_ALERT_TIMEOUT_SUCCESS});
             } else {
-                $('#settingsAlert')
-                    .addClass('alert-danger')
-                    .text(response.error || 'アップロードに失敗しました')
-                    .removeClass('d-none');
+                window.showAdminAlert({type: 'error', message: response && response.error ? response.error : 'アップロードに失敗しました', target: '#settingsAlert', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
             }
         },
-        error: function(xhr) {
+        error: function(jqXHR) {
             let errorMsg = 'サーバーエラーが発生しました';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMsg = xhr.responseJSON.error;
+            if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
+                errorMsg = jqXHR.responseJSON.error;
             }
-            $('#settingsAlert')
-                .addClass('alert-danger')
-                .text(errorMsg)
-                .removeClass('d-none');
+            window.showAdminAlert({type: 'error', message: errorMsg, target: '#settingsAlert', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
         },
         complete: function() {
             // ボタンを有効化
@@ -194,7 +176,7 @@ function deleteOgpImage() {
                 // 3秒後にメッセージを消す
                 setTimeout(function() {
                     $('#settingsAlert').addClass('d-none');
-                }, 3000);
+                }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
             } else {
                 $('#settingsAlert')
                     .addClass('alert-danger')
@@ -223,6 +205,13 @@ function deleteOgpImage() {
  * サイト設定を保存
  */
 function saveSettings() {
+    // Prevent multiple concurrent saves
+    if (window._settingsSaveInProgress) {
+        console.warn('Settings save already in progress; ignoring duplicate call');
+        return;
+    }
+    window._settingsSaveInProgress = true;
+
     const showViewCount = $('#showViewCount').is(':checked') ? '1' : '0';
     const ogpTitle = $('#ogpTitle').val();
     const ogpDescription = $('#ogpDescription').val();
@@ -232,7 +221,8 @@ function saveSettings() {
 
     $('#settingsAlert').addClass('d-none').removeClass('alert-success alert-danger');
 
-    $.ajax({
+    // Use centralized ajax wrapper which will show alerts automatically.
+    window.ajaxAdmin({
         url: '/' + ADMIN_PATH + '/api/settings.php',
         type: 'POST',
         data: {
@@ -243,34 +233,19 @@ function saveSettings() {
             twitter_site: twitterSite,
             csrf_token: csrfToken
         },
+        target: '#settingsAlert',
         dataType: 'json',
         success: function(response) {
-            if (response.success) {
-                $('#settingsAlert')
-                    .addClass('alert-success')
-                    .text(response.message || '設定が保存されました')
-                    .removeClass('d-none');
-
-                // 3秒後にメッセージを消す
-                setTimeout(function() {
-                    $('#settingsAlert').addClass('d-none');
-                }, 3000);
-            } else {
-                $('#settingsAlert')
-                    .addClass('alert-danger')
-                    .text(response.error || '保存に失敗しました')
-                    .removeClass('d-none');
+            if (response && response.success) {
+                // additional per-success behavior if needed
             }
-        },
-        error: function(xhr) {
-            let errorMsg = 'サーバーエラーが発生しました';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMsg = xhr.responseJSON.error;
-            }
-            $('#settingsAlert')
-                .addClass('alert-danger')
-                .text(errorMsg)
-                .removeClass('d-none');
         }
+    }).always(function() {
+        // clear in-progress flag
+        window._settingsSaveInProgress = false;
     });
+
 }
+
+// expose saveSettings to global for admin_common dynamic loader
+window.saveSettings = saveSettings;

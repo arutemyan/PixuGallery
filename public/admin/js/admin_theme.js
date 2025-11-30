@@ -142,16 +142,21 @@ $(document).ready(function() {
         }
     });
 
-    // テーマフォーム送信
-    $('#themeForm').on('submit', function(e) {
-        e.preventDefault();
-
+    // テーマ保存の汎用関数（動的ロード時に admin_common.js から呼び出せるように公開する）
+    window.saveThemeSettings = function() {
+        // Prevent multiple concurrent requests
+        if (window._themeSaveInProgress) {
+            console.warn('Theme save already in progress; ignoring duplicate call');
+            return;
+        }
+        window._themeSaveInProgress = true;
         // Ensure composed bg color is up-to-date before serializing
         updateBackButtonPreview();
         updateDetailButtonPreview();
 
-        const formData = $(this).serialize();
-        const $submitBtn = $(this).find('button[type="submit"]');
+        const $form = $('#themeForm');
+        const formData = $form.serialize();
+        const $submitBtn = $form.find('button[type="submit"]');
         const originalText = $submitBtn.html();
 
         // ボタンを無効化
@@ -159,39 +164,39 @@ $(document).ready(function() {
         $('#themeAlert').addClass('d-none');
         $('#themeError').addClass('d-none');
 
-        $.ajax({
+        // Use centralized ajax wrapper which will show alerts automatically.
+        window.ajaxAdmin({
             url: '/' + ADMIN_PATH + '/api/theme.php',
             type: 'POST',
             data: formData + '&_method=PUT',
             dataType: 'json',
+            target: '#themeAlert',
             success: function(response) {
-                if (response.success) {
-                    // 成功メッセージ
-                    $('#themeAlert').text(response.message || 'テーマ設定が保存されました').removeClass('d-none');
-
+                if (response && response.success) {
                     // プレビューを更新
                     updateThemePreview();
-
-                    // 3秒後にメッセージを消す
-                    setTimeout(function() {
-                        $('#themeAlert').addClass('d-none');
-                    }, 3000);
                 } else {
-                    $('#themeError').text(response.error || '保存に失敗しました').removeClass('d-none');
+                    // per-error behavior handled by ajaxAdmin (shows themeAlert as error)
                 }
             },
-            error: function(xhr) {
-                let errorMsg = 'サーバーエラーが発生しました';
-                if (xhr.responseJSON && xhr.responseJSON.error) {
-                    errorMsg = xhr.responseJSON.error;
-                }
-                $('#themeError').text(errorMsg).removeClass('d-none');
+            error: function() {
+                // error alert handled by ajaxAdmin
             },
             complete: function() {
                 // ボタンを有効化
                 $submitBtn.prop('disabled', false).html(originalText);
+                // clear in-progress flag
+                window._themeSaveInProgress = false;
             }
         });
+    };
+
+    // テーマフォーム送信ハンドラは saveThemeSettings() を呼ぶだけにする
+    $('#themeForm').on('submit', function(e) {
+        e.preventDefault();
+        if (typeof window.saveThemeSettings === 'function') {
+            window.saveThemeSettings();
+        }
     });
 });
 
@@ -394,7 +399,7 @@ function uploadThemeImage(imageType) {
     const file = $(fileInputId)[0].files[0];
 
     if (!file) {
-        alert('画像ファイルを選択してください');
+        window.showAdminAlert({type: 'error', message: '画像ファイルを選択してください', target: '#themeError'});
         return;
     }
 
@@ -409,38 +414,29 @@ function uploadThemeImage(imageType) {
     // ボタンを無効化
     $uploadBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>アップロード中...');
 
-    $.ajax({
+    window.ajaxAdmin({
         url: '/' + ADMIN_PATH + '/api/theme-image.php',
         type: 'POST',
         data: formData,
         processData: false,
         contentType: false,
+        target: '#themeAlert',
         success: function(response) {
-            if (response.success) {
-                // 成功メッセージ
-                $('#themeAlert').text(response.message || '画像がアップロードされました').removeClass('d-none');
-
-                // プレビュー画像を更新
+            if (response && response.success) {
                 const previewImgId = imageType === 'logo' ? '#logoPreviewImg' : '#headerPreviewImg';
                 $(previewImgId).attr('src', '/' + response.image_path).show();
-
-                // テーマ設定を再読み込み
                 loadThemeSettings();
-
-                // 3秒後にメッセージを消す
-                setTimeout(function() {
-                    $('#themeAlert').addClass('d-none');
-                }, 3000);
+                window.showAdminAlert({type: 'success', message: response.message || '画像がアップロードされました', target: '#themeAlert', timeout: window.ADMIN_ALERT_TIMEOUT_SUCCESS});
             } else {
-                $('#themeError').text(response.error || 'アップロードに失敗しました').removeClass('d-none');
+                window.showAdminAlert({type: 'error', message: response && response.error ? response.error : 'アップロードに失敗しました', target: '#themeError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
             }
         },
-        error: function(xhr) {
+        error: function(jqXHR) {
             let errorMsg = 'サーバーエラーが発生しました';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMsg = xhr.responseJSON.error;
+            if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.error) {
+                errorMsg = jqXHR.responseJSON.error;
             }
-            $('#themeError').text(errorMsg).removeClass('d-none');
+            window.showAdminAlert({type: 'error', message: errorMsg, target: '#themeError', timeout: window.ADMIN_ALERT_TIMEOUT_ERROR});
         },
         complete: function() {
             // ボタンを有効化
@@ -484,7 +480,7 @@ function deleteThemeImage(imageType) {
                 // 3秒後にメッセージを消す
                 setTimeout(function() {
                     $('#themeAlert').addClass('d-none');
-                }, 3000);
+                }, window.ADMIN_ALERT_TIMEOUT_SUCCESS);
             } else {
                 $('#themeError').text(response.error || '削除に失敗しました').removeClass('d-none');
             }
